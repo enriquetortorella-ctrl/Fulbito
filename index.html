@@ -1280,59 +1280,25 @@ function buildTeams() {
     return;
   }
 
-  // ---- AI-LIKE TEAM BUILDING ----
-  // 1. Score and get effective position for each player
   const scored = going.map(p => ({
     ...p,
     ovr: getOverall(p) || 60,
     effPos: getEffectivePosition(p),
   })).sort((a,b) => b.ovr - a.ovr);
 
-  // 2. Group by position
-  const byPos = { POR:[], DEF:[], MED:[], DEL:[] };
-  scored.forEach(p => byPos[p.effPos].push(p));
-
-  // 3. Build teams with positional balance
   const teams = Array.from({ length: numTeamsSelected }, () => ({ players:[], total:0 }));
 
-  // Distribute each position group using round-robin
-  Object.values(byPos).forEach(group => {
-    group.sort((a,b) => b.ovr-a.ovr);
-    group.forEach((p,i) => {
-      const teamIdx = i % numTeamsSelected;
-      teams[teamIdx].players.push(p);
-      teams[teamIdx].total += p.ovr;
-    });
+  // Distribuir en rondas snake: 0,1,2,2,1,0,0,1,2...
+  // Garantiza cantidad pareja Y balance de overall
+  const n = numTeamsSelected;
+  scored.forEach((p, i) => {
+    const round = Math.floor(i / n);
+    const posInRound = i % n;
+    // Snake: rondas pares van 0→n-1, rondas impares van n-1→0
+    const teamIdx = round % 2 === 0 ? posInRound : (n - 1 - posInRound);
+    teams[teamIdx].players.push(p);
+    teams[teamIdx].total += p.ovr;
   });
-
-  // 4. Balance swap: try to reduce overall difference
-  for (let iter=0; iter<30; iter++) {
-    let maxTeam = teams.reduce((a,b) => a.total>b.total?a:b);
-    let minTeam = teams.reduce((a,b) => a.total<b.total?a:b);
-    const diff = maxTeam.total - minTeam.total;
-    if (diff <= 2) break;
-
-    // Find best swap
-    let bestSwap = null, bestDiff = diff;
-    for (let a=0; a<maxTeam.players.length; a++) {
-      for (let b=0; b<minTeam.players.length; b++) {
-        const pa = maxTeam.players[a], pb = minTeam.players[b];
-        const newMax = maxTeam.total - pa.ovr + pb.ovr;
-        const newMin = minTeam.total - pb.ovr + pa.ovr;
-        const newDiff = Math.abs(newMax - newMin);
-        if (newDiff < bestDiff) {
-          bestDiff = newDiff;
-          bestSwap = { a, b };
-        }
-      }
-    }
-    if (!bestSwap) break;
-    const tmp = maxTeam.players[bestSwap.a];
-    maxTeam.players[bestSwap.a] = minTeam.players[bestSwap.b];
-    minTeam.players[bestSwap.b] = tmp;
-    maxTeam.total = maxTeam.players.reduce((s,p)=>s+p.ovr,0);
-    minTeam.total = minTeam.players.reduce((s,p)=>s+p.ovr,0);
-  }
 
   state.builtTeams = teams;
   renderBuiltTeams();
