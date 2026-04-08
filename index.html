@@ -278,7 +278,6 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
     <div class="login-divider"></div>
     <button class="btn-register" onclick="showLoginForm()">← Volver al login</button>
   </div>
-  <div class="login-box hidden" id="register-form-box">
     <h2>Crear cuenta</h2>
     <div class="photo-upload">
       <div class="photo-preview" id="reg-photo-preview" onclick="document.getElementById('reg-photo-input').click()">📷</div>
@@ -553,6 +552,13 @@ async function init() {
   showLoginForm();
   document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
+  // Show loading — use separate element, NOT innerHTML+= which breaks buttons
+  const loadingDiv = document.createElement('div');
+async function init() {
+  showScreen('screen-login');
+  showLoginForm();
+  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
   // Show loading
   const loadingDiv = document.createElement('div');
   loadingDiv.id = 'loading-players';
@@ -615,21 +621,15 @@ function showRegisterForm() {
   document.getElementById('register-form-box').classList.remove('hidden');
 }
 
-async function doLogin() {
+function doLogin() {
   const userInput = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
 
   if (state.players.length === 0) {
-    errEl.innerHTML = `⏳ Cargando jugadores...`;
-    errEl.style.display = 'block';
-    state.players = await loadPlayers();
-    errEl.style.display = 'none';
-    if (state.players.length === 0) {
-      errEl.innerHTML = `❌ No se pudo conectar. Revisá tu conexión e intentá de nuevo.`;
-      errEl.style.display = 'block'; return;
-    }
+    errEl.innerHTML = `⏳ Jugadores no cargados aún. <a href="#" onclick="retryLoad();return false" style="color:var(--gold)">Reintentar</a>`;
+    errEl.style.display='block'; return;
   }
 
   const player = state.players.find(p => p.username.toLowerCase() === userInput.toLowerCase());
@@ -805,28 +805,26 @@ function getOverall(player) {
 }
 
 function getEffectivePosition(player) {
-  // Smart position: if their strongest stat area doesn't match self-declared position,
-  // nudge toward the position their stats suggest
   const allRatings = Object.values(player.ratings || {});
-  if (!allRatings.length) return player.posPrimary || 'MED';
+  // Si tiene menos de 2 votos, usar siempre la posición declarada
+  if (allRatings.length < 2) return player.posPrimary || 'MED';
   const avg = {};
   STATS.forEach(s => {
     const vals = allRatings.map(r=>r[s]||0).filter(v=>v>0);
     avg[s] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
   });
-  // Score each position by its key stats
   const posScore = {
     POR: avg.atajadas*0.6 + avg.fisico*0.4,
     DEF: avg.defensa*0.6 + avg.fisico*0.4,
     MED: avg.pase*0.6 + avg.ritmo*0.4,
     DEL: avg.tiro*0.6 + avg.ritmo*0.4,
   };
-  const statBestPos = Object.entries(posScore).sort((a,b)=>b[1]-a[1])[0][0];
   const selfPos = player.posPrimary || 'MED';
-  // If stats strongly suggest different position (>0.8 difference in score), use stats
   const selfScore = posScore[selfPos] || 0;
+  const statBestPos = Object.entries(posScore).sort((a,b)=>b[1]-a[1])[0][0];
   const bestScore = posScore[statBestPos] || 0;
-  if (bestScore - selfScore > 0.8) return statBestPos;
+  // Solo cambiar posición si la diferencia es MUY clara (>1.2) y hay suficientes votos
+  if (statBestPos !== selfPos && bestScore - selfScore > 1.2 && allRatings.length >= 3) return statBestPos;
   return selfPos;
 }
 
