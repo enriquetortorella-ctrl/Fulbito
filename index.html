@@ -343,7 +343,10 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
   <div class="tab-content active" id="tab-jugadores" style="padding:16px">
     <div class="section-header">
       <div class="section-title">PLANTEL <span class="badge" id="players-count">0</span></div>
-      <button class="btn btn-ghost btn-sm" onclick="openEditProfile()">✏️ Mi perfil</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="refreshPlayers()">🔄</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditProfile()">✏️ Mi perfil</button>
+      </div>
     </div>
     <div class="players-grid" id="players-grid"></div>
   </div>
@@ -551,12 +554,18 @@ async function init() {
 
   // Show loading — use separate element, NOT innerHTML+= which breaks buttons
   const loadingDiv = document.createElement('div');
+async function init() {
+  showScreen('screen-login');
+  showLoginForm();
+  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+  // Show loading
+  const loadingDiv = document.createElement('div');
   loadingDiv.id = 'loading-players';
   loadingDiv.style.cssText = 'text-align:center;color:var(--muted);font-size:13px;margin-top:8px';
   loadingDiv.textContent = '⏳ Cargando jugadores...';
   document.getElementById('login-form-box').appendChild(loadingDiv);
 
-  // Disable login button while loading
   const loginBtn = document.querySelector('.btn-login');
   if (loginBtn) loginBtn.disabled = true;
 
@@ -565,7 +574,7 @@ async function init() {
   document.getElementById('loading-players')?.remove();
   if (loginBtn) loginBtn.disabled = false;
 
-  // Check existing session
+  // Check existing session — players already loaded, safe to go straight to app
   const sess = SESSION.get();
   if (sess) {
     const stillExists = state.players.find(p => p.id === sess.id);
@@ -577,6 +586,14 @@ async function init() {
       SESSION.del();
     }
   }
+}
+
+async function refreshPlayers() {
+  showToast('⏳ Actualizando...');
+  state.players = await loadPlayers();
+  renderPlayers();
+  renderAttendance();
+  showToast(`✅ ${state.players.length} jugadores cargados`);
 }
 
 function getDefaultPlayers() {
