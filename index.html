@@ -553,13 +553,6 @@ async function init() {
   showLoginForm();
   document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-  // Show loading — use separate element, NOT innerHTML+= which breaks buttons
-  const loadingDiv = document.createElement('div');
-async function init() {
-  showScreen('screen-login');
-  showLoginForm();
-  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
   // Show loading
   const loadingDiv = document.createElement('div');
   loadingDiv.id = 'loading-players';
@@ -622,15 +615,21 @@ function showRegisterForm() {
   document.getElementById('register-form-box').classList.remove('hidden');
 }
 
-function doLogin() {
+async function doLogin() {
   const userInput = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
 
   if (state.players.length === 0) {
-    errEl.innerHTML = `⏳ Jugadores no cargados aún. <a href="#" onclick="retryLoad();return false" style="color:var(--gold)">Reintentar</a>`;
-    errEl.style.display='block'; return;
+    errEl.innerHTML = `⏳ Cargando jugadores...`;
+    errEl.style.display = 'block';
+    state.players = await loadPlayers();
+    errEl.style.display = 'none';
+    if (state.players.length === 0) {
+      errEl.innerHTML = `❌ No se pudo conectar. Revisá tu conexión e intentá de nuevo.`;
+      errEl.style.display = 'block'; return;
+    }
   }
 
   const player = state.players.find(p => p.username.toLowerCase() === userInput.toLowerCase());
