@@ -614,20 +614,24 @@ function showRegisterForm() {
   document.getElementById('register-form-box').classList.remove('hidden');
 }
 
-function doLogin() {
+async function doLogin() {
   const userInput = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
 
+  // Si no cargaron los jugadores, recargar silenciosamente
   if (state.players.length === 0) {
-    errEl.innerHTML = `⏳ Jugadores no cargados aún. <a href="#" onclick="retryLoad();return false" style="color:var(--gold)">Reintentar</a>`;
-    errEl.style.display='block'; return;
+    state.players = await loadPlayers();
+    if (state.players.length === 0) {
+      errEl.textContent = '❌ No se pudo conectar. Revisá tu conexión e intentá de nuevo.';
+      errEl.style.display = 'block'; return;
+    }
   }
 
   const player = state.players.find(p => p.username.toLowerCase() === userInput.toLowerCase());
   if (!player) { 
-    errEl.innerHTML = `Usuario no encontrado (${state.players.length} jugadores cargados). <a href="#" onclick="showForgotForm();return false" style="color:var(--gold)">¿Olvidaste tu usuario?</a>`;
+    errEl.innerHTML = `Usuario no encontrado. <a href="#" onclick="showForgotForm();return false" style="color:var(--gold)">¿Olvidaste tu usuario?</a>`;
     errEl.style.display='block'; return; 
   }
   
@@ -643,14 +647,6 @@ function doLogin() {
   state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin };
   SESSION.set(state.currentUser);
   showApp();
-}
-
-async function retryLoad() {
-  const errEl = document.getElementById('login-error');
-  errEl.innerHTML = '⏳ Cargando...';
-  errEl.style.display='block';
-  state.players = await loadPlayers();
-  errEl.innerHTML = `✅ ${state.players.length} jugadores cargados. Intentá de nuevo.`;
 }
 
 async function doRegister() {
