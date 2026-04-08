@@ -552,13 +552,6 @@ async function init() {
   showLoginForm();
   document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-  // Show loading — use separate element, NOT innerHTML+= which breaks buttons
-  const loadingDiv = document.createElement('div');
-async function init() {
-  showScreen('screen-login');
-  showLoginForm();
-  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
   // Show loading
   const loadingDiv = document.createElement('div');
   loadingDiv.id = 'loading-players';
@@ -1412,7 +1405,7 @@ async function startSync() {
 
 function stopSync() {
   if (realtimeChannel) {
-    getSB().then(client => client.removeChannel(realtimeChannel));
+    sb.removeChannel(realtimeChannel);
     realtimeChannel = null;
   }
 }
