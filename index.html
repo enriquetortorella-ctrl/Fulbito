@@ -445,6 +445,15 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
   </div>
 </div>
 
+<!-- MODAL: ADD GUEST -->
+<div class="modal-overlay" id="modal-guest">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-guest')">✕</button>
+    <h2>👤 AGREGAR INVITADO</h2>
+    <div id="modal-guest-content"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1272,25 +1281,87 @@ function setNumTeams(n) {
 // ============================================================
 let guests = []; // [{ id, name, ovr, effPos }]
 
+let guestStats = {};
+
 function addGuest() {
-  const name = prompt('Nombre del invitado:');
-  if (!name || !name.trim()) return;
-  // Calcular overall promedio del grupo como base
-  const going = state.players.filter(p => p.attendance === 'going');
-  const avgOvr = going.length
-    ? Math.round(going.reduce((s,p) => s + (getOverall(p)||60), 0) / going.length)
-    : 65;
+  guestStats = {};
+  document.getElementById('modal-guest-content').innerHTML = `
+    <div class="form-group">
+      <label>Nombre</label>
+      <input type="text" id="guest-name" placeholder="Ej: Rodrigo" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;outline:none">
+    </div>
+    <div class="form-group">
+      <label>Posición</label>
+      <div class="pos-grid" id="guest-pos">
+        ${['POR','DEF','MED','DEL'].map(p=>`<div class="pos-btn" data-pos="${p}" onclick="selectGuestPos(this)">${posEmoji(p)} ${p}</div>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Calificación</div>
+      ${STATS.map(s => {
+        const val = guestStats[s] || 0;
+        return `<div class="rate-stars-row">
+          <div class="rate-stars-label">${STAT_LABELS[s]}</div>
+          <div class="stars" id="gstars-${s}">
+            ${[1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateGuestStat('${s}',${n})">★</span>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div id="guest-error" style="color:var(--red);font-size:13px;display:none;margin-bottom:8px"></div>
+    <button class="btn btn-primary w-full" style="justify-content:center" onclick="saveGuest()">➕ Agregar al partido</button>
+  `;
+  openModal('modal-guest');
+}
+
+function selectGuestPos(el) {
+  document.querySelectorAll('#guest-pos .pos-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function rateGuestStat(stat, val) {
+  guestStats[stat] = val;
+  const container = document.getElementById(`gstars-${stat}`);
+  if (container) {
+    container.innerHTML = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateGuestStat('${stat}',${n})">★</span>`).join('');
+  }
+}
+
+function saveGuest() {
+  const name = document.getElementById('guest-name').value.trim();
+  const posSel = document.querySelector('#guest-pos .pos-btn.selected');
+  const errEl = document.getElementById('guest-error');
+  errEl.style.display = 'none';
+
+  if (!name) { errEl.textContent='Ingresá el nombre'; errEl.style.display='block'; return; }
+  if (!posSel) { errEl.textContent='Elegí una posición'; errEl.style.display='block'; return; }
+
+  const pos = posSel.dataset.pos;
+  // Calcular OVR desde stats igual que el resto
+  const avg = {};
+  STATS.forEach(s => { avg[s] = guestStats[s] || 0; });
+  let ovr;
+  if (pos==='POR') ovr = avg.atajadas*0.4 + avg.ritmo*0.15 + avg.fisico*0.25 + avg.pase*0.1 + avg.defensa*0.1;
+  else if (pos==='DEF') ovr = avg.defensa*0.35 + avg.fisico*0.2 + avg.ritmo*0.2 + avg.pase*0.15 + avg.tiro*0.1;
+  else if (pos==='MED') ovr = avg.pase*0.35 + avg.ritmo*0.2 + avg.defensa*0.15 + avg.tiro*0.15 + avg.fisico*0.15;
+  else ovr = avg.tiro*0.4 + avg.ritmo*0.25 + avg.pase*0.15 + avg.fisico*0.15 + avg.defensa*0.05;
+  const finalOvr = Object.keys(guestStats).length > 0
+    ? Math.round(50 + (ovr - 1) / 4 * 49)
+    : 60;
+
   const guest = {
     id: 'guest_' + Date.now(),
-    name: name.trim(),
-    username: name.trim().toLowerCase(),
-    ovr: avgOvr,
-    effPos: 'MED',
-    isGuest: true
+    name,
+    username: name.toLowerCase(),
+    ovr: finalOvr,
+    effPos: pos,
+    isGuest: true,
+    stats: { ...guestStats }
   };
   guests.push(guest);
   renderGuestsList();
-  showToast(`👤 ${guest.name} agregado (OVR ${avgOvr})`);
+  closeModal('modal-guest');
+  showToast(`👤 ${name} agregado (${pos} · OVR ${finalOvr})`);
 }
 
 function removeGuest(id) {
