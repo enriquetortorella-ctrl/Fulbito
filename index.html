@@ -407,7 +407,9 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
         <button class="btn btn-ghost" id="teams-3-btn" onclick="setNumTeams(3)" style="flex:1">3 equipos</button>
       </div>
     </div>
-    <button class="btn btn-primary w-full" style="margin-bottom:16px;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px" onclick="buildTeams()">⚡ ARMAR EQUIPOS</button>
+    <button class="btn btn-primary w-full" style="margin-bottom:8px;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px" onclick="buildTeams()">⚡ ARMAR EQUIPOS</button>
+    <button class="btn btn-ghost w-full" style="margin-bottom:16px;justify-content:center" onclick="addGuest()">👤 Agregar invitado</button>
+    <div id="guests-list" style="margin-bottom:12px"></div>
     <div id="teams-result"></div>
   </div>
 
@@ -1265,35 +1267,143 @@ function setNumTeams(n) {
   document.getElementById('teams-3-btn').style.color = n===3?'var(--gold)':'var(--text)';
 }
 
-function buildTeams() {
+// ============================================================
+// GUESTS — jugadores temporales
+// ============================================================
+let guests = []; // [{ id, name, ovr, effPos }]
+
+function addGuest() {
+  const name = prompt('Nombre del invitado:');
+  if (!name || !name.trim()) return;
+  // Calcular overall promedio del grupo como base
   const going = state.players.filter(p => p.attendance === 'going');
-  if (going.length < numTeamsSelected * 2) {
+  const avgOvr = going.length
+    ? Math.round(going.reduce((s,p) => s + (getOverall(p)||60), 0) / going.length)
+    : 65;
+  const guest = {
+    id: 'guest_' + Date.now(),
+    name: name.trim(),
+    username: name.trim().toLowerCase(),
+    ovr: avgOvr,
+    effPos: 'MED',
+    isGuest: true
+  };
+  guests.push(guest);
+  renderGuestsList();
+  showToast(`👤 ${guest.name} agregado (OVR ${avgOvr})`);
+}
+
+function removeGuest(id) {
+  guests = guests.filter(g => g.id !== id);
+  renderGuestsList();
+}
+
+function renderGuestsList() {
+  const el = document.getElementById('guests-list');
+  if (!guests.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Invitados</div>
+    ${guests.map(g => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+        <span style="font-size:18px">👤</span>
+        <span style="flex:1;font-weight:600">${g.name}</span>
+        <span style="font-size:12px;color:var(--muted)">OVR ${g.ovr}</span>
+        <select onchange="updateGuestPos('${g.id}',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:12px">
+          ${['POR','DEF','MED','DEL'].map(p=>`<option value="${p}"${g.effPos===p?' selected':''}>${p}</option>`).join('')}
+        </select>
+        <button onclick="removeGuest('${g.id}')" style="background:none;border:none;cursor:pointer;font-size:16px">🗑️</button>
+      </div>
+    `).join('')}
+  `;
+}
+
+function updateGuestPos(id, pos) {
+  const g = guests.find(x => x.id === id);
+  if (g) g.effPos = pos;
+}
+
+// ============================================================
+// TEAMS — AI-powered con shuffle real
+// ============================================================
+let lastSeed = 0;
+
+function buildTeams(reshuffle = false) {
+  const going = state.players.filter(p => p.attendance === 'going');
+  const allPlayers = [
+    ...going.map(p => ({
+      ...p,
+      ovr: getOverall(p) || 60,
+      effPos: getEffectivePosition(p),
+      isGuest: false
+    })),
+    ...guests
+  ];
+
+  if (allPlayers.length < numTeamsSelected * 2) {
     showToast('⚠️ No hay suficientes jugadores');
     return;
   }
 
-  const scored = going.map(p => ({
-    ...p,
-    ovr: getOverall(p) || 60,
-    effPos: getEffectivePosition(p),
-  })).sort((a,b) => b.ovr - a.ovr);
+  // Seed diferente en cada reroll
+  if (reshuffle) lastSeed = Date.now();
+  const rng = seededRandom(lastSeed || 0);
 
-  const teams = Array.from({ length: numTeamsSelected }, () => ({ players:[], total:0 }));
+  // Ordenar por ovr con ruido aleatorio para reroll
+  const scored = allPlayers
+    .map(p => ({ ...p, sortKey: p.ovr + (reshuffle ? (rng() - 0.5) * 8 : 0) }))
+    .sort((a,b) => b.sortKey - a.sortKey);
 
-  // Distribuir en rondas snake: 0,1,2,2,1,0,0,1,2...
-  // Garantiza cantidad pareja Y balance de overall
   const n = numTeamsSelected;
+  const teams = Array.from({ length: n }, () => ({ players:[], total:0 }));
+
+  // Snake draft con ruido: garantiza cantidad pareja y balance
   scored.forEach((p, i) => {
     const round = Math.floor(i / n);
     const posInRound = i % n;
-    // Snake: rondas pares van 0→n-1, rondas impares van n-1→0
     const teamIdx = round % 2 === 0 ? posInRound : (n - 1 - posInRound);
     teams[teamIdx].players.push(p);
     teams[teamIdx].total += p.ovr;
   });
 
+  // Post-process: intentar que cada equipo tenga al menos 1 DEF y 1 DEL si es posible
+  balancePositions(teams);
+
   state.builtTeams = teams;
   renderBuiltTeams();
+}
+
+function seededRandom(seed) {
+  let s = seed || 1;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+function balancePositions(teams) {
+  // Para cada par de equipos, intentar swaps que mejoren balance posicional
+  // sin empeorar el balance de overall por más de 4 puntos
+  const n = teams.length;
+  for (let t1 = 0; t1 < n; t1++) {
+    for (let t2 = t1+1; t2 < n; t2++) {
+      const team1 = teams[t1], team2 = teams[t2];
+      for (let a = 0; a < team1.players.length; a++) {
+        for (let b = 0; b < team2.players.length; b++) {
+          const pa = team1.players[a], pb = team2.players[b];
+          if (pa.effPos === pb.effPos) continue; // mismo puesto, skip
+          const currDiff = Math.abs(team1.total - team2.total);
+          const newT1 = team1.total - pa.ovr + pb.ovr;
+          const newT2 = team2.total - pb.ovr + pa.ovr;
+          const newDiff = Math.abs(newT1 - newT2);
+          // Solo hacer swap si mejora o mantiene el balance de overall
+          if (newDiff <= currDiff + 2) {
+            team1.players[a] = pb; team2.players[b] = pa;
+            team1.total = newT1; team2.total = newT2;
+          }
+        }
+      }
+    }
+  }
 }
 
 const TEAM_NAMES = ['Blancos','Negros','Rojos'];
@@ -1304,7 +1414,6 @@ function renderBuiltTeams() {
   if (!teams) return;
   const container = document.getElementById('teams-result');
 
-  // Check balance
   const totals = teams.map(t=>t.total);
   const diff = Math.max(...totals) - Math.min(...totals);
   const balanceMsg = diff <= 3 ? '✅ Equipos muy parejos' : diff <= 8 ? '⚖️ Equipos bastante parejos' : '⚠️ Ligero desequilibrio';
@@ -1315,21 +1424,21 @@ function renderBuiltTeams() {
       <div class="team-card" style="margin-bottom:12px">
         <div class="team-header ${TEAM_COLORS[i]}">
           <span>${TEAM_NAMES[i]}</span>
-          <span class="team-overall">OVR ${Math.round(t.total/t.players.length)}</span>
+          <span class="team-overall">OVR ${Math.round(t.total/t.players.length)} · ${t.players.length} jugadores</span>
         </div>
         ${t.players.sort((a,b)=>{
           const order={POR:0,DEF:1,MED:2,DEL:3};
           return (order[a.effPos]||2)-(order[b.effPos]||2);
         }).map(p=>`
           <div class="team-player-row">
-            <div class="team-player-pos-badge">${p.effPos}</div>
-            <div class="team-player-name">${p.name}</div>
+            <div class="team-player-pos-badge" style="${p.isGuest?'border:1px solid var(--gold);color:var(--gold)':''}">${p.effPos}</div>
+            <div class="team-player-name">${p.name}${p.isGuest?' <span style="font-size:10px;color:var(--gold)">(inv)</span>':''}</div>
             <div class="team-player-ovr">${p.ovr}</div>
           </div>
         `).join('')}
       </div>
     `).join('')}
-    <button class="btn btn-ghost w-full" style="justify-content:center;margin-top:4px" onclick="buildTeams()">🔄 Rearmar</button>
+    <button class="btn btn-ghost w-full" style="justify-content:center;margin-top:4px" onclick="buildTeams(true)">🎲 Rearmar diferente</button>
   `;
 }
 
