@@ -796,22 +796,87 @@ function switchTab(name) {
 // ============================================================
 function getMe() { return state.players.find(p => p.id === state.currentUser?.id); }
 
-// Obtener votos VÁLIDOS: descarta auto-votos y aplica "drop extremos" si hay 5+
-function getValidRatings(player) {
-  const myId = player.id;
-  // Excluir auto-voto
-  const allRatings = Object.entries(player.ratings || {})
-    .filter(([voterId]) => voterId !== myId)
-    .map(([, rating]) => rating);
-  return allRatings;
+// ============================================================
+// NORMALIZACIÓN DE VOTOS POR SESGO DEL VOTANTE
+// ============================================================
+// Cache del bias para no recalcular en cada llamada
+let _biasCache = null;
+let _biasCacheStamp = 0;
+
+function computeVoterBiases() {
+  // Solo recalcular si cambió el plantel
+  const stamp = state.players.length + '_' + JSON.stringify(state.players.map(p=>Object.keys(p.ratings||{}).length)).length;
+  if (_biasCache && _biasCacheStamp === stamp) return _biasCache;
+
+  // Paso 1: promedio general de todos los votos (excluyendo autovotos)
+  const allVotes = [];
+  state.players.forEach(p => {
+    Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
+      if (voterId === p.id) return; // skip autovoto
+      STATS.forEach(s => {
+        if (r[s] > 0) allVotes.push(r[s]);
+      });
+    });
+  });
+  const globalAvg = allVotes.length ? allVotes.reduce((a,b)=>a+b,0) / allVotes.length : 3;
+
+  // Paso 2: promedio de cada votante
+  const voterVotes = {};
+  state.players.forEach(p => {
+    Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
+      if (voterId === p.id) return;
+      if (!voterVotes[voterId]) voterVotes[voterId] = [];
+      STATS.forEach(s => {
+        if (r[s] > 0) voterVotes[voterId].push(r[s]);
+      });
+    });
+  });
+
+  // Paso 3: bias = promedio del votante - promedio global
+  // Solo normalizar a votantes con 10+ votos (suficiente muestra)
+  const biases = {};
+  Object.entries(voterVotes).forEach(([voterId, vals]) => {
+    if (vals.length >= 10) {
+      const voterAvg = vals.reduce((a,b)=>a+b,0) / vals.length;
+      biases[voterId] = voterAvg - globalAvg;
+    } else {
+      biases[voterId] = 0; // sin suficientes votos, no normalizar
+    }
+  });
+
+  _biasCache = { biases, globalAvg };
+  _biasCacheStamp = stamp;
+  return _biasCache;
 }
 
-// Para cada stat, calcula promedio descartando el más alto y más bajo si hay 5+ votos
+function normalizeVote(rawVote, voterId) {
+  const { biases } = computeVoterBiases();
+  const bias = biases[voterId] || 0;
+  // Restar el bias: si el votante es generoso (bias positivo), bajamos su voto
+  // si es severo (bias negativo), subimos su voto
+  const adjusted = rawVote - bias;
+  // Clamp 1-5
+  return Math.max(1, Math.min(5, adjusted));
+}
+
+// Obtener votos normalizados: excluye autovoto y ajusta por sesgo del votante
+function getValidRatings(player) {
+  const myId = player.id;
+  return Object.entries(player.ratings || {})
+    .filter(([voterId]) => voterId !== myId)
+    .map(([voterId, rating]) => {
+      const normalized = {};
+      STATS.forEach(s => {
+        if (rating[s] > 0) normalized[s] = normalizeVote(rating[s], voterId);
+      });
+      return normalized;
+    });
+}
+
 function getStatAverage(ratings, stat) {
   const vals = ratings.map(r => r[stat]||0).filter(v => v > 0);
   if (!vals.length) return 0;
-  if (vals.length >= 5) {
-    // Descartar extremos
+  if (vals.length >= 4) {
     vals.sort((a,b) => a-b);
     const trimmed = vals.slice(1, -1);
     return trimmed.reduce((a,b)=>a+b,0) / trimmed.length;
@@ -1375,12 +1440,13 @@ function rateStat(playerId, stat, val) {
 }
 
 function exportVotesCSV() {
-  // Mapa de id → username para resolver nombres
   const idToName = {};
   state.players.forEach(p => { idToName[p.id] = p.username; });
 
-  // CSV con: votante, votado, es_autovoto, y cada stat
-  const headers = ['Votante', 'Votado', 'Autovoto', ...STATS.map(s=>STAT_LABELS[s])];
+  const { biases, globalAvg } = computeVoterBiases();
+
+  // Sección 1: Votos individuales (raw + normalizados)
+  const headers = ['Votante', 'Bias', 'Votado', 'Autovoto', ...STATS.map(s=>STAT_LABELS[s]), ...STATS.map(s=>STAT_LABELS[s]+'_norm')];
   const rows = [headers];
 
   state.players.forEach(votado => {
@@ -1388,17 +1454,31 @@ function exportVotesCSV() {
     Object.entries(ratings).forEach(([voterId, rating]) => {
       const votanteName = idToName[voterId] || voterId;
       const esAutovoto = voterId === votado.id ? 'SI' : 'NO';
-      const row = [
-        votanteName,
-        votado.username,
-        esAutovoto,
-        ...STATS.map(s => rating[s] || '')
-      ];
-      rows.push(row);
+      const bias = biases[voterId] !== undefined ? biases[voterId].toFixed(2) : '0';
+      const rawVals = STATS.map(s => rating[s] || '');
+      const normVals = STATS.map(s => rating[s] > 0 ? normalizeVote(rating[s], voterId).toFixed(2) : '');
+      rows.push([votanteName, bias, votado.username, esAutovoto, ...rawVals, ...normVals]);
     });
   });
 
-  // También agrego una sección con los promedios finales de cada jugador
+  // Sección 2: Bias por votante
+  rows.push([]);
+  rows.push(['=== BIAS POR VOTANTE ===']);
+  rows.push(['Votante', 'Bias', 'Interpretación']);
+  Object.entries(biases).sort((a,b) => b[1]-a[1]).forEach(([vid, b]) => {
+    const name = idToName[vid] || vid;
+    let label;
+    if (Math.abs(b) < 0.15) label = 'Neutro';
+    else if (b > 0.4) label = 'Muy generoso (vota alto)';
+    else if (b > 0.15) label = 'Generoso';
+    else if (b < -0.4) label = 'Muy severo (vota bajo)';
+    else label = 'Severo';
+    rows.push([name, b.toFixed(2), label]);
+  });
+  rows.push([]);
+  rows.push(['Promedio global:', globalAvg.toFixed(2)]);
+
+  // Sección 3: Resumen por jugador
   rows.push([]);
   rows.push(['=== RESUMEN POR JUGADOR ===']);
   rows.push(['Jugador', 'Posición', 'OVR', 'Votos válidos', ...STATS.map(s=>STAT_LABELS[s]+' prom')]);
@@ -1410,7 +1490,6 @@ function exportVotesCSV() {
     rows.push([p.username, pos, ovr, validCount, ...STATS.map(s => avg[s] || '-')]);
   });
 
-  // Convertir a CSV
   const csv = rows.map(row => row.map(cell => {
     const str = String(cell ?? '');
     return str.includes(',') || str.includes('"') || str.includes('\n')
@@ -1418,7 +1497,6 @@ function exportVotesCSV() {
       : str;
   }).join(',')).join('\n');
 
-  // Descargar (BOM para que Excel lea tildes)
   const BOM = '\uFEFF';
   const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
