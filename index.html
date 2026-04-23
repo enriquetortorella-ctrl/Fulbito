@@ -786,36 +786,58 @@ function switchTab(name) {
 // ============================================================
 function getMe() { return state.players.find(p => p.id === state.currentUser?.id); }
 
+// Obtener votos VÁLIDOS: descarta auto-votos y aplica "drop extremos" si hay 5+
+function getValidRatings(player) {
+  const myId = player.id;
+  // Excluir auto-voto
+  const allRatings = Object.entries(player.ratings || {})
+    .filter(([voterId]) => voterId !== myId)
+    .map(([, rating]) => rating);
+  return allRatings;
+}
+
+// Para cada stat, calcula promedio descartando el más alto y más bajo si hay 5+ votos
+function getStatAverage(ratings, stat) {
+  const vals = ratings.map(r => r[stat]||0).filter(v => v > 0);
+  if (!vals.length) return 0;
+  if (vals.length >= 5) {
+    // Descartar extremos
+    vals.sort((a,b) => a-b);
+    const trimmed = vals.slice(1, -1);
+    return trimmed.reduce((a,b)=>a+b,0) / trimmed.length;
+  }
+  return vals.reduce((a,b)=>a+b,0) / vals.length;
+}
+
 function getOverall(player) {
-  // Compute weighted overall from all votes
-  const allRatings = Object.values(player.ratings || {});
+  const allRatings = getValidRatings(player);
   if (!allRatings.length) return null;
-  // Average each stat across all voters
+
   const avg = {};
-  STATS.forEach(s => {
-    const vals = allRatings.map(r => r[s]||0).filter(v=>v>0);
-    avg[s] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
-  });
-  // Weighted overall based on primary position
+  STATS.forEach(s => { avg[s] = getStatAverage(allRatings, s); });
+
   const pos = getEffectivePosition(player);
   let ovr;
   if (pos==='POR') ovr = avg.atajadas*0.4 + avg.ritmo*0.15 + avg.fisico*0.25 + avg.pase*0.1 + avg.defensa*0.1;
   else if (pos==='DEF') ovr = avg.defensa*0.35 + avg.fisico*0.2 + avg.ritmo*0.2 + avg.pase*0.15 + avg.tiro*0.1;
   else if (pos==='MED') ovr = avg.pase*0.35 + avg.ritmo*0.2 + avg.defensa*0.15 + avg.tiro*0.15 + avg.fisico*0.15;
   else ovr = avg.tiro*0.4 + avg.ritmo*0.25 + avg.pase*0.15 + avg.fisico*0.15 + avg.defensa*0.05;
-  // Scale 1-5 → 50-99
-  return Math.round(50 + (ovr-1)/4 * 49);
+
+  // Bayesian smoothing: con pocos votos, acercar al promedio 3 (OVR 60)
+  // Con 5+ votos, respetar el puntaje real
+  const n = allRatings.length;
+  const PRIOR = 3; // promedio esperado (1-5)
+  const PRIOR_WEIGHT = 3; // peso del "colchón"
+  const smoothedOvr = (ovr * n + PRIOR * PRIOR_WEIGHT) / (n + PRIOR_WEIGHT);
+
+  return Math.round(50 + (smoothedOvr - 1) / 4 * 49);
 }
 
 function getEffectivePosition(player) {
-  const allRatings = Object.values(player.ratings || {});
-  // Si tiene menos de 2 votos, usar siempre la posición declarada
+  const allRatings = getValidRatings(player);
   if (allRatings.length < 2) return player.posPrimary || 'MED';
   const avg = {};
-  STATS.forEach(s => {
-    const vals = allRatings.map(r=>r[s]||0).filter(v=>v>0);
-    avg[s] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
-  });
+  STATS.forEach(s => { avg[s] = getStatAverage(allRatings, s); });
   const posScore = {
     POR: avg.atajadas*0.6 + avg.fisico*0.4,
     DEF: avg.defensa*0.6 + avg.fisico*0.4,
@@ -826,19 +848,15 @@ function getEffectivePosition(player) {
   const selfScore = posScore[selfPos] || 0;
   const statBestPos = Object.entries(posScore).sort((a,b)=>b[1]-a[1])[0][0];
   const bestScore = posScore[statBestPos] || 0;
-  // Solo cambiar posición si la diferencia es MUY clara (>1.2) y hay suficientes votos
   if (statBestPos !== selfPos && bestScore - selfScore > 1.2 && allRatings.length >= 3) return statBestPos;
   return selfPos;
 }
 
 function getAvgStats(player) {
-  const allRatings = Object.values(player.ratings || {});
+  const allRatings = getValidRatings(player);
   if (!allRatings.length) return null;
   const avg = {};
-  STATS.forEach(s => {
-    const vals = allRatings.map(r=>r[s]||0).filter(v=>v>0);
-    avg[s] = vals.length ? Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10 : 0;
-  });
+  STATS.forEach(s => { avg[s] = Math.round(getStatAverage(allRatings, s) * 10) / 10; });
   return avg;
 }
 
@@ -934,15 +952,18 @@ function openPlayerProfile(id) {
     </div>`;
   }).join('');
 
-  const voters = Object.keys(p.ratings||{}).length;
+  const validVoters = getValidRatings(p).length;
+  const hasSelfVote = p.ratings?.[p.id] && Object.keys(p.ratings[p.id]).length > 0;
+  const trimmedNote = validVoters >= 5 ? ' · con filtro extremos' : '';
 
   document.getElementById('modal-profile-title').textContent = p.name.toUpperCase();
   document.getElementById('modal-profile-content').innerHTML = `
     ${photo}
     <div style="text-align:center;margin-bottom:16px">
       <span style="font-family:'Bebas Neue',sans-serif;font-size:48px">${ovr}</span>
-      <span style="display:block;color:var(--muted);font-size:13px">${tier.label} · ${pos} · ${voters} votos</span>
+      <span style="display:block;color:var(--muted);font-size:13px">${tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
       <span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">Posición secundaria: ${p.posSecondary||'-'}</span>
+      ${hasSelfVote?'<span style="display:block;color:var(--gold);font-size:11px;margin-top:4px">⭐ Autocalificación incluida (no suma al overall)</span>':''}
     </div>
     <div>${statBars}</div>
   `;
@@ -1179,14 +1200,18 @@ function renderRate() {
   const list = document.getElementById('rate-list');
   const myId = state.currentUser.id;
 
-  // Players to rate = everyone except yourself
-  const toRate = state.players.filter(p => p.id !== myId);
+  // Todos los jugadores — el primero es uno mismo (autocalificación opcional)
+  const me = state.players.find(p => p.id === myId);
+  const others = state.players.filter(p => p.id !== myId);
+  const toRate = me ? [me, ...others] : others;
+
   if (!toRate.length) {
     list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⭐</div><div>No hay compañeros para calificar</div></div>`;
     return;
   }
 
-  list.innerHTML = toRate.map(p => {
+  list.innerHTML = toRate.map((p, idx) => {
+    const isSelf = p.id === myId;
     const myRating = p.ratings?.[myId] || {};
     const hasVoted = Object.keys(myRating).length > 0;
     const statsHTML = STATS.map(s => {
@@ -1198,14 +1223,16 @@ function renderRate() {
       </div>`;
     }).join('');
 
-    return `<div class="rate-player">
+    const selfBanner = isSelf ? `<div style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--gold);line-height:1.4">⭐ <strong>Autocalificación</strong> — cómo te ves vos mismo. No afecta el overall del plantel.</div>` : '';
+
+    return `<div class="rate-player" style="${isSelf?'border-color:var(--gold)':''}">
       <div class="rate-player-header" onclick="toggleRatePlayer('${p.id}')">
-        <div style="font-size:24px">${posEmoji(getEffectivePosition(p))}</div>
-        <div class="rate-player-name">${p.name}</div>
+        <div style="font-size:24px">${isSelf?'⭐':posEmoji(getEffectivePosition(p))}</div>
+        <div class="rate-player-name">${isSelf?'Yo (autocalificación)':p.name}</div>
         ${hasVoted?`<div class="rate-player-voted">✓ Votado</div>`:''}
         <div style="font-size:12px;color:var(--muted)">▼</div>
       </div>
-      <div id="rate-body-${p.id}" style="display:none">${statsHTML}</div>
+      <div id="rate-body-${p.id}" style="display:none">${selfBanner}${statsHTML}</div>
     </div>`;
   }).join('');
 }
