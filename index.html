@@ -1526,7 +1526,7 @@ let fieldSelected = 5;
 
 function renderTeamsTab() {
   // No re-render needed unless we want to show built teams
-  if (state.builtTeams) renderBuiltTeams();
+  if (state.builtTeams) renderBuiltTeams(state.builtTeams);
 }
 
 function selectField(n) {
@@ -1706,7 +1706,8 @@ function buildTeams(reshuffle = false) {
   balancePositions(teams);
 
   state.builtTeams = teams;
-  renderBuiltTeams();
+  state.teamsEditMode = false;
+  renderBuiltTeams(teams);
 }
 
 function seededRandom(seed) {
@@ -1746,42 +1747,87 @@ function balancePositions(teams) {
 const TEAM_NAMES = ['Blancos','Negros','Rojos'];
 const TEAM_COLORS = ['team-a','team-b','team-c'];
 
-function renderBuiltTeams() {
-  const teams = state.builtTeams;
-  if (!teams) return;
+function renderBuiltTeams(teams) {
   const container = document.getElementById('teams-result');
+  if (!teams || !teams.length) { container.innerHTML = ''; return; }
 
-  const totals = teams.map(t=>t.total);
-  const diff = Math.max(...totals) - Math.min(...totals);
-  const balanceMsg = diff <= 3 ? '✅ Equipos muy parejos' : diff <= 8 ? '⚖️ Equipos bastante parejos' : '⚠️ Ligero desequilibrio';
+  // Store teams in state for edit mode
+  state.builtTeams = teams;
+  const isAdmin = state.currentUser && state.currentUser.isAdmin;
+  const editMode = state.teamsEditMode || false;
 
-  container.innerHTML = `
-    <div style="text-align:center;margin-bottom:16px;font-size:14px;color:var(--muted)">${balanceMsg}</div>
-    ${teams.map((t,i) => `
-      <div class="team-card" style="margin-bottom:12px">
-        <div class="team-header ${TEAM_COLORS[i]}">
-          <span>${TEAM_NAMES[i]}</span>
-          <span class="team-overall">OVR ${Math.round(t.total/t.players.length)} · ${t.players.length} jugadores</span>
-        </div>
-        ${t.players.sort((a,b)=>{
-          const order={POR:0,DEF:1,MED:2,DEL:3};
-          return (order[a.effPos]||2)-(order[b.effPos]||2);
-        }).map(p=>`
-          <div class="team-player-row">
-            <div class="team-player-pos-badge" style="${p.isGuest?'border:1px solid var(--gold);color:var(--gold)':''}">${p.effPos}</div>
-            <div class="team-player-name">${p.name}${p.isGuest?' <span style="font-size:10px;color:var(--gold)">(inv)</span>':''}</div>
-            <div class="team-player-ovr">${p.ovr}</div>
-          </div>
-        `).join('')}
-      </div>
-    `).join('')}
-    <button class="btn btn-ghost w-full" style="justify-content:center;margin-top:4px" onclick="buildTeams(true)">🎲 Rearmar diferente</button>
-  `;
+  const teamColors = ['team-a','team-b','team-c'];
+  const teamNames = ['EQUIPO A','EQUIPO B','EQUIPO C'];
+
+  function teamOvr(team) {
+    const vals = team.map(p => getOverall(p)).filter(Boolean);
+    return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : '—';
+  }
+
+  let html = '';
+
+  // Admin edit/confirm button
+  if (isAdmin) {
+    if (!editMode) {
+      html += `<button class="btn btn-ghost w-full" style="margin-bottom:12px;justify-content:center;border-color:var(--gold);color:var(--gold)" onclick="state.teamsEditMode=true;renderBuiltTeams(state.builtTeams)">✏️ Editar equipos</button>`;
+    } else {
+      html += `<button class="btn btn-green w-full" style="margin-bottom:12px;justify-content:center" onclick="state.teamsEditMode=false;renderBuiltTeams(state.builtTeams)">✅ Confirmar equipos</button>`;
+      html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;letter-spacing:.5px">MODO EDICIÓN — usá las flechas para mover jugadores entre equipos</div>`;
+    }
+  }
+
+  html += `<div class="teams-container">`;
+
+  teams.forEach((team, ti) => {
+    const colorClass = teamColors[ti] || 'team-a';
+    const ovr = teamOvr(team);
+    html += `<div class="team-card">
+      <div class="team-header ${colorClass}">
+        <span>${teamNames[ti] || 'EQUIPO '+(ti+1)}</span>
+        <span class="team-overall">OVR ${ovr} · ${team.length}v</span>
+      </div>`;
+
+    team.forEach((p, pi) => {
+      const pos = getEffectivePosition(p);
+      const ovr = getOverall(p) || '?';
+      html += `<div class="team-player-row" style="${editMode?'padding-right:8px':''}">
+        <span class="team-player-pos-badge">${pos}</span>
+        <span class="team-player-name">${p.name}</span>
+        <span class="team-player-ovr">${ovr}</span>`;
+
+      if (editMode && teams.length > 1) {
+        const numTeams = teams.length;
+        if (numTeams === 2) {
+          const toLetter = ti === 0 ? 'B' : 'A';
+          html += `<button onclick="fulbitoMovePlayer(${ti},${pi},${ti===0?1:-1})" style="background:rgba(240,192,64,0.15);border:1px solid var(--gold);border-radius:6px;color:var(--gold);cursor:pointer;font-size:11px;padding:4px 8px;font-weight:700;white-space:nowrap">→ ${toLetter}</button>`;
+        } else {
+          html += `<div style="display:flex;gap:4px">
+            <button onclick="fulbitoMovePlayer(${ti},${pi},-1)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;padding:4px 8px;font-size:12px">◀</button>
+            <button onclick="fulbitoMovePlayer(${ti},${pi},1)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;padding:4px 8px;font-size:12px">▶</button>
+          </div>`;
+        }
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
 }
 
-// ============================================================
-// ADMIN TAB
-// ============================================================
+function fulbitoMovePlayer(fromTeamIdx, playerIdx, direction) {
+  const teams = state.builtTeams;
+  if (!teams) return;
+  const numTeams = teams.length;
+  const toTeamIdx = (fromTeamIdx + direction + numTeams) % numTeams;
+  const [player] = teams[fromTeamIdx].splice(playerIdx, 1);
+  teams[toTeamIdx].push(player);
+  renderBuiltTeams(teams);
+}
+
 function renderAdmin() {
   const list = document.getElementById('admin-players-list');
   list.innerHTML = state.players.map(p => `
