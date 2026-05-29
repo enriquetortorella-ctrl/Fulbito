@@ -250,6 +250,8 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 <div id="screen-login" class="screen">
   <div class="login-logo">⚽ FULBITO</div>
   <div class="login-sub">del Sábado</div>
+
+  <!-- LOGIN FORM -->
   <div class="login-box" id="login-form-box">
     <h2>Iniciar sesión</h2>
     <div class="form-group">
@@ -267,6 +269,8 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
     <div class="login-divider">¿Olvidaste tu contraseña?</div>
     <button class="btn-register" onclick="showForgotForm()">Recuperar contraseña</button>
   </div>
+
+  <!-- FORGOT PASSWORD FORM -->
   <div class="login-box hidden" id="forgot-form-box">
     <h2>🔑 Olvidé mi contraseña</h2>
     <div style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--text);line-height:1.6">
@@ -286,6 +290,9 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
     <div class="login-divider"></div>
     <button class="btn-register" onclick="showLoginForm()">← Volver al login</button>
   </div>
+
+  <!-- REGISTER FORM -->
+  <div class="login-box hidden" id="register-form-box">
     <h2>Crear cuenta</h2>
     <div class="photo-upload">
       <div class="photo-preview" id="reg-photo-preview" onclick="document.getElementById('reg-photo-input').click()">📷</div>
@@ -548,8 +555,8 @@ const SESSION = {
 // STATE
 // ============================================================
 let state = {
-  currentUser: null,  // { username, name, isAdmin }
-  players: [],        // [{ id, username, name, photo, posPrimary, posSecondary, ratings:{}, attendance }]
+  currentUser: null,
+  players: [],
   numTeams: 2,
   fieldType: 5,
   builtTeams: null
@@ -576,7 +583,6 @@ async function init() {
   showLoginForm();
   document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-  // Show loading
   const loadingDiv = document.createElement('div');
   loadingDiv.id = 'loading-players';
   loadingDiv.style.cssText = 'text-align:center;color:var(--muted);font-size:13px;margin-top:8px';
@@ -591,7 +597,6 @@ async function init() {
   document.getElementById('loading-players')?.remove();
   if (loginBtn) loginBtn.disabled = false;
 
-  // Check existing session — players already loaded, safe to go straight to app
   const sess = SESSION.get();
   if (sess) {
     const stillExists = state.players.find(p => p.id === sess.id);
@@ -613,12 +618,7 @@ async function refreshPlayers() {
   showToast(`✅ ${state.players.length} jugadores cargados`);
 }
 
-function getDefaultPlayers() {
-  return [];
-}
-
 function saveAll() {
-  // Save all players to Supabase (used after bulk ops like clear attendance)
   state.players.forEach(p => upsertPlayer(p));
 }
 
@@ -632,10 +632,17 @@ let regPosSecondary = null;
 function showLoginForm() {
   document.getElementById('login-form-box').classList.remove('hidden');
   document.getElementById('register-form-box').classList.add('hidden');
+  document.getElementById('forgot-form-box').classList.add('hidden');
 }
 function showRegisterForm() {
   document.getElementById('login-form-box').classList.add('hidden');
   document.getElementById('register-form-box').classList.remove('hidden');
+  document.getElementById('forgot-form-box').classList.add('hidden');
+}
+function showForgotForm() {
+  document.getElementById('login-form-box').classList.add('hidden');
+  document.getElementById('register-form-box').classList.add('hidden');
+  document.getElementById('forgot-form-box').classList.remove('hidden');
 }
 
 async function doLogin() {
@@ -644,7 +651,6 @@ async function doLogin() {
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
 
-  // Si no cargaron los jugadores, recargar silenciosamente
   if (state.players.length === 0) {
     state.players = await loadPlayers();
     if (state.players.length === 0) {
@@ -654,11 +660,11 @@ async function doLogin() {
   }
 
   const player = state.players.find(p => p.username.toLowerCase() === userInput.toLowerCase());
-  if (!player) { 
+  if (!player) {
     errEl.innerHTML = `Usuario no encontrado. <a href="#" onclick="showForgotForm();return false" style="color:var(--gold)">¿Olvidaste tu usuario?</a>`;
-    errEl.style.display='block'; return; 
+    errEl.style.display='block'; return;
   }
-  
+
   const storedPass = player.password || '';
   const match = storedPass === btoa(pass) || storedPass === pass || storedPass === btoa(btoa(pass));
   if (!match) {
@@ -694,7 +700,6 @@ async function doRegister() {
     posSecondary: regPosSecondary || regPosPrimary,
     ratings: {},
     attendance: null,
-    // titi is always admin, or first player if no admin exists
     isAdmin: user === 'titi' || !state.players.some(p => p.isAdmin)
   };
   state.players.push(newPlayer);
@@ -761,7 +766,6 @@ function showScreen(id) {
 function showApp() {
   showScreen('screen-app');
   startSync();
-  // Topbar
   document.getElementById('topbar-username').textContent = state.currentUser.name;
   const wrap = document.getElementById('topbar-avatar-wrap');
   const me = getMe();
@@ -770,7 +774,6 @@ function showApp() {
   } else {
     wrap.innerHTML = `<div class="topbar-avatar-placeholder">👤</div>`;
   }
-  // Admin tab
   if (state.currentUser.isAdmin) {
     document.getElementById('admin-tab').style.display='flex';
   }
@@ -799,20 +802,17 @@ function getMe() { return state.players.find(p => p.id === state.currentUser?.id
 // ============================================================
 // NORMALIZACIÓN DE VOTOS POR SESGO DEL VOTANTE
 // ============================================================
-// Cache del bias para no recalcular en cada llamada
 let _biasCache = null;
 let _biasCacheStamp = 0;
 
 function computeVoterBiases() {
-  // Solo recalcular si cambió el plantel
   const stamp = state.players.length + '_' + JSON.stringify(state.players.map(p=>Object.keys(p.ratings||{}).length)).length;
   if (_biasCache && _biasCacheStamp === stamp) return _biasCache;
 
-  // Paso 1: promedio general de todos los votos (excluyendo autovotos)
   const allVotes = [];
   state.players.forEach(p => {
     Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
-      if (voterId === p.id) return; // skip autovoto
+      if (voterId === p.id) return;
       STATS.forEach(s => {
         if (r[s] > 0) allVotes.push(r[s]);
       });
@@ -820,7 +820,6 @@ function computeVoterBiases() {
   });
   const globalAvg = allVotes.length ? allVotes.reduce((a,b)=>a+b,0) / allVotes.length : 3;
 
-  // Paso 2: promedio de cada votante
   const voterVotes = {};
   state.players.forEach(p => {
     Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
@@ -832,15 +831,13 @@ function computeVoterBiases() {
     });
   });
 
-  // Paso 3: bias = promedio del votante - promedio global
-  // Solo normalizar a votantes con 10+ votos (suficiente muestra)
   const biases = {};
   Object.entries(voterVotes).forEach(([voterId, vals]) => {
     if (vals.length >= 10) {
       const voterAvg = vals.reduce((a,b)=>a+b,0) / vals.length;
       biases[voterId] = voterAvg - globalAvg;
     } else {
-      biases[voterId] = 0; // sin suficientes votos, no normalizar
+      biases[voterId] = 0;
     }
   });
 
@@ -852,14 +849,10 @@ function computeVoterBiases() {
 function normalizeVote(rawVote, voterId) {
   const { biases } = computeVoterBiases();
   const bias = biases[voterId] || 0;
-  // Restar el bias: si el votante es generoso (bias positivo), bajamos su voto
-  // si es severo (bias negativo), subimos su voto
   const adjusted = rawVote - bias;
-  // Clamp 1-5
   return Math.max(1, Math.min(5, adjusted));
 }
 
-// Obtener votos normalizados: excluye autovoto y ajusta por sesgo del votante
 function getValidRatings(player) {
   const myId = player.id;
   return Object.entries(player.ratings || {})
@@ -898,11 +891,9 @@ function getOverall(player) {
   else if (pos==='MED') ovr = avg.pase*0.35 + avg.ritmo*0.2 + avg.defensa*0.15 + avg.tiro*0.15 + avg.fisico*0.15;
   else ovr = avg.tiro*0.4 + avg.ritmo*0.25 + avg.pase*0.15 + avg.fisico*0.15 + avg.defensa*0.05;
 
-  // Bayesian smoothing: con pocos votos, acercar al promedio 3 (OVR 60)
-  // Con 5+ votos, respetar el puntaje real
   const n = allRatings.length;
-  const PRIOR = 3; // promedio esperado (1-5)
-  const PRIOR_WEIGHT = 3; // peso del "colchón"
+  const PRIOR = 3;
+  const PRIOR_WEIGHT = 3;
   const smoothedOvr = (ovr * n + PRIOR * PRIOR_WEIGHT) / (n + PRIOR_WEIGHT);
 
   return Math.round(50 + (smoothedOvr - 1) / 4 * 49);
@@ -936,7 +927,6 @@ function getAvgStats(player) {
 }
 
 function statToFifa(val) {
-  // Scale 0-5 → 40-99
   if (!val) return 40;
   return Math.round(40 + (val/5)*59);
 }
@@ -974,7 +964,6 @@ function renderPlayers() {
     grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div>No hay jugadores aún</div></div>`;
     return;
   }
-  // Cada jugador: carta del grupo + carta de autocalificación si existe
   grid.innerHTML = state.players.map(p => {
     let html = renderFifaCard(p);
     if (hasSelfRating(p)) {
@@ -1013,7 +1002,7 @@ function renderFifaCard(p) {
   const tier = getCardTier(ovr);
   const pos = getEffectivePosition(p);
   const stats = getAvgStats(p) || {};
-  const photo = p.photo 
+  const photo = p.photo
     ? `<img class="fifa-card-photo" src="${p.photo}" alt="${p.name}">`
     : `<div class="fifa-card-photo-placeholder">👤</div>`;
 
@@ -1040,7 +1029,7 @@ function renderSelfCard(p) {
   const ovr = getSelfOverall(p) || 60;
   const pos = p.posPrimary || 'MED';
   const stats = getSelfStats(p);
-  const photo = p.photo 
+  const photo = p.photo
     ? `<img class="fifa-card-photo" src="${p.photo}" alt="${p.name}">`
     : `<div class="fifa-card-photo-placeholder">👤</div>`;
 
@@ -1090,7 +1079,6 @@ function openPlayerProfile(id) {
   const hasSelf = hasSelfRating(p);
   const trimmedNote = validVoters >= 5 ? ' · con filtro extremos' : '';
 
-  // Stats de autocalificación comparativas
   let selfSection = '';
   if (hasSelf) {
     const selfOvr = getSelfOverall(p);
@@ -1149,7 +1137,7 @@ function openEditProfile() {
   if (!me) return;
   editPhotoData = me.photo;
 
-  const photoHTML = me.photo 
+  const photoHTML = me.photo
     ? `<img src="${me.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
     : '📷';
 
@@ -1226,14 +1214,12 @@ function saveEditProfile() {
   const newPass = passEl.value;
   const currentPass = passCurrentEl ? passCurrentEl.value : '';
 
-  // Require current password if changing username or password
   const changingCredentials = (newUser && newUser !== me.username) || newPass;
   if (changingCredentials) {
     if (!currentPass) { errEl.textContent='Ingresá tu contraseña actual para cambiar usuario o contraseña'; errEl.style.display='block'; return; }
     if (btoa(currentPass) !== me.password) { errEl.textContent='Contraseña actual incorrecta'; errEl.style.display='block'; return; }
   }
 
-  // Check username not taken
   if (newUser && newUser !== me.username) {
     if (state.players.find(p => p.id !== me.id && p.username.toLowerCase() === newUser)) {
       errEl.textContent='Ese usuario ya lo usa otro jugador'; errEl.style.display='block'; return;
@@ -1247,7 +1233,6 @@ function saveEditProfile() {
   if (editPhotoData) me.photo = editPhotoData;
   if (newPass) me.password = btoa(newPass);
 
-  // Update session
   state.currentUser.name = me.name;
   state.currentUser.username = me.username;
   SESSION.set(state.currentUser);
@@ -1257,25 +1242,19 @@ function saveEditProfile() {
   showToast('✅ Perfil actualizado');
 }
 
-function showForgotForm() {
-  document.getElementById('login-form-box').classList.add('hidden');
-  document.getElementById('register-form-box').classList.add('hidden');
-  document.getElementById('forgot-form-box').classList.remove('hidden');
-}
-
 function requestReset() {
   const user = document.getElementById('forgot-user').value.trim();
   const msgEl = document.getElementById('forgot-msg');
-  if (!user) { 
-    msgEl.textContent='Ingresá tu usuario'; 
-    msgEl.style.background='rgba(239,68,68,.1)'; msgEl.style.color='var(--red)'; 
-    msgEl.style.display='block'; return; 
+  if (!user) {
+    msgEl.textContent='Ingresá tu usuario';
+    msgEl.style.background='rgba(239,68,68,.1)'; msgEl.style.color='var(--red)';
+    msgEl.style.display='block'; return;
   }
   const p = state.players.find(x => x.username.toLowerCase() === user.toLowerCase());
-  if (!p) { 
-    msgEl.textContent='No existe ese usuario. Revisá si lo escribiste bien.'; 
-    msgEl.style.background='rgba(239,68,68,.1)'; msgEl.style.color='var(--red)'; 
-    msgEl.style.display='block'; return; 
+  if (!p) {
+    msgEl.textContent='No existe ese usuario. Revisá si lo escribiste bien.';
+    msgEl.style.background='rgba(239,68,68,.1)'; msgEl.style.color='var(--red)';
+    msgEl.style.display='block'; return;
   }
   p._resetRequested = true;
   upsertPlayer(p);
@@ -1342,7 +1321,6 @@ function renderAttendance() {
 function setAttendance(id, val) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
-  // Only own row or admin
   if (p.id !== state.currentUser.id && !state.currentUser.isAdmin) {
     showToast('⚠️ Solo podés marcar tu propia asistencia');
     return;
@@ -1369,7 +1347,6 @@ function renderRate() {
   const list = document.getElementById('rate-list');
   const myId = state.currentUser.id;
 
-  // Todos los jugadores — el primero es uno mismo (autocalificación opcional)
   const me = state.players.find(p => p.id === myId);
   const others = state.players.filter(p => p.id !== myId);
   const toRate = me ? [me, ...others] : others;
@@ -1419,12 +1396,10 @@ function rateStat(playerId, stat, val) {
   if (!p.ratings[myId]) p.ratings[myId] = {};
   p.ratings[myId][stat] = val;
   upsertPlayer(p);
-  // Update ONLY the star row — don't re-render the whole list
   const container = document.getElementById(`stars-${playerId}-${stat}`);
   if (container) {
     container.innerHTML = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateStat('${playerId}','${stat}',${n})">★</span>`).join('');
   }
-  // Update voted badge without collapsing
   const hasAllStats = STATS.every(s => (p.ratings[myId]?.[s]||0) > 0);
   const header = document.querySelector(`#rate-body-${playerId}`)?.previousElementSibling;
   if (header && hasAllStats) {
@@ -1445,7 +1420,6 @@ function exportVotesCSV() {
 
   const { biases, globalAvg } = computeVoterBiases();
 
-  // Sección 1: Votos individuales (raw + normalizados)
   const headers = ['Votante', 'Bias', 'Votado', 'Autovoto', ...STATS.map(s=>STAT_LABELS[s]), ...STATS.map(s=>STAT_LABELS[s]+'_norm')];
   const rows = [headers];
 
@@ -1461,7 +1435,6 @@ function exportVotesCSV() {
     });
   });
 
-  // Sección 2: Bias por votante
   rows.push([]);
   rows.push(['=== BIAS POR VOTANTE ===']);
   rows.push(['Votante', 'Bias', 'Interpretación']);
@@ -1478,7 +1451,6 @@ function exportVotesCSV() {
   rows.push([]);
   rows.push(['Promedio global:', globalAvg.toFixed(2)]);
 
-  // Sección 3: Resumen por jugador
   rows.push([]);
   rows.push(['=== RESUMEN POR JUGADOR ===']);
   rows.push(['Jugador', 'Posición', 'OVR', 'Votos válidos', ...STATS.map(s=>STAT_LABELS[s]+' prom')]);
@@ -1525,7 +1497,6 @@ let numTeamsSelected = 2;
 let fieldSelected = 5;
 
 function renderTeamsTab() {
-  // No re-render needed unless we want to show built teams
   if (state.builtTeams) renderBuiltTeams(state.builtTeams);
 }
 
@@ -1543,10 +1514,9 @@ function setNumTeams(n) {
 }
 
 // ============================================================
-// GUESTS — jugadores temporales
+// GUESTS
 // ============================================================
-let guests = []; // [{ id, name, ovr, effPos }]
-
+let guests = [];
 let guestStats = {};
 
 function addGuest() {
@@ -1603,7 +1573,6 @@ function saveGuest() {
   if (!posSel) { errEl.textContent='Elegí una posición'; errEl.style.display='block'; return; }
 
   const pos = posSel.dataset.pos;
-  // Calcular OVR desde stats igual que el resto
   const avg = {};
   STATS.forEach(s => { avg[s] = guestStats[s] || 0; });
   let ovr;
@@ -1660,7 +1629,7 @@ function updateGuestPos(id, pos) {
 }
 
 // ============================================================
-// TEAMS — AI-powered con shuffle real
+// TEAMS — snake draft + balance
 // ============================================================
 let lastSeed = 0;
 
@@ -1681,11 +1650,9 @@ function buildTeams(reshuffle = false) {
     return;
   }
 
-  // Seed diferente en cada reroll
   if (reshuffle) lastSeed = Date.now();
   const rng = seededRandom(lastSeed || 0);
 
-  // Ordenar por ovr con ruido aleatorio para reroll
   const scored = allPlayers
     .map(p => ({ ...p, sortKey: p.ovr + (reshuffle ? (rng() - 0.5) * 8 : 0) }))
     .sort((a,b) => b.sortKey - a.sortKey);
@@ -1693,7 +1660,6 @@ function buildTeams(reshuffle = false) {
   const n = numTeamsSelected;
   const teams = Array.from({ length: n }, () => ({ players:[], total:0 }));
 
-  // Snake draft con ruido: garantiza cantidad pareja y balance
   scored.forEach((p, i) => {
     const round = Math.floor(i / n);
     const posInRound = i % n;
@@ -1702,7 +1668,6 @@ function buildTeams(reshuffle = false) {
     teams[teamIdx].total += p.ovr;
   });
 
-  // Post-process: intentar que cada equipo tenga al menos 1 DEF y 1 DEL si es posible
   balancePositions(teams);
 
   state.builtTeams = teams;
@@ -1719,8 +1684,6 @@ function seededRandom(seed) {
 }
 
 function balancePositions(teams) {
-  // Para cada par de equipos, intentar swaps que mejoren balance posicional
-  // sin empeorar el balance de overall por más de 4 puntos
   const n = teams.length;
   for (let t1 = 0; t1 < n; t1++) {
     for (let t2 = t1+1; t2 < n; t2++) {
@@ -1728,12 +1691,11 @@ function balancePositions(teams) {
       for (let a = 0; a < team1.players.length; a++) {
         for (let b = 0; b < team2.players.length; b++) {
           const pa = team1.players[a], pb = team2.players[b];
-          if (pa.effPos === pb.effPos) continue; // mismo puesto, skip
+          if (pa.effPos === pb.effPos) continue;
           const currDiff = Math.abs(team1.total - team2.total);
           const newT1 = team1.total - pa.ovr + pb.ovr;
           const newT2 = team2.total - pb.ovr + pa.ovr;
           const newDiff = Math.abs(newT1 - newT2);
-          // Solo hacer swap si mejora o mantiene el balance de overall
           if (newDiff <= currDiff + 2) {
             team1.players[a] = pb; team2.players[b] = pa;
             team1.total = newT1; team2.total = newT2;
@@ -1744,14 +1706,10 @@ function balancePositions(teams) {
   }
 }
 
-const TEAM_NAMES = ['Blancos','Negros','Rojos'];
-const TEAM_COLORS = ['team-a','team-b','team-c'];
-
 function renderBuiltTeams(teams) {
   const container = document.getElementById('teams-result');
   if (!teams || !teams.length) { container.innerHTML = ''; return; }
 
-  // Store teams in state for edit mode
   state.builtTeams = teams;
   const isAdmin = state.currentUser && state.currentUser.isAdmin;
   const editMode = state.teamsEditMode || false;
@@ -1766,7 +1724,6 @@ function renderBuiltTeams(teams) {
 
   let html = '';
 
-  // Admin edit/confirm button
   if (isAdmin) {
     if (!editMode) {
       html += `<button class="btn btn-ghost w-full" style="margin-bottom:12px;justify-content:center;border-color:var(--gold);color:var(--gold)" onclick="state.teamsEditMode=true;renderBuiltTeams(state.builtTeams)">✏️ Editar equipos</button>`;
@@ -1780,16 +1737,16 @@ function renderBuiltTeams(teams) {
 
   teams.forEach((team, ti) => {
     const colorClass = teamColors[ti] || 'team-a';
-    const ovr = teamOvr(team);
+    const ovr = teamOvr(team.players);
     html += `<div class="team-card">
       <div class="team-header ${colorClass}">
         <span>${teamNames[ti] || 'EQUIPO '+(ti+1)}</span>
-        <span class="team-overall">OVR ${ovr} · ${team.length}v</span>
+        <span class="team-overall">OVR ${ovr} · ${team.players.length}v</span>
       </div>`;
 
-    team.forEach((p, pi) => {
-      const pos = getEffectivePosition(p);
-      const ovr = getOverall(p) || '?';
+    team.players.forEach((p, pi) => {
+      const pos = p.effPos || getEffectivePosition(p);
+      const ovr = p.ovr || getOverall(p) || '?';
       html += `<div class="team-player-row" style="${editMode?'padding-right:8px':''}">
         <span class="team-player-pos-badge">${pos}</span>
         <span class="team-player-name">${p.name}</span>
@@ -1815,6 +1772,10 @@ function renderBuiltTeams(teams) {
   });
 
   html += `</div>`;
+
+  // Botón reroll
+  html += `<button class="btn btn-ghost w-full" style="margin-top:12px;justify-content:center" onclick="buildTeams(true)">🎲 Reroll equipos</button>`;
+
   container.innerHTML = html;
 }
 
@@ -1823,8 +1784,8 @@ function fulbitoMovePlayer(fromTeamIdx, playerIdx, direction) {
   if (!teams) return;
   const numTeams = teams.length;
   const toTeamIdx = (fromTeamIdx + direction + numTeams) % numTeams;
-  const [player] = teams[fromTeamIdx].splice(playerIdx, 1);
-  teams[toTeamIdx].push(player);
+  const [player] = teams[fromTeamIdx].players.splice(playerIdx, 1);
+  teams[toTeamIdx].players.push(player);
   renderBuiltTeams(teams);
 }
 
@@ -1857,21 +1818,6 @@ async function removePlayer(id) {
 // ============================================================
 let realtimeChannel = null;
 
-function getOpenRatePanels() {
-  const open = [];
-  document.querySelectorAll('[id^="rate-body-"]').forEach(el => {
-    if (el.style.display !== 'none') open.push(el.id.replace('rate-body-',''));
-  });
-  return open;
-}
-
-function restoreOpenRatePanels(ids) {
-  ids.forEach(id => {
-    const el = document.getElementById('rate-body-'+id);
-    if (el) el.style.display = 'block';
-  });
-}
-
 async function startSync() {
   const client = await getSB();
   if (realtimeChannel) { client.removeChannel(realtimeChannel); }
@@ -1884,8 +1830,6 @@ async function startSync() {
       const tabName = activeTab?.getAttribute('onclick')?.match(/'(\w+)'/)?.[1] || 'jugadores';
       if (tabName==='jugadores') renderPlayers();
       if (tabName==='asistencia') renderAttendance();
-      // En calificar: NUNCA re-renderizar desde realtime — el estado se actualizó
-      // pero la UI la maneja rateStat() inline para no mover nada
       if (tabName==='admin') renderAdmin();
     })
     .subscribe(status => {
