@@ -26,6 +26,22 @@
   alter table fulbito_players enable row level security;
   create policy "public_all" on fulbito_players for all using (true) with check (true);
   alter publication supabase_realtime add table fulbito_players;
+
+  ============================================================
+  NUEVO (v2 — historial de partidos): correr esto también
+  ============================================================
+
+  create table if not exists fulbito_matches (
+    id text primary key,
+    match_date date default now(),
+    teams jsonb not null,
+    result jsonb,
+    created_by text,
+    created_at timestamptz default now()
+  );
+  alter table fulbito_matches enable row level security;
+  create policy "public_all_matches" on fulbito_matches for all using (true) with check (true);
+  alter publication supabase_realtime add table fulbito_matches;
 -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -42,12 +58,20 @@
   --text: #f0f0f0;
   --muted: #8b9ab0;
   --border: #2d3748;
-  --card-gold: linear-gradient(135deg,#b8860b,#ffd700,#b8860b,#daa520,#ffd700);
-  --card-silver: linear-gradient(135deg,#6b7280,#d1d5db,#6b7280,#9ca3af,#d1d5db);
-  --card-bronze: linear-gradient(135deg,#7c3f1b,#cd7f32,#7c3f1b,#a0522d,#cd7f32);
+  --card-gold: linear-gradient(155deg,#e9c25c 0%,#f9e492 22%,#c9962e 48%,#f2d374 72%,#9c7318 100%);
+  --card-silver: linear-gradient(155deg,#c9ced8 0%,#f0f3f7 22%,#8d95a2 48%,#d8dde4 72%,#657081 100%);
+  --card-bronze: linear-gradient(155deg,#c8894f 0%,#e5ab70 22%,#8a5426 48%,#d19559 72%,#63380f 100%);
+  --card-rare: linear-gradient(155deg,#170744 0%,#5b21b6 30%,#8b5cf6 50%,#3b0f86 75%,#12063a 100%);
+  --card-self: linear-gradient(155deg,#062e24 0%,#0f766e 30%,#2dd4bf 50%,#0d5c50 75%,#04241c 100%);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body{
+  font-family:'Barlow',sans-serif;color:var(--text);min-height:100vh;overflow-x:hidden;
+  background:
+    radial-gradient(ellipse 90% 45% at 50% -8%, rgba(34,197,94,.09), transparent 60%),
+    radial-gradient(ellipse 55% 35% at 100% 100%, rgba(240,192,64,.05), transparent 65%),
+    var(--bg);
+}
 
 /* ===== SCREEN SYSTEM ===== */
 .screen{display:none;min-height:100vh;padding:16px}
@@ -77,18 +101,18 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .login-error{color:var(--red);font-size:13px;margin-top:8px;display:none}
 
 /* ===== TOPBAR ===== */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-.topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(22,27,34,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);text-shadow:0 0 18px rgba(240,192,64,.25)}
 .topbar-user{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .topbar-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:var(--bg3)}
 .topbar-avatar-placeholder{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:14px}
 .btn-logout{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px}
 
 /* ===== NAV TABS ===== */
-.nav-tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.nav-tabs{display:flex;background:rgba(22,27,34,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;position:sticky;top:57px;z-index:99}
 .nav-tabs::-webkit-scrollbar{display:none}
-.nav-tab{flex:1;min-width:70px;padding:12px 8px;text-align:center;font-size:11px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.nav-tab{flex:1;min-width:66px;padding:12px 6px;text-align:center;font-size:11px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold);text-shadow:0 0 14px rgba(240,192,64,.45)}
 .nav-tab-icon{font-size:18px;display:block;margin-bottom:2px}
 
 /* ===== CONTENT TABS ===== */
@@ -110,40 +134,79 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
 .btn-green{background:var(--green);color:#fff}
 .btn-sm{padding:6px 12px;font-size:12px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
 
 /* ===== PLAYER CARDS LIST ===== */
-.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
 
-/* ===== FIFA CARD ===== */
+/* ===== FIFA CARD (escudo FUT) ===== */
 .fifa-card{
-  position:relative;border-radius:12px;padding:10px 8px 8px;
+  position:relative;
+  clip-path:polygon(50% 0, 80% 4.5%, 100% 14%, 100% 84%, 50% 100%, 0 84%, 0 14%, 20% 4.5%);
+  padding:20px 10px 18px;
   background:var(--card-gold);
-  cursor:pointer;transition:transform .2s,box-shadow .2s;
-  box-shadow:0 4px 16px rgba(0,0,0,.5);
-  aspect-ratio:.65;display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;
+  transition:transform .25s ease, filter .25s ease;
+  aspect-ratio:.66;
+  display:flex;flex-direction:column;align-items:center;
   overflow:hidden;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.55));
 }
-.fifa-card:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 8px 24px rgba(240,192,64,.3)}
+.fifa-card:hover{transform:translateY(-5px) scale(1.03);filter:drop-shadow(0 12px 22px rgba(240,192,64,.35))}
+.fifa-card::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 130% 55% at 50% -12%, rgba(255,255,255,.40), transparent 55%),
+    linear-gradient(115deg, transparent 32%, rgba(255,255,255,.20) 46%, transparent 60%);
+}
+.fifa-card::after{
+  content:'';position:absolute;inset:6px;pointer-events:none;
+  clip-path:polygon(50% 0, 80% 4.5%, 100% 14%, 100% 84%, 50% 100%, 0 84%, 0 14%, 20% 4.5%);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.22);
+}
 .fifa-card.silver{background:var(--card-silver)}
 .fifa-card.bronze{background:var(--card-bronze)}
-.fifa-card.rare{background:linear-gradient(135deg,#1a0533,#6d28d9,#1a0533,#4c1d95)}
-.fifa-card.self-card{background:linear-gradient(135deg,#0a3d2e,#14b8a6,#0a3d2e,#0d9488);border:2px dashed rgba(255,255,255,.3)}
-.fifa-card.self-card .fifa-card-overall,
-.fifa-card.self-card .fifa-card-pos,
-.fifa-card.self-card .fifa-card-name,
-.fifa-card.self-card .fifa-card-stat{color:#e0fff5}
-.fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#1a1000;line-height:1;text-align:center}
-.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:13px;color:#1a1000;text-align:center;margin-bottom:4px}
-.fifa-card-photo{width:72px;height:72px;border-radius:6px;object-fit:cover;object-position:top center;background:rgba(0,0,0,.2);margin:2px auto;display:block;flex-shrink:0}
-.fifa-card-photo-placeholder{width:72px;height:72px;border-radius:6px;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:30px;margin:2px auto;flex-shrink:0}
-.fifa-card-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#1a1000;text-align:center;text-transform:uppercase;letter-spacing:.5px;line-height:1.1;margin-top:4px}
-.fifa-card-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px 6px;margin-top:4px;width:100%}
-.fifa-card-stat{display:flex;align-items:center;gap:2px;font-size:9px;color:#1a1000;line-height:1.2}
-.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:12px}
-.fifa-card.rare .fifa-card-overall,
-.fifa-card.rare .fifa-card-pos,
-.fifa-card.rare .fifa-card-name,
-.fifa-card.rare .fifa-card-stat{color:#eddeff}
+.fifa-card.rare{background:var(--card-rare)}
+.fifa-card.rare::before{
+  background:
+    radial-gradient(ellipse 130% 55% at 50% -12%, rgba(216,180,254,.45), transparent 55%),
+    linear-gradient(115deg, transparent 30%, rgba(255,255,255,.16) 46%, transparent 62%);
+}
+.fifa-card.self-card{background:var(--card-self);border:none}
+.fifa-card.self-card::after{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+
+.fifa-top{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:2px}
+.fifa-left{display:flex;flex-direction:column;align-items:center;line-height:1}
+.fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:38px;color:#211400;line-height:.95;text-align:center}
+.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:14px;color:#211400;text-align:center;letter-spacing:1px;margin-top:2px;padding-top:3px;border-top:1px solid rgba(0,0,0,.28);min-width:30px}
+.fifa-card-photo{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:top center;background:rgba(0,0,0,.18);border:2px solid rgba(0,0,0,.25);flex-shrink:0}
+.fifa-photo-ph{display:flex;align-items:center;justify-content:center;font-size:28px}
+.fifa-divider{width:78%;height:1px;background:rgba(0,0,0,.28);margin:8px 0 5px}
+.fifa-card-name{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:#211400;text-align:center;text-transform:uppercase;letter-spacing:1px;line-height:1.05;max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fifa-card-stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 0;margin-top:7px;width:82%;position:relative}
+.fifa-card-stats::before{content:'';position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:rgba(0,0,0,.24)}
+.fifa-card-stat{display:flex;align-items:baseline;justify-content:center;gap:4px;font-size:9.5px;font-weight:600;color:#211400;line-height:1.35}
+.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:13px}
+.fifa-card-record{margin-top:auto;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;color:#211400;background:rgba(0,0,0,.14);border-radius:10px;padding:2px 10px}
+
+.fifa-card.silver .fifa-card-overall,.fifa-card.silver .fifa-card-pos,.fifa-card.silver .fifa-card-name,
+.fifa-card.silver .fifa-card-stat,.fifa-card.silver .fifa-card-record{color:#14171d}
+.fifa-card.bronze .fifa-card-overall,.fifa-card.bronze .fifa-card-pos,.fifa-card.bronze .fifa-card-name,
+.fifa-card.bronze .fifa-card-stat,.fifa-card.bronze .fifa-card-record{color:#230e02}
+.fifa-card.rare .fifa-card-overall,.fifa-card.rare .fifa-card-pos,.fifa-card.rare .fifa-card-name,
+.fifa-card.rare .fifa-card-stat,.fifa-card.rare .fifa-card-record{color:#f2e8ff}
+.fifa-card.rare .fifa-card-pos{border-top-color:rgba(242,232,255,.4)}
+.fifa-card.rare .fifa-divider{background:rgba(242,232,255,.35)}
+.fifa-card.rare .fifa-card-stats::before{background:rgba(242,232,255,.3)}
+.fifa-card.rare .fifa-card-photo{border-color:rgba(242,232,255,.4)}
+.fifa-card.rare .fifa-card-record{background:rgba(255,255,255,.12)}
+.fifa-card.self-card .fifa-card-overall,.fifa-card.self-card .fifa-card-pos,.fifa-card.self-card .fifa-card-name,
+.fifa-card.self-card .fifa-card-stat,.fifa-card.self-card .fifa-card-record{color:#e0fff5}
+.fifa-card.self-card .fifa-card-pos{border-top-color:rgba(224,255,245,.4)}
+.fifa-card.self-card .fifa-divider{background:rgba(224,255,245,.35)}
+.fifa-card.self-card .fifa-card-stats::before{background:rgba(224,255,245,.3)}
+.fifa-card.self-card .fifa-card-photo{border-color:rgba(224,255,245,.4)}
+.fifa-card.self-card .fifa-card-record{background:rgba(255,255,255,.12)}
 
 /* ===== PLAYER DETAIL MODAL ===== */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
@@ -205,6 +268,42 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .team-player-ovr{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold)}
 .team-warning{padding:10px 16px;background:rgba(239,68,68,.1);font-size:12px;color:var(--red)}
 
+/* ===== PARTIDOS (historial + ranking) ===== */
+.sub-toggle{display:flex;gap:8px;margin-bottom:16px}
+.sub-toggle-btn{flex:1;padding:10px;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;color:var(--muted);transition:all .2s}
+.sub-toggle-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(240,192,64,.07)}
+
+.match-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.match-card.pending{border-color:rgba(240,192,64,.45)}
+.match-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.match-date{font-family:'Bebas Neue',sans-serif;font-size:17px;color:var(--text);letter-spacing:.5px}
+.match-badge{font-size:11px;font-weight:700;border-radius:20px;padding:3px 10px;border:1px solid;white-space:nowrap}
+.match-badge.win{color:var(--green);border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.08)}
+.match-badge.draw{color:#60a5fa;border-color:rgba(96,165,250,.45);background:rgba(96,165,250,.08)}
+.match-badge.pend{color:var(--gold);border-color:rgba(240,192,64,.45);background:rgba(240,192,64,.08)}
+.match-teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.match-team{background:var(--bg3);border-radius:8px;padding:8px 10px;border:1px solid transparent}
+.match-team.winner{border-color:var(--green);background:rgba(34,197,94,.07)}
+.match-team-name{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.match-team.t0 .match-team-name{color:#60a5fa}
+.match-team.t1 .match-team-name{color:#f87171}
+.match-team.t2 .match-team-name{color:#c084fc}
+.match-team-players{font-size:11.5px;color:var(--muted);line-height:1.5}
+.match-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+.rank-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.rank-row.top1{border-color:rgba(240,192,64,.6);background:linear-gradient(135deg,rgba(240,192,64,.10),var(--bg2))}
+.rank-pos{font-family:'Bebas Neue',sans-serif;font-size:20px;width:30px;text-align:center;color:var(--muted)}
+.rank-name{flex:1;font-weight:600;font-size:14px}
+.rank-cells{display:flex;gap:2px}
+.rank-cell{width:30px;text-align:center;line-height:1.1}
+.rank-cell b{font-family:'Bebas Neue',sans-serif;font-size:16px;display:block}
+.rank-cell span{font-size:9px;color:var(--muted);text-transform:uppercase}
+.rank-pts{width:42px;text-align:center}
+.rank-pts b{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);display:block;line-height:1}
+.rank-pts span{font-size:9px;color:var(--muted);text-transform:uppercase}
+.rank-header{display:flex;align-items:center;gap:10px;padding:2px 12px 8px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+
 /* ===== ADMIN ===== */
 .admin-section{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
 .admin-section h3{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);margin-bottom:12px}
@@ -241,6 +340,9 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .empty-state{text-align:center;padding:48px 16px;color:var(--muted)}
 .empty-state-icon{font-size:48px;margin-bottom:12px}
 .chip{display:inline-flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -351,6 +453,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
     <div class="nav-tab" onclick="switchTab('asistencia')"><span class="nav-tab-icon">✅</span>Asistencia</div>
     <div class="nav-tab" onclick="switchTab('calificar')"><span class="nav-tab-icon">⭐</span>Calificar</div>
     <div class="nav-tab" onclick="switchTab('equipos')"><span class="nav-tab-icon">🏆</span>Equipos</div>
+    <div class="nav-tab" onclick="switchTab('partidos')"><span class="nav-tab-icon">📜</span>Partidos</div>
     <div class="nav-tab" id="admin-tab" onclick="switchTab('admin')" style="display:none"><span class="nav-tab-icon">⚙️</span>Admin</div>
   </div>
 
@@ -425,6 +528,16 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
     <div id="teams-result"></div>
   </div>
 
+  <!-- TAB: PARTIDOS -->
+  <div class="tab-content" id="tab-partidos" style="padding:16px">
+    <div class="sub-toggle">
+      <div class="sub-toggle-btn active" id="pv-historial" onclick="switchPartidosView('historial')">📜 HISTORIAL</div>
+      <div class="sub-toggle-btn" id="pv-ranking" onclick="switchPartidosView('ranking')">🏅 RANKING</div>
+    </div>
+    <div id="partidos-historial"></div>
+    <div id="partidos-ranking" class="hidden"></div>
+  </div>
+
   <!-- TAB: ADMIN -->
   <div class="tab-content" id="tab-admin" style="padding:16px">
     <div class="admin-section">
@@ -468,6 +581,15 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
     <button class="modal-close" onclick="closeModal('modal-guest')">✕</button>
     <h2>👤 AGREGAR INVITADO</h2>
     <div id="modal-guest-content"></div>
+  </div>
+</div>
+
+<!-- MODAL: RESULTADO DE PARTIDO -->
+<div class="modal-overlay" id="modal-result">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-result')">✕</button>
+    <h2>📋 CARGAR RESULTADO</h2>
+    <div id="modal-result-content"></div>
   </div>
 </div>
 
@@ -544,6 +666,39 @@ async function deletePlayer(id) {
   if (error) console.error('deletePlayer:', error);
 }
 
+// ============================================================
+// MATCHES — Supabase (tabla fulbito_matches)
+// ============================================================
+let matches = [];
+
+async function loadMatches() {
+  const { data, error } = await sb.from('fulbito_matches').select('*').order('created_at', { ascending: false });
+  if (error) {
+    console.error('loadMatches:', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function upsertMatch(m) {
+  const { error } = await sb.from('fulbito_matches').upsert({
+    id: m.id,
+    match_date: m.match_date,
+    teams: m.teams,
+    result: m.result || null,
+    created_by: m.created_by || null
+  }, { onConflict: 'id' });
+  if (error) {
+    console.error('upsertMatch:', error);
+    showToast('❌ Error guardando (¿creaste la tabla fulbito_matches?)', 3500);
+  }
+}
+
+async function deleteMatchDb(id) {
+  const { error } = await sb.from('fulbito_matches').delete().eq('id', id);
+  if (error) console.error('deleteMatch:', error);
+}
+
 // Session sigue local (es personal)
 const SESSION = {
   get() { try { return JSON.parse(localStorage.getItem('fulbito_session')||'null') } catch{return null} },
@@ -567,6 +722,7 @@ const POS_LABELS = { POR:'Portero', DEF:'Defensa', MED:'Mediocampo', DEL:'Delant
 const POS_STAT = { POR:'atajadas', DEF:'defensa', MED:'pase', DEL:'tiro' };
 const STATS = ['ritmo','tiro','pase','defensa','fisico','atajadas'];
 const STAT_LABELS = { ritmo:'RIT', tiro:'TIR', pase:'PAS', defensa:'DEF', fisico:'FIS', atajadas:'ATA' };
+const TEAM_NAMES = ['A','B','C'];
 
 const CARD_TIERS = [
   { min:80, cls:'rare',   label:'Icon' },
@@ -613,6 +769,7 @@ async function init() {
 async function refreshPlayers() {
   showToast('⏳ Actualizando...');
   state.players = await loadPlayers();
+  matches = await loadMatches();
   renderPlayers();
   renderAttendance();
   showToast(`✅ ${state.players.length} jugadores cargados`);
@@ -777,12 +934,22 @@ function showApp() {
   if (state.currentUser.isAdmin) {
     document.getElementById('admin-tab').style.display='flex';
   }
+  loadMatches().then(m => {
+    matches = m;
+    renderPlayers();
+    if (getActiveTabName() === 'partidos') renderPartidos();
+  });
   renderAll();
+}
+
+function getActiveTabName() {
+  const activeTab = document.querySelector('.nav-tab.active');
+  return activeTab?.getAttribute('onclick')?.match(/'(\w+)'/)?.[1] || 'jugadores';
 }
 
 function switchTab(name) {
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    const tabs=['jugadores','asistencia','calificar','equipos','admin'];
+    const tabs=['jugadores','asistencia','calificar','equipos','partidos','admin'];
     t.classList.toggle('active', tabs[i]===name);
   });
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -791,6 +958,7 @@ function switchTab(name) {
   if(name==='asistencia') renderAttendance();
   if(name==='calificar') renderRate();
   if(name==='equipos') renderTeamsTab();
+  if(name==='partidos') renderPartidos();
   if(name==='admin') renderAdmin();
 }
 
@@ -946,6 +1114,23 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ============================================================
+// RÉCORD V/E/D POR JUGADOR (calculado desde matches)
+// ============================================================
+function getPlayerRecord(playerId) {
+  let w=0, d=0, l=0;
+  matches.forEach(m => {
+    if (!m.result) return;
+    const teams = m.teams || [];
+    const teamIdx = teams.findIndex(t => (t.players||[]).some(p => p.id === playerId));
+    if (teamIdx === -1) return;
+    if (m.result.winner === 'draw') d++;
+    else if (m.result.winner === teamIdx) w++;
+    else l++;
+  });
+  return { w, d, l, pj: w+d+l, pts: w*3 + d };
+}
+
+// ============================================================
 // RENDER ALL
 // ============================================================
 function renderAll() {
@@ -997,16 +1182,8 @@ function getSelfOverall(p) {
   return Math.round(50 + (ovr-1)/4 * 49);
 }
 
-function renderFifaCard(p) {
-  const ovr = getOverall(p) || 60;
-  const tier = getCardTier(ovr);
-  const pos = getEffectivePosition(p);
-  const stats = getAvgStats(p) || {};
-  const photo = p.photo
-    ? `<img class="fifa-card-photo" src="${p.photo}" alt="${p.name}">`
-    : `<div class="fifa-card-photo-placeholder">👤</div>`;
-
-  const statPairs = [
+function cardStatsHTML(stats) {
+  const pairs = [
     ['RIT', statToFifa(stats.ritmo)],
     ['TIR', statToFifa(stats.tiro)],
     ['PAS', statToFifa(stats.pase)],
@@ -1014,14 +1191,35 @@ function renderFifaCard(p) {
     ['FIS', statToFifa(stats.fisico)],
     ['ATA', statToFifa(stats.atajadas)],
   ];
-  const statsHTML = statPairs.map(([k,v])=>`<div class="fifa-card-stat"><span>${v}</span><span>${k}</span></div>`).join('');
+  return pairs.map(([k,v])=>`<div class="fifa-card-stat"><span>${v}</span><span>${k}</span></div>`).join('');
+}
+
+function renderFifaCard(p) {
+  const ovr = getOverall(p) || 60;
+  const tier = getCardTier(ovr);
+  const pos = getEffectivePosition(p);
+  const stats = getAvgStats(p) || {};
+  const photo = p.photo
+    ? `<img class="fifa-card-photo" src="${p.photo}" alt="${p.name}">`
+    : `<div class="fifa-card-photo fifa-photo-ph">👤</div>`;
+
+  const rec = getPlayerRecord(p.id);
+  const recHTML = rec.pj > 0
+    ? `<div class="fifa-card-record">${rec.w}V · ${rec.d}E · ${rec.l}D</div>`
+    : '';
 
   return `<div class="fifa-card ${tier.cls}" onclick="openPlayerProfile('${p.id}')">
-    <div class="fifa-card-overall">${ovr}</div>
-    <div class="fifa-card-pos">${pos}</div>
-    ${photo}
+    <div class="fifa-top">
+      <div class="fifa-left">
+        <div class="fifa-card-overall">${ovr}</div>
+        <div class="fifa-card-pos">${pos}</div>
+      </div>
+      ${photo}
+    </div>
+    <div class="fifa-divider"></div>
     <div class="fifa-card-name">${p.username.toUpperCase()}</div>
-    <div class="fifa-card-stats">${statsHTML}</div>
+    <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
+    ${recHTML}
   </div>`;
 }
 
@@ -1031,25 +1229,21 @@ function renderSelfCard(p) {
   const stats = getSelfStats(p);
   const photo = p.photo
     ? `<img class="fifa-card-photo" src="${p.photo}" alt="${p.name}">`
-    : `<div class="fifa-card-photo-placeholder">👤</div>`;
-
-  const statPairs = [
-    ['RIT', statToFifa(stats.ritmo)],
-    ['TIR', statToFifa(stats.tiro)],
-    ['PAS', statToFifa(stats.pase)],
-    ['DEF', statToFifa(stats.defensa)],
-    ['FIS', statToFifa(stats.fisico)],
-    ['ATA', statToFifa(stats.atajadas)],
-  ];
-  const statsHTML = statPairs.map(([k,v])=>`<div class="fifa-card-stat"><span>${v}</span><span>${k}</span></div>`).join('');
+    : `<div class="fifa-card-photo fifa-photo-ph">👤</div>`;
 
   return `<div class="fifa-card self-card" onclick="openPlayerProfile('${p.id}')" style="position:relative">
-    <div style="position:absolute;top:6px;left:6px;font-size:16px;z-index:2">⭐</div>
-    <div class="fifa-card-overall">${ovr}</div>
-    <div class="fifa-card-pos">${pos}</div>
-    ${photo}
-    <div class="fifa-card-name">${p.username.toUpperCase()} <span style="font-size:9px;opacity:.85">(propia)</span></div>
-    <div class="fifa-card-stats">${statsHTML}</div>
+    <div style="position:absolute;top:8px;left:10px;font-size:15px;z-index:2">⭐</div>
+    <div class="fifa-top">
+      <div class="fifa-left">
+        <div class="fifa-card-overall">${ovr}</div>
+        <div class="fifa-card-pos">${pos}</div>
+      </div>
+      ${photo}
+    </div>
+    <div class="fifa-divider"></div>
+    <div class="fifa-card-name">${p.username.toUpperCase()}</div>
+    <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
+    <div class="fifa-card-record">versión propia</div>
   </div>`;
 }
 
@@ -1078,6 +1272,11 @@ function openPlayerProfile(id) {
   const validVoters = getValidRatings(p).length;
   const hasSelf = hasSelfRating(p);
   const trimmedNote = validVoters >= 5 ? ' · con filtro extremos' : '';
+
+  const rec = getPlayerRecord(p.id);
+  const recChip = rec.pj > 0
+    ? `<span class="chip" style="margin-top:8px;color:var(--gold);border-color:rgba(240,192,64,.4)">🏆 ${rec.pj} PJ · ${rec.w}V ${rec.d}E ${rec.l}D · ${rec.pts} pts</span>`
+    : '';
 
   let selfSection = '';
   if (hasSelf) {
@@ -1120,6 +1319,7 @@ function openPlayerProfile(id) {
       <span style="font-family:'Bebas Neue',sans-serif;font-size:48px">${ovr}</span>
       <span style="display:block;color:var(--muted);font-size:13px">${tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
       <span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">Posición secundaria: ${p.posSecondary||'-'}</span>
+      ${recChip}
     </div>
     <div>${statBars}</div>
     ${selfSection}
@@ -1462,6 +1662,19 @@ function exportVotesCSV() {
     rows.push([p.username, pos, ovr, validCount, ...STATS.map(s => avg[s] || '-')]);
   });
 
+  rows.push([]);
+  rows.push(['=== HISTORIAL DE PARTIDOS ===']);
+  rows.push(['Fecha', 'Equipos', 'Resultado', 'Margen']);
+  matches.forEach(m => {
+    const teamsStr = (m.teams||[]).map((t,i)=>`${TEAM_NAMES[i]}: ${(t.players||[]).map(p=>p.name).join(' / ')}`).join(' || ');
+    let resStr = 'Pendiente', marginStr = '';
+    if (m.result) {
+      if (m.result.winner === 'draw') resStr = 'Empate';
+      else { resStr = 'Ganó ' + TEAM_NAMES[m.result.winner]; marginStr = marginLabel(m.result.margin); }
+    }
+    rows.push([m.match_date || '', teamsStr, resStr, marginStr]);
+  });
+
   const csv = rows.map(row => row.map(cell => {
     const str = String(cell ?? '');
     return str.includes(',') || str.includes('"') || str.includes('\n')
@@ -1718,7 +1931,7 @@ function renderBuiltTeams(teams) {
   const teamNames = ['EQUIPO A','EQUIPO B','EQUIPO C'];
 
   function teamOvr(team) {
-    const vals = team.map(p => getOverall(p)).filter(Boolean);
+    const vals = team.map(p => p.ovr || getOverall(p)).filter(Boolean);
     return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : '—';
   }
 
@@ -1776,6 +1989,11 @@ function renderBuiltTeams(teams) {
   // Botón reroll
   html += `<button class="btn btn-ghost w-full" style="margin-top:12px;justify-content:center" onclick="buildTeams(true)">🎲 Reroll equipos</button>`;
 
+  // Guardar partido (admin, fuera de modo edición)
+  if (isAdmin && !editMode) {
+    html += `<button class="btn btn-primary w-full" style="margin-top:8px;justify-content:center" onclick="saveMatchFromTeams()">💾 Guardar partido en el historial</button>`;
+  }
+
   container.innerHTML = html;
 }
 
@@ -1787,6 +2005,246 @@ function fulbitoMovePlayer(fromTeamIdx, playerIdx, direction) {
   const [player] = teams[fromTeamIdx].players.splice(playerIdx, 1);
   teams[toTeamIdx].players.push(player);
   renderBuiltTeams(teams);
+}
+
+// ============================================================
+// PARTIDOS — historial + ranking
+// ============================================================
+let partidosView = 'historial';
+
+function switchPartidosView(view) {
+  partidosView = view;
+  document.getElementById('pv-historial').classList.toggle('active', view==='historial');
+  document.getElementById('pv-ranking').classList.toggle('active', view==='ranking');
+  document.getElementById('partidos-historial').classList.toggle('hidden', view!=='historial');
+  document.getElementById('partidos-ranking').classList.toggle('hidden', view!=='ranking');
+  renderPartidos();
+}
+
+function renderPartidos() {
+  if (partidosView === 'historial') renderHistorial();
+  else renderRanking();
+}
+
+function marginLabel(margin) {
+  return { 1:'por 1', 2:'por 2', 3:'goleada (3+)' }[margin] || '';
+}
+
+function formatMatchDate(m) {
+  const d = m.match_date || (m.created_at || '').slice(0,10);
+  if (!d) return 'Sin fecha';
+  const [y,mo,day] = d.split('-');
+  return `${day}/${mo}/${y}`;
+}
+
+function saveMatchFromTeams() {
+  const teams = state.builtTeams;
+  if (!teams || !teams.length) return;
+  if (!confirm('¿Guardar este partido en el historial? Después vas a poder cargar quién ganó y por cuánto.')) return;
+
+  const m = {
+    id: 'm' + Date.now(),
+    match_date: new Date().toISOString().slice(0,10),
+    teams: teams.map((t, i) => ({
+      name: TEAM_NAMES[i] || String(i+1),
+      players: t.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        ovr: p.ovr || getOverall(p) || 60,
+        pos: p.effPos || 'MED',
+        isGuest: !!p.isGuest
+      }))
+    })),
+    result: null,
+    created_by: state.currentUser.id
+  };
+  matches.unshift(m);
+  upsertMatch(m);
+  showToast('💾 Partido guardado — cargá el resultado en la pestaña Partidos');
+}
+
+function renderHistorial() {
+  const el = document.getElementById('partidos-historial');
+  const isAdmin = state.currentUser && state.currentUser.isAdmin;
+
+  if (!matches.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">📜</div>
+      <div>Todavía no hay partidos guardados.</div>
+      <div style="font-size:12px;margin-top:6px">Armá los equipos en la pestaña 🏆 Equipos y tocá "Guardar partido".</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = matches.map(m => {
+    const teams = m.teams || [];
+    const res = m.result;
+
+    let badge;
+    if (!res) badge = `<span class="match-badge pend">⏳ Resultado pendiente</span>`;
+    else if (res.winner === 'draw') badge = `<span class="match-badge draw">🤝 Empate</span>`;
+    else badge = `<span class="match-badge win">🏆 Ganó Equipo ${TEAM_NAMES[res.winner]} ${marginLabel(res.margin)}</span>`;
+
+    const teamsHTML = teams.map((t, i) => {
+      const isWinner = res && res.winner === i;
+      const names = (t.players||[]).map(p => p.isGuest ? p.name+' 👤' : p.name).join('<br>');
+      return `<div class="match-team t${i}${isWinner?' winner':''}">
+        <div class="match-team-name">${isWinner?'🏆 ':''}EQUIPO ${TEAM_NAMES[i]}</div>
+        <div class="match-team-players">${names}</div>
+      </div>`;
+    }).join('');
+
+    let actions = '';
+    if (isAdmin) {
+      actions = `<div class="match-actions">
+        ${!res
+          ? `<button class="btn btn-primary btn-sm" onclick="openResultModal('${m.id}')">📋 Cargar resultado</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="openResultModal('${m.id}')">✏️ Editar resultado</button>`}
+        <button class="btn btn-danger btn-sm" onclick="removeMatch('${m.id}')">🗑️</button>
+      </div>`;
+    }
+
+    return `<div class="match-card${!res?' pending':''}">
+      <div class="match-head">
+        <span class="match-date">📅 ${formatMatchDate(m)}</span>
+        ${badge}
+      </div>
+      <div class="match-teams">${teamsHTML}</div>
+      ${actions}
+    </div>`;
+  }).join('');
+}
+
+async function removeMatch(id) {
+  if (!confirm('¿Eliminar este partido del historial?')) return;
+  matches = matches.filter(m => m.id !== id);
+  await deleteMatchDb(id);
+  renderHistorial();
+  renderPlayers();
+  showToast('🗑️ Partido eliminado');
+}
+
+// --- modal de resultado ---
+let resultMatchId = null;
+let resultWinner = null;
+let resultMargin = null;
+
+function openResultModal(mid) {
+  const m = matches.find(x => x.id === mid);
+  if (!m) return;
+  resultMatchId = mid;
+  resultWinner = m.result ? m.result.winner : null;
+  resultMargin = m.result ? m.result.margin : null;
+  renderResultModal();
+  openModal('modal-result');
+}
+
+function setResultWinner(w) {
+  resultWinner = w;
+  if (w === 'draw') resultMargin = null;
+  renderResultModal();
+}
+
+function setResultMargin(mg) {
+  resultMargin = mg;
+  renderResultModal();
+}
+
+function renderResultModal() {
+  const m = matches.find(x => x.id === resultMatchId);
+  if (!m) return;
+  const teams = m.teams || [];
+
+  let html = `<div class="text-muted" style="margin-bottom:6px">Partido del ${formatMatchDate(m)}</div>`;
+  html += `<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">¿Quién ganó?</div>`;
+  html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">`;
+  teams.forEach((t, i) => {
+    const active = resultWinner === i;
+    html += `<button class="btn ${active?'btn-primary':'btn-ghost'}" style="flex:1;min-width:90px;justify-content:center" onclick="setResultWinner(${i})">Equipo ${TEAM_NAMES[i]}</button>`;
+  });
+  html += `<button class="btn ${resultWinner==='draw'?'btn-primary':'btn-ghost'}" style="flex:1;min-width:90px;justify-content:center" onclick="setResultWinner('draw')">🤝 Empate</button>`;
+  html += `</div>`;
+
+  if (resultWinner !== null && resultWinner !== 'draw') {
+    html += `<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">¿Por cuánto?</div>`;
+    html += `<div style="display:flex;gap:8px;margin-bottom:8px">`;
+    [[1,'Por 1'],[2,'Por 2'],[3,'Goleada 3+']].forEach(([v,label]) => {
+      const active = resultMargin === v;
+      html += `<button class="btn ${active?'btn-primary':'btn-ghost'}" style="flex:1;justify-content:center" onclick="setResultMargin(${v})">${label}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  const ready = resultWinner === 'draw' || (resultWinner !== null && resultMargin !== null);
+  html += `<button class="btn btn-green w-full" style="justify-content:center;margin-top:14px" ${ready?'':'disabled'} onclick="saveMatchResult()">✅ Guardar resultado</button>`;
+
+  document.getElementById('modal-result-content').innerHTML = html;
+}
+
+async function saveMatchResult() {
+  const m = matches.find(x => x.id === resultMatchId);
+  if (!m) return;
+  if (resultWinner === null) return;
+  m.result = resultWinner === 'draw'
+    ? { winner: 'draw', margin: null }
+    : { winner: resultWinner, margin: resultMargin };
+  await upsertMatch(m);
+  closeModal('modal-result');
+  renderPartidos();
+  renderPlayers();
+  showToast('✅ Resultado guardado');
+}
+
+// --- ranking ---
+function renderRanking() {
+  const el = document.getElementById('partidos-ranking');
+
+  const ranked = state.players
+    .map(p => ({ p, ...getPlayerRecord(p.id) }))
+    .filter(r => r.pj > 0)
+    .sort((a,b) => b.pts - a.pts || b.w - a.w || a.pj - b.pj || a.p.name.localeCompare(b.p.name));
+
+  if (!ranked.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">🏅</div>
+      <div>Todavía no hay partidos con resultado.</div>
+      <div style="font-size:12px;margin-top:6px">Los puntos: victoria = 3, empate = 1.</div>
+    </div>`;
+    return;
+  }
+
+  const medals = ['🥇','🥈','🥉'];
+
+  let html = `<div class="rank-header">
+    <div style="width:30px;text-align:center">#</div>
+    <div style="flex:1">Jugador</div>
+    <div class="rank-cells">
+      <div class="rank-cell">PJ</div>
+      <div class="rank-cell">V</div>
+      <div class="rank-cell">E</div>
+      <div class="rank-cell">D</div>
+    </div>
+    <div style="width:42px;text-align:center">Pts</div>
+  </div>`;
+
+  html += ranked.map((r, i) => {
+    const posLabel = medals[i] || (i+1);
+    return `<div class="rank-row${i===0?' top1':''}" onclick="openPlayerProfile('${r.p.id}')" style="cursor:pointer">
+      <div class="rank-pos">${posLabel}</div>
+      <div class="rank-name">${r.p.name}</div>
+      <div class="rank-cells">
+        <div class="rank-cell"><b>${r.pj}</b><span>PJ</span></div>
+        <div class="rank-cell"><b style="color:var(--green)">${r.w}</b><span>V</span></div>
+        <div class="rank-cell"><b style="color:#60a5fa">${r.d}</b><span>E</span></div>
+        <div class="rank-cell"><b style="color:var(--red)">${r.l}</b><span>D</span></div>
+      </div>
+      <div class="rank-pts"><b>${r.pts}</b><span>pts</span></div>
+    </div>`;
+  }).join('');
+
+  html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">Victoria = 3 pts · Empate = 1 pt · Los invitados no suman al ranking</div>`;
+
+  el.innerHTML = html;
 }
 
 function renderAdmin() {
@@ -1822,15 +2280,20 @@ async function startSync() {
   const client = await getSB();
   if (realtimeChannel) { client.removeChannel(realtimeChannel); }
   realtimeChannel = client
-    .channel('fulbito_players_changes')
+    .channel('fulbito_changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_players' }, async (payload) => {
       const fresh = await loadPlayers();
       state.players = fresh;
-      const activeTab = document.querySelector('.nav-tab.active');
-      const tabName = activeTab?.getAttribute('onclick')?.match(/'(\w+)'/)?.[1] || 'jugadores';
+      const tabName = getActiveTabName();
       if (tabName==='jugadores') renderPlayers();
       if (tabName==='asistencia') renderAttendance();
       if (tabName==='admin') renderAdmin();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_matches' }, async (payload) => {
+      matches = await loadMatches();
+      const tabName = getActiveTabName();
+      if (tabName==='partidos') renderPartidos();
+      if (tabName==='jugadores') renderPlayers();
     })
     .subscribe(status => {
       const dot = document.getElementById('conn-dot');
