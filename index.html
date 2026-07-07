@@ -161,11 +161,11 @@ body{
 /* ===== PLAYER CARDS LIST ===== */
 .players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px}
 
-/* ===== FIFA CARD (escudo FUT) ===== */
+/* ===== FIFA CARD (escudo FUT v2) ===== */
 .fifa-card{
   position:relative;
   clip-path:polygon(50% 0, 80% 4.5%, 100% 14%, 100% 84%, 50% 100%, 0 84%, 0 14%, 20% 4.5%);
-  padding:20px 10px 18px;
+  padding:19px 10px 16px;
   background:var(--card-gold);
   cursor:pointer;
   transition:transform .25s cubic-bezier(.2,.8,.3,1), filter .25s ease;
@@ -175,60 +175,81 @@ body{
   filter:drop-shadow(0 8px 16px rgba(0,0,0,.5));
 }
 .fifa-card:hover{transform:translateY(-6px) scale(1.035);filter:drop-shadow(0 16px 26px rgba(240,192,64,.4))}
+/* Capa 1: luz superior + pinstripes sutiles + viñeta inferior */
 .fifa-card::before{
-  content:'';position:absolute;inset:0;pointer-events:none;
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
   background:
-    radial-gradient(ellipse 130% 55% at 50% -12%, rgba(255,255,255,.40), transparent 55%),
-    linear-gradient(115deg, transparent 32%, rgba(255,255,255,.20) 46%, transparent 60%);
+    radial-gradient(ellipse 130% 55% at 50% -12%, rgba(255,255,255,.42), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.055) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.028) 0 1px, transparent 1px 9px),
+    linear-gradient(180deg, transparent 58%, rgba(0,0,0,.20) 100%);
 }
+/* Capa 2: doble marco interior grabado */
 .fifa-card::after{
-  content:'';position:absolute;inset:6px;pointer-events:none;
+  content:'';position:absolute;inset:6px;pointer-events:none;z-index:0;
   clip-path:polygon(50% 0, 80% 4.5%, 100% 14%, 100% 84%, 50% 100%, 0 84%, 0 14%, 20% 4.5%);
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.22);
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.26),
+    inset 0 0 0 3px rgba(255,255,255,.14),
+    inset 0 -14px 24px rgba(0,0,0,.10);
 }
+/* Brillo diagonal que barre al pasar el mouse */
+.fifa-shine{
+  position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:linear-gradient(115deg, transparent 38%, rgba(255,255,255,.34) 49%, rgba(255,255,255,.12) 54%, transparent 64%);
+  transform:translateX(-130%);
+  transition:transform .7s cubic-bezier(.25,.8,.35,1);
+}
+.fifa-card:hover .fifa-shine{transform:translateX(130%)}
+
 .fifa-card.silver{background:var(--card-silver)}
 .fifa-card.bronze{background:var(--card-bronze)}
 .fifa-card.rare{background:var(--card-rare)}
 .fifa-card.rare::before{
   background:
     radial-gradient(ellipse 130% 55% at 50% -12%, rgba(216,180,254,.45), transparent 55%),
-    linear-gradient(115deg, transparent 30%, rgba(255,255,255,.16) 46%, transparent 62%);
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, transparent 58%, rgba(0,0,0,.30) 100%);
 }
-.fifa-card.self-card{background:var(--card-self);border:none}
-.fifa-card.self-card::after{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.fifa-card.rare::after{
+  box-shadow:
+    inset 0 0 0 1px rgba(242,232,255,.30),
+    inset 0 0 0 3px rgba(255,255,255,.08),
+    inset 0 -14px 24px rgba(0,0,0,.22);
+}
+.fifa-card.rare:hover{filter:drop-shadow(0 16px 26px rgba(168,85,247,.45))}
 
-.fifa-top{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:2px}
+.fifa-top{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;margin-top:3px;position:relative;z-index:1}
 .fifa-left{display:flex;flex-direction:column;align-items:center;line-height:1}
-.fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:38px;color:#211400;line-height:.95;text-align:center}
-.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:14px;color:#211400;text-align:center;letter-spacing:1px;margin-top:2px;padding-top:3px;border-top:1px solid rgba(0,0,0,.28);min-width:30px}
-.fifa-card-photo{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:top center;background:rgba(0,0,0,.18);border:2px solid rgba(0,0,0,.25);flex-shrink:0}
+.fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:41px;color:#211400;line-height:.92;text-align:center;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:14px;color:#211400;text-align:center;letter-spacing:2px;margin-top:2px;padding-top:3px;border-top:1px solid rgba(0,0,0,.30);min-width:32px}
+.fifa-card-tier{font-family:'Bebas Neue',sans-serif;font-size:8.5px;letter-spacing:2.5px;color:#211400;opacity:.72;margin-top:3px;text-transform:uppercase}
+.fifa-card-photo{width:66px;height:66px;border-radius:50%;object-fit:cover;object-position:top center;background:rgba(0,0,0,.18);border:2px solid rgba(0,0,0,.28);box-shadow:0 0 0 2px rgba(255,255,255,.22), 0 5px 12px rgba(0,0,0,.28);flex-shrink:0}
 .fifa-photo-ph{display:flex;align-items:center;justify-content:center;font-size:28px}
-.fifa-divider{width:78%;height:1px;background:rgba(0,0,0,.28);margin:8px 0 5px}
-.fifa-card-name{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:#211400;text-align:center;text-transform:uppercase;letter-spacing:1px;line-height:1.05;max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fifa-card-stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 0;margin-top:7px;width:82%;position:relative}
-.fifa-card-stats::before{content:'';position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:rgba(0,0,0,.24)}
-.fifa-card-stat{display:flex;align-items:baseline;justify-content:center;gap:4px;font-size:9.5px;font-weight:600;color:#211400;line-height:1.35}
-.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:13px}
-.fifa-card-record{margin-top:auto;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;color:#211400;background:rgba(0,0,0,.14);border-radius:10px;padding:2px 10px}
+.fifa-divider{width:80%;height:2px;margin:9px 0 5px;position:relative;z-index:1;background:linear-gradient(90deg, transparent, rgba(0,0,0,.34) 18%, rgba(0,0,0,.34) 82%, transparent)}
+.fifa-card-name{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#211400;text-align:center;text-transform:uppercase;letter-spacing:1.5px;line-height:1.05;max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative;z-index:1;text-shadow:0 1px 0 rgba(255,255,255,.28)}
+.fifa-card-stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 0;margin-top:7px;width:84%;position:relative;z-index:1}
+.fifa-card-stats::before{content:'';position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:rgba(0,0,0,.26)}
+.fifa-card-stat{display:flex;align-items:baseline;justify-content:center;gap:4px;font-size:9.5px;font-weight:600;color:#211400;line-height:1.4;border-radius:5px}
+.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:13.5px}
+.fifa-card-stat.best{background:rgba(0,0,0,.13)}
+.fifa-card-stat.best span:first-child{font-size:14.5px}
+.fifa-card-record{margin-top:auto;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;color:#211400;background:rgba(0,0,0,.14);border:1px solid rgba(0,0,0,.18);border-radius:10px;padding:2px 10px;position:relative;z-index:1}
 
 .fifa-card.silver .fifa-card-overall,.fifa-card.silver .fifa-card-pos,.fifa-card.silver .fifa-card-name,
-.fifa-card.silver .fifa-card-stat,.fifa-card.silver .fifa-card-record{color:#14171d}
+.fifa-card.silver .fifa-card-stat,.fifa-card.silver .fifa-card-record,.fifa-card.silver .fifa-card-tier{color:#14171d}
 .fifa-card.bronze .fifa-card-overall,.fifa-card.bronze .fifa-card-pos,.fifa-card.bronze .fifa-card-name,
-.fifa-card.bronze .fifa-card-stat,.fifa-card.bronze .fifa-card-record{color:#230e02}
+.fifa-card.bronze .fifa-card-stat,.fifa-card.bronze .fifa-card-record,.fifa-card.bronze .fifa-card-tier{color:#230e02}
 .fifa-card.rare .fifa-card-overall,.fifa-card.rare .fifa-card-pos,.fifa-card.rare .fifa-card-name,
-.fifa-card.rare .fifa-card-stat,.fifa-card.rare .fifa-card-record{color:#f2e8ff}
+.fifa-card.rare .fifa-card-stat,.fifa-card.rare .fifa-card-record,.fifa-card.rare .fifa-card-tier{color:#f2e8ff}
+.fifa-card.rare .fifa-card-overall{text-shadow:0 0 14px rgba(216,180,254,.55)}
+.fifa-card.rare .fifa-card-name{text-shadow:0 0 10px rgba(216,180,254,.4)}
 .fifa-card.rare .fifa-card-pos{border-top-color:rgba(242,232,255,.4)}
-.fifa-card.rare .fifa-divider{background:rgba(242,232,255,.35)}
+.fifa-card.rare .fifa-divider{background:linear-gradient(90deg, transparent, rgba(242,232,255,.4) 18%, rgba(242,232,255,.4) 82%, transparent)}
 .fifa-card.rare .fifa-card-stats::before{background:rgba(242,232,255,.3)}
-.fifa-card.rare .fifa-card-photo{border-color:rgba(242,232,255,.4)}
-.fifa-card.rare .fifa-card-record{background:rgba(255,255,255,.12)}
-.fifa-card.self-card .fifa-card-overall,.fifa-card.self-card .fifa-card-pos,.fifa-card.self-card .fifa-card-name,
-.fifa-card.self-card .fifa-card-stat,.fifa-card.self-card .fifa-card-record{color:#e0fff5}
-.fifa-card.self-card .fifa-card-pos{border-top-color:rgba(224,255,245,.4)}
-.fifa-card.self-card .fifa-divider{background:rgba(224,255,245,.35)}
-.fifa-card.self-card .fifa-card-stats::before{background:rgba(224,255,245,.3)}
-.fifa-card.self-card .fifa-card-photo{border-color:rgba(224,255,245,.4)}
-.fifa-card.self-card .fifa-card-record{background:rgba(255,255,255,.12)}
+.fifa-card.rare .fifa-card-stat.best{background:rgba(255,255,255,.13)}
+.fifa-card.rare .fifa-card-photo{border-color:rgba(242,232,255,.4);box-shadow:0 0 0 2px rgba(139,92,246,.45), 0 0 16px rgba(168,85,247,.4)}
+.fifa-card.rare .fifa-card-record{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18)}
 
 /* ===== PLAYER DETAIL MODAL ===== */
 .modal-overlay{position:fixed;inset:0;background:rgba(6,8,12,.88);backdrop-filter:blur(3px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
@@ -1312,13 +1333,9 @@ function renderPlayers() {
     grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div>No hay jugadores aún</div></div>`;
     return;
   }
-  grid.innerHTML = state.players.map(p => {
-    let html = renderFifaCard(p);
-    if (hasSelfRating(p)) {
-      html += renderSelfCard(p);
-    }
-    return html;
-  }).join('');
+  grid.innerHTML = state.players.map(p => renderFifaCard(p)).join('');
+  // La autocalificación ("versión propia") ya no se muestra en el plantel:
+  // se ve dentro del perfil de cada jugador, comparada contra el voto del grupo.
 }
 
 function hasSelfRating(p) {
@@ -1354,7 +1371,10 @@ function cardStatsHTML(stats) {
     ['FIS', statToFifa(stats.fisico)],
     ['ATA', statToFifa(stats.atajadas)],
   ];
-  return pairs.map(([k,v])=>`<div class="fifa-card-stat"><span>${v}</span><span>${k}</span></div>`).join('');
+  const max = Math.max(...pairs.map(([,v]) => v));
+  return pairs.map(([k,v]) =>
+    `<div class="fifa-card-stat${v===max && v>40 ? ' best' : ''}"><span>${v}</span><span>${k}</span></div>`
+  ).join('');
 }
 
 function renderFifaCard(p) {
@@ -1372,10 +1392,12 @@ function renderFifaCard(p) {
     : '';
 
   return `<div class="fifa-card ${tier.cls}" onclick="openPlayerProfile('${p.id}')">
+    <span class="fifa-shine"></span>
     <div class="fifa-top">
       <div class="fifa-left">
         <div class="fifa-card-overall">${ovr}</div>
         <div class="fifa-card-pos">${pos}</div>
+        <div class="fifa-card-tier">${tier.label}</div>
       </div>
       ${photo}
     </div>
@@ -1383,30 +1405,6 @@ function renderFifaCard(p) {
     <div class="fifa-card-name">${p.username.toUpperCase()}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
     ${recHTML}
-  </div>`;
-}
-
-function renderSelfCard(p) {
-  const ovr = getSelfOverall(p) || 60;
-  const pos = p.posPrimary || 'MED';
-  const stats = getSelfStats(p);
-  const photo = p.photo
-    ? `<img class="fifa-card-photo" src="${p.photo}" alt="${p.name}">`
-    : `<div class="fifa-card-photo fifa-photo-ph">👤</div>`;
-
-  return `<div class="fifa-card self-card" onclick="openPlayerProfile('${p.id}')" style="position:relative">
-    <div style="position:absolute;top:8px;left:10px;font-size:15px;z-index:2">⭐</div>
-    <div class="fifa-top">
-      <div class="fifa-left">
-        <div class="fifa-card-overall">${ovr}</div>
-        <div class="fifa-card-pos">${pos}</div>
-      </div>
-      ${photo}
-    </div>
-    <div class="fifa-divider"></div>
-    <div class="fifa-card-name">${p.username.toUpperCase()}</div>
-    <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
-    <div class="fifa-card-record">versión propia</div>
   </div>`;
 }
 
