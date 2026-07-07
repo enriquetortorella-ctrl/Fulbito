@@ -28,7 +28,7 @@
   alter publication supabase_realtime add table fulbito_players;
 
   ============================================================
-  NUEVO (v2 — historial de partidos): correr esto también
+  v2 — historial de partidos (ya creada):
   ============================================================
 
   create table if not exists fulbito_matches (
@@ -42,6 +42,8 @@
   alter table fulbito_matches enable row level security;
   create policy "public_all_matches" on fulbito_matches for all using (true) with check (true);
   alter publication supabase_realtime add table fulbito_matches;
+
+  v3 no requiere cambios de base de datos (el MVP se guarda dentro del jsonb "result").
 -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -297,10 +299,15 @@ body{
 .sub-toggle-btn:hover{color:var(--text)}
 .sub-toggle-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
 
+.match-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+
 .match-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:12px;box-shadow:var(--shadow-card)}
 .match-card.pending{border-color:rgba(240,192,64,.45)}
 .match-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .match-date{font-family:'Bebas Neue',sans-serif;font-size:17px;color:var(--text);letter-spacing:.5px}
+.match-date-input{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:5px 8px;font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;outline:none;color-scheme:dark;transition:border-color .2s}
+.match-date-input:hover{border-color:#48566b}
+.match-date-input:focus{border-color:var(--gold)}
 .match-badge{font-size:11px;font-weight:700;border-radius:20px;padding:3px 10px;border:1px solid;white-space:nowrap}
 .match-badge.win{color:var(--green);border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.08)}
 .match-badge.draw{color:#60a5fa;border-color:rgba(96,165,250,.45);background:rgba(96,165,250,.08)}
@@ -313,13 +320,20 @@ body{
 .match-team.t1 .match-team-name{color:#f87171}
 .match-team.t2 .match-team-name{color:#c084fc}
 .match-team-players{font-size:11.5px;color:var(--muted);line-height:1.6}
+.match-mvp{margin-top:8px;font-size:12px;color:var(--gold);font-weight:600}
 .match-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+.form-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;font-size:9px;font-weight:800}
+.fd-v{background:rgba(34,197,94,.22);color:var(--green)}
+.fd-e{background:rgba(96,165,250,.22);color:#60a5fa}
+.fd-d{background:rgba(239,68,68,.18);color:var(--red)}
 
 .rank-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:11px 14px;margin-bottom:8px;transition:border-color .2s}
 .rank-row:hover{border-color:#37435566}
 .rank-row.top1{border-color:rgba(240,192,64,.6);background:linear-gradient(135deg,rgba(240,192,64,.12),var(--bg2))}
 .rank-pos{font-family:'Bebas Neue',sans-serif;font-size:20px;width:30px;text-align:center;color:var(--muted)}
-.rank-name{flex:1;font-weight:600;font-size:14px}
+.rank-name{flex:1;font-weight:600;font-size:14px;min-width:0}
+.rank-sub{font-size:10px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:3px;flex-wrap:wrap}
 .rank-cells{display:flex;gap:2px}
 .rank-cell{width:30px;text-align:center;line-height:1.15}
 .rank-cell b{font-family:'Bebas Neue',sans-serif;font-size:16px;display:block}
@@ -366,7 +380,7 @@ body{
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty-state{text-align:center;padding:52px 16px;color:var(--muted)}
 .empty-state-icon{font-size:46px;margin-bottom:14px;opacity:.6}
-.chip{display:inline-flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)}
 @media (prefers-reduced-motion: reduce){
   *{transition:none!important;animation:none!important}
 }
@@ -698,13 +712,25 @@ async function deletePlayer(id) {
 // ============================================================
 let matches = [];
 
+function sortMatches() {
+  matches.sort((a,b) =>
+    (b.match_date||'').localeCompare(a.match_date||'') ||
+    (b.created_at||'').localeCompare(a.created_at||'')
+  );
+}
+
 async function loadMatches() {
   const { data, error } = await sb.from('fulbito_matches').select('*').order('created_at', { ascending: false });
   if (error) {
     console.error('loadMatches:', error);
     return [];
   }
-  return data || [];
+  const list = data || [];
+  list.sort((a,b) =>
+    (b.match_date||'').localeCompare(a.match_date||'') ||
+    (b.created_at||'').localeCompare(a.created_at||'')
+  );
+  return list;
 }
 
 async function upsertMatch(m) {
@@ -750,6 +776,7 @@ const POS_STAT = { POR:'atajadas', DEF:'defensa', MED:'pase', DEL:'tiro' };
 const STATS = ['ritmo','tiro','pase','defensa','fisico','atajadas'];
 const STAT_LABELS = { ritmo:'RIT', tiro:'TIR', pase:'PAS', defensa:'DEF', fisico:'FIS', atajadas:'ATA' };
 const TEAM_NAMES = ['A','B','C'];
+const TEAM_EMOJIS = ['🔵','🔴','🟣'];
 
 const CARD_TIERS = [
   { min:80, cls:'rare',   label:'Icon' },
@@ -1141,10 +1168,10 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ============================================================
-// RÉCORD V/E/D POR JUGADOR (calculado desde matches)
+// RÉCORD / FORMA / MVP POR JUGADOR (calculado desde matches)
 // ============================================================
 function getPlayerRecord(playerId) {
-  let w=0, d=0, l=0;
+  let w=0, d=0, l=0, mvps=0;
   matches.forEach(m => {
     if (!m.result) return;
     const teams = m.teams || [];
@@ -1153,8 +1180,38 @@ function getPlayerRecord(playerId) {
     if (m.result.winner === 'draw') d++;
     else if (m.result.winner === teamIdx) w++;
     else l++;
+    if (m.result.mvp === playerId) mvps++;
   });
-  return { w, d, l, pj: w+d+l, pts: w*3 + d };
+  return { w, d, l, mvps, pj: w+d+l, pts: w*3 + d };
+}
+
+// Partidos del jugador en orden cronológico (viejo → nuevo)
+function getPlayerMatchesChrono(playerId) {
+  return matches
+    .filter(m => m.result && (m.teams||[]).some(t => (t.players||[]).some(p => p.id === playerId)))
+    .slice()
+    .sort((a,b) =>
+      (a.match_date||'').localeCompare(b.match_date||'') ||
+      (a.created_at||'').localeCompare(b.created_at||'')
+    );
+}
+
+// Forma (últimos 5) + racha actual
+function getPlayerForm(playerId) {
+  const ms = getPlayerMatchesChrono(playerId);
+  const seq = ms.map(m => {
+    const ti = (m.teams||[]).findIndex(t => (t.players||[]).some(p => p.id === playerId));
+    if (m.result.winner === 'draw') return 'E';
+    return m.result.winner === ti ? 'V' : 'D';
+  });
+  const last5 = seq.slice(-5);
+  let streak = 0, type = null;
+  for (let i = seq.length - 1; i >= 0; i--) {
+    if (type === null) { type = seq[i]; streak = 1; }
+    else if (seq[i] === type) streak++;
+    else break;
+  }
+  return { last5, streak, type };
 }
 
 // ============================================================
@@ -1232,7 +1289,7 @@ function renderFifaCard(p) {
 
   const rec = getPlayerRecord(p.id);
   const recHTML = rec.pj > 0
-    ? `<div class="fifa-card-record">${rec.w}V · ${rec.d}E · ${rec.l}D</div>`
+    ? `<div class="fifa-card-record">${rec.w}V · ${rec.d}E · ${rec.l}D${rec.mvps>0?` · ⭐${rec.mvps}`:''}</div>`
     : '';
 
   return `<div class="fifa-card ${tier.cls}" onclick="openPlayerProfile('${p.id}')">
@@ -1301,8 +1358,12 @@ function openPlayerProfile(id) {
   const trimmedNote = validVoters >= 5 ? ' · con filtro extremos' : '';
 
   const rec = getPlayerRecord(p.id);
+  const form = getPlayerForm(p.id);
+  const formDots = form.last5.length
+    ? `<span style="display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle">${form.last5.map(x=>`<span class="form-dot ${x==='V'?'fd-v':x==='E'?'fd-e':'fd-d'}">${x}</span>`).join('')}</span>`
+    : '';
   const recChip = rec.pj > 0
-    ? `<span class="chip" style="margin-top:8px;color:var(--gold);border-color:rgba(240,192,64,.4)">🏆 ${rec.pj} PJ · ${rec.w}V ${rec.d}E ${rec.l}D · ${rec.pts} pts</span>`
+    ? `<span class="chip" style="margin-top:8px;color:var(--gold);border-color:rgba(240,192,64,.4)">🏆 ${rec.pj} PJ · ${rec.w}V ${rec.d}E ${rec.l}D · ${rec.pts} pts${rec.mvps>0?` · ⭐${rec.mvps} MVP`:''}</span>${formDots}`
     : '';
 
   let selfSection = '';
@@ -1680,26 +1741,31 @@ function exportVotesCSV() {
 
   rows.push([]);
   rows.push(['=== RESUMEN POR JUGADOR ===']);
-  rows.push(['Jugador', 'Posición', 'OVR', 'Votos válidos', ...STATS.map(s=>STAT_LABELS[s]+' prom')]);
+  rows.push(['Jugador', 'Posición', 'OVR', 'Votos válidos', 'PJ', 'V', 'E', 'D', 'Pts', 'MVPs', ...STATS.map(s=>STAT_LABELS[s]+' prom')]);
   state.players.forEach(p => {
     const ovr = getOverall(p) || '-';
     const pos = getEffectivePosition(p);
     const validCount = getValidRatings(p).length;
     const avg = getAvgStats(p) || {};
-    rows.push([p.username, pos, ovr, validCount, ...STATS.map(s => avg[s] || '-')]);
+    const rec = getPlayerRecord(p.id);
+    rows.push([p.username, pos, ovr, validCount, rec.pj, rec.w, rec.d, rec.l, rec.pts, rec.mvps, ...STATS.map(s => avg[s] || '-')]);
   });
 
   rows.push([]);
   rows.push(['=== HISTORIAL DE PARTIDOS ===']);
-  rows.push(['Fecha', 'Equipos', 'Resultado', 'Margen']);
+  rows.push(['Fecha', 'Equipos', 'Resultado', 'Margen', 'MVP']);
   matches.forEach(m => {
     const teamsStr = (m.teams||[]).map((t,i)=>`${TEAM_NAMES[i]}: ${(t.players||[]).map(p=>p.name).join(' / ')}`).join(' || ');
-    let resStr = 'Pendiente', marginStr = '';
+    let resStr = 'Pendiente', marginStr = '', mvpStr = '';
     if (m.result) {
       if (m.result.winner === 'draw') resStr = 'Empate';
       else { resStr = 'Ganó ' + TEAM_NAMES[m.result.winner]; marginStr = marginLabel(m.result.margin); }
+      if (m.result.mvp) {
+        const all = (m.teams||[]).flatMap(t=>t.players||[]);
+        mvpStr = all.find(p=>p.id===m.result.mvp)?.name || '';
+      }
     }
-    rows.push([m.match_date || '', teamsStr, resStr, marginStr]);
+    rows.push([m.match_date || '', teamsStr, resStr, marginStr, mvpStr]);
   });
 
   const csv = rows.map(row => row.map(cell => {
@@ -2016,6 +2082,9 @@ function renderBuiltTeams(teams) {
   // Botón reroll
   html += `<button class="btn btn-ghost w-full" style="margin-top:12px;justify-content:center" onclick="buildTeams(true)">🎲 Reroll equipos</button>`;
 
+  // Compartir por WhatsApp (todos)
+  html += `<button class="btn btn-ghost w-full" style="margin-top:8px;justify-content:center" onclick="shareTeams()">📲 Compartir equipos</button>`;
+
   // Guardar partido (admin, fuera de modo edición)
   if (isAdmin && !editMode) {
     html += `<button class="btn btn-primary w-full" style="margin-top:8px;justify-content:center" onclick="saveMatchFromTeams()">💾 Guardar partido en el historial</button>`;
@@ -2032,6 +2101,36 @@ function fulbitoMovePlayer(fromTeamIdx, playerIdx, direction) {
   const [player] = teams[fromTeamIdx].players.splice(playerIdx, 1);
   teams[toTeamIdx].players.push(player);
   renderBuiltTeams(teams);
+}
+
+// Compartir equipos como texto (WhatsApp / clipboard)
+async function shareTeams() {
+  const teams = state.builtTeams;
+  if (!teams || !teams.length) return;
+
+  function teamOvr(team) {
+    const vals = team.players.map(p => p.ovr || getOverall(p)).filter(Boolean);
+    return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : '—';
+  }
+
+  let text = '⚽ FULBITO DEL SÁBADO ⚽\n';
+  teams.forEach((t, i) => {
+    text += `\n${TEAM_EMOJIS[i]||'⚪'} EQUIPO ${TEAM_NAMES[i]||i+1} (OVR ${teamOvr(t)})\n`;
+    t.players.forEach(p => {
+      text += `• ${p.name} (${p.effPos||'?'})${p.isGuest?' 👤':''}\n`;
+    });
+  });
+  text += '\n¡Nos vemos en la cancha! 🔥';
+
+  if (navigator.share) {
+    try { await navigator.share({ text }); return; } catch(e) { /* cancelado */ }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('📋 Equipos copiados — pegalos en WhatsApp');
+  } catch(e) {
+    showToast('❌ No se pudo copiar');
+  }
 }
 
 // ============================================================
@@ -2067,7 +2166,7 @@ function formatMatchDate(m) {
 function saveMatchFromTeams() {
   const teams = state.builtTeams;
   if (!teams || !teams.length) return;
-  if (!confirm('¿Guardar este partido en el historial? Después vas a poder cargar quién ganó y por cuánto.')) return;
+  if (!confirm('¿Guardar este partido en el historial? Después podés ajustar la fecha y cargar el resultado en la pestaña Partidos.')) return;
 
   const m = {
     id: 'm' + Date.now(),
@@ -2086,8 +2185,21 @@ function saveMatchFromTeams() {
     created_by: state.currentUser.id
   };
   matches.unshift(m);
+  sortMatches();
   upsertMatch(m);
-  showToast('💾 Partido guardado — cargá el resultado en la pestaña Partidos');
+  showToast('💾 Partido guardado — fecha y resultado se cargan en Partidos');
+}
+
+// Editar fecha del partido (admin) — se guarda al instante
+async function updateMatchDate(id, val) {
+  const m = matches.find(x => x.id === id);
+  if (!m || !val) return;
+  m.match_date = val;
+  await upsertMatch(m);
+  sortMatches();
+  renderHistorial();
+  renderPlayers();
+  showToast('📅 Fecha actualizada');
 }
 
 function renderHistorial() {
@@ -2103,7 +2215,19 @@ function renderHistorial() {
     return;
   }
 
-  el.innerHTML = matches.map(m => {
+  // Resumen del historial
+  const played = matches.filter(m => m.result);
+  const draws = played.filter(m => m.result.winner === 'draw').length;
+  const routs = played.filter(m => m.result.margin === 3).length;
+  const pending = matches.length - played.length;
+  let summary = `<div class="match-summary">
+    <span class="chip">🎮 <b>${played.length}</b>&nbsp;jugado${played.length===1?'':'s'}</span>
+    <span class="chip" style="color:#60a5fa">🤝 <b>${draws}</b>&nbsp;empate${draws===1?'':'s'}</span>
+    <span class="chip" style="color:var(--gold)">💥 <b>${routs}</b>&nbsp;goleada${routs===1?'':'s'}</span>
+    ${pending>0?`<span class="chip" style="color:var(--gold)">⏳ <b>${pending}</b>&nbsp;pendiente${pending===1?'':'s'}</span>`:''}
+  </div>`;
+
+  el.innerHTML = summary + matches.map(m => {
     const teams = m.teams || [];
     const res = m.result;
 
@@ -2112,14 +2236,29 @@ function renderHistorial() {
     else if (res.winner === 'draw') badge = `<span class="match-badge draw">🤝 Empate</span>`;
     else badge = `<span class="match-badge win">🏆 Ganó Equipo ${TEAM_NAMES[res.winner]} ${marginLabel(res.margin)}</span>`;
 
+    // Fecha: editable inline para admin, texto para el resto
+    const dateHTML = isAdmin
+      ? `<span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:15px">📅</span><input type="date" class="match-date-input" value="${m.match_date||''}" onchange="updateMatchDate('${m.id}',this.value)" title="Editar fecha del partido"></span>`
+      : `<span class="match-date">📅 ${formatMatchDate(m)}</span>`;
+
     const teamsHTML = teams.map((t, i) => {
       const isWinner = res && res.winner === i;
-      const names = (t.players||[]).map(p => p.isGuest ? p.name+' 👤' : p.name).join('<br>');
+      const names = (t.players||[]).map(p => {
+        const mvpStar = res && res.mvp === p.id ? ' ⭐' : '';
+        return (p.isGuest ? p.name+' 👤' : p.name) + mvpStar;
+      }).join('<br>');
       return `<div class="match-team t${i}${isWinner?' winner':''}">
         <div class="match-team-name">${isWinner?'🏆 ':''}EQUIPO ${TEAM_NAMES[i]}</div>
         <div class="match-team-players">${names}</div>
       </div>`;
     }).join('');
+
+    let mvpHTML = '';
+    if (res && res.mvp) {
+      const all = teams.flatMap(t => t.players || []);
+      const mvpPlayer = all.find(p => p.id === res.mvp);
+      if (mvpPlayer) mvpHTML = `<div class="match-mvp">⭐ MVP del partido: <b>${mvpPlayer.name}</b></div>`;
+    }
 
     let actions = '';
     if (isAdmin) {
@@ -2133,10 +2272,11 @@ function renderHistorial() {
 
     return `<div class="match-card${!res?' pending':''}">
       <div class="match-head">
-        <span class="match-date">📅 ${formatMatchDate(m)}</span>
+        ${dateHTML}
         ${badge}
       </div>
       <div class="match-teams">${teamsHTML}</div>
+      ${mvpHTML}
       ${actions}
     </div>`;
   }).join('');
@@ -2155,6 +2295,7 @@ async function removeMatch(id) {
 let resultMatchId = null;
 let resultWinner = null;
 let resultMargin = null;
+let resultMvp = null;
 
 function openResultModal(mid) {
   const m = matches.find(x => x.id === mid);
@@ -2162,6 +2303,7 @@ function openResultModal(mid) {
   resultMatchId = mid;
   resultWinner = m.result ? m.result.winner : null;
   resultMargin = m.result ? m.result.margin : null;
+  resultMvp = m.result ? (m.result.mvp || null) : null;
   renderResultModal();
   openModal('modal-result');
 }
@@ -2174,6 +2316,11 @@ function setResultWinner(w) {
 
 function setResultMargin(mg) {
   resultMargin = mg;
+  renderResultModal();
+}
+
+function setResultMvp(pid) {
+  resultMvp = pid;
   renderResultModal();
 }
 
@@ -2202,6 +2349,19 @@ function renderResultModal() {
     html += `</div>`;
   }
 
+  // MVP opcional (aparece cuando ya hay resultado elegido)
+  if (resultWinner !== null) {
+    const allPlayers = teams.flatMap(t => t.players || []);
+    html += `<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">⭐ MVP del partido (opcional)</div>`;
+    html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
+    html += `<button class="btn btn-sm ${resultMvp===null?'btn-primary':'btn-ghost'}" onclick="setResultMvp(null)">Sin MVP</button>`;
+    allPlayers.forEach(p => {
+      const active = resultMvp === p.id;
+      html += `<button class="btn btn-sm ${active?'btn-primary':'btn-ghost'}" onclick="setResultMvp('${p.id}')">${active?'⭐ ':''}${p.name}${p.isGuest?' 👤':''}</button>`;
+    });
+    html += `</div>`;
+  }
+
   const ready = resultWinner === 'draw' || (resultWinner !== null && resultMargin !== null);
   html += `<button class="btn btn-green w-full" style="justify-content:center;margin-top:14px" ${ready?'':'disabled'} onclick="saveMatchResult()">✅ Guardar resultado</button>`;
 
@@ -2213,8 +2373,8 @@ async function saveMatchResult() {
   if (!m) return;
   if (resultWinner === null) return;
   m.result = resultWinner === 'draw'
-    ? { winner: 'draw', margin: null }
-    : { winner: resultWinner, margin: resultMargin };
+    ? { winner: 'draw', margin: null, mvp: resultMvp || null }
+    : { winner: resultWinner, margin: resultMargin, mvp: resultMvp || null };
   await upsertMatch(m);
   closeModal('modal-result');
   renderPartidos();
@@ -2251,14 +2411,26 @@ function renderRanking() {
       <div class="rank-cell">E</div>
       <div class="rank-cell">D</div>
     </div>
-    <div style="width:42px;text-align:center">Pts</div>
+    <div style="width:44px;text-align:center">Pts</div>
   </div>`;
 
   html += ranked.map((r, i) => {
     const posLabel = medals[i] || (i+1);
+    const form = getPlayerForm(r.p.id);
+    const dots = form.last5.map(x=>`<span class="form-dot ${x==='V'?'fd-v':x==='E'?'fd-e':'fd-d'}">${x}</span>`).join('');
+    let streakHTML = '';
+    if (form.streak >= 2) {
+      if (form.type === 'V') streakHTML = `<span style="color:var(--gold);font-weight:700">🔥${form.streak}V</span>`;
+      else if (form.type === 'D') streakHTML = `<span style="opacity:.7">🥶${form.streak}D</span>`;
+    }
+    const mvpHTML = r.mvps > 0 ? `<span style="color:var(--gold);font-weight:700">⭐${r.mvps}</span>` : '';
+    const subHTML = (form.last5.length || streakHTML || mvpHTML)
+      ? `<div class="rank-sub">${dots}${streakHTML?'&nbsp;'+streakHTML:''}${mvpHTML?'&nbsp;'+mvpHTML:''}</div>`
+      : '';
+
     return `<div class="rank-row${i===0?' top1':''}" onclick="openPlayerProfile('${r.p.id}')" style="cursor:pointer">
       <div class="rank-pos">${posLabel}</div>
-      <div class="rank-name">${r.p.name}</div>
+      <div class="rank-name">${r.p.name}${subHTML}</div>
       <div class="rank-cells">
         <div class="rank-cell"><b>${r.pj}</b><span>PJ</span></div>
         <div class="rank-cell"><b style="color:var(--green)">${r.w}</b><span>V</span></div>
@@ -2269,7 +2441,7 @@ function renderRanking() {
     </div>`;
   }).join('');
 
-  html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">Victoria = 3 pts · Empate = 1 pt · Los invitados no suman al ranking</div>`;
+  html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">Victoria = 3 pts · Empate = 1 pt · ⭐ = veces MVP · Cuadraditos = últimos 5 partidos<br>Los invitados no suman al ranking</div>`;
 
   el.innerHTML = html;
 }
