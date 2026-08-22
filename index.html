@@ -425,6 +425,10 @@ body{
 
 /* ===== STATS ampliadas ===== */
 .period-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.stats-filter-card{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(34,197,94,.07));border:1px solid rgba(240,192,64,.34);border-radius:var(--radius-md);padding:11px 12px;margin-bottom:12px;box-shadow:var(--shadow-card)}
+.stats-filter-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:700;white-space:nowrap}
+.stats-filter-select{min-width:0;flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:'Barlow',sans-serif;font-weight:600;font-size:13px;padding:8px 9px;outline:none;color-scheme:dark}
+.stats-filter-select:focus{border-color:var(--gold)}
 .stat-chips{display:flex;flex-wrap:wrap;gap:6px}
 .stat-chip{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 10px;min-width:74px;flex:1 1 74px}
 .stat-chip b{display:block;font-family:'Bebas Neue',sans-serif;font-size:23px;line-height:1;color:var(--text)}
@@ -432,10 +436,29 @@ body{
 .bar-row{display:flex;align-items:center;gap:8px;padding:4px 0}
 .bar-name{width:92px;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar-track{flex:1;height:9px;background:var(--bg3);border-radius:5px;overflow:hidden}
-.bar-fill{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--gold2),var(--gold))}
+.bar-fill{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--gold2),var(--gold));transform-origin:left;animation:statBarGrow .48s ease both}
 .bar-fill.green{background:linear-gradient(90deg,#15803d,var(--green))}
 .bar-fill.blue{background:linear-gradient(90deg,#1d4ed8,#60a5fa)}
 .bar-val{width:46px;text-align:right;font-family:'Bebas Neue',sans-serif;font-size:17px;color:var(--gold)}
+.bar-meta{width:70px;text-align:right;font-size:10px;color:var(--muted);line-height:1.15;white-space:nowrap}
+.goal-leaders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:13px}
+.goal-leader{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;min-width:0}
+.goal-leader-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.55px;color:var(--muted);display:block;margin-bottom:4px}
+.goal-leader-name{display:block;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.goal-leader-value{display:block;font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1.05;color:var(--green);margin-top:2px}
+.player-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(240,192,64,.15),rgba(28,36,48,.96) 55%,rgba(34,197,94,.09));border-color:rgba(240,192,64,.42)!important}
+.player-hero:after{content:'⚽';position:absolute;right:-7px;bottom:-24px;font-size:120px;opacity:.055;pointer-events:none}
+.player-hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:relative;z-index:1;margin-bottom:12px}
+.player-hero-name{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.7px;color:var(--text);line-height:1}
+.player-hero-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.form-line{position:relative;z-index:1;display:flex;align-items:center;gap:5px;margin-top:13px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.player-actions{position:relative;z-index:1;margin-top:13px}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.h2h-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;margin-right:3px;font-size:14px}
+.h2h-record{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.2px;white-space:nowrap}
+@keyframes statBarGrow{from{transform:scaleX(.06);opacity:.35}to{transform:scaleX(1);opacity:1}}
+@keyframes statEnter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+#partidos-stats .admin-section{animation:statEnter .3s ease both}
 .months{display:flex;align-items:flex-end;gap:5px;height:72px;margin-top:8px}
 .month-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;min-width:0}
 .month-bar{width:100%;background:linear-gradient(180deg,var(--gold),var(--gold2));border-radius:3px 3px 0 0;min-height:3px}
@@ -3134,10 +3157,12 @@ function renderRanking() {
 }
 
 // ============================================================
-// STATS — panorama, goleadores, récords, duplas, rivalidades
+// STATS — panorama, goleadores, récords, duplas, rivalidades y ficha individual
 // ============================================================
 let statsPeriod = 'all';
+let statsPlayerId = 'all';
 function setStatsPeriod(p) { statsPeriod = p; renderStats(); }
+function setStatsPlayer(id) { statsPlayerId = id; renderStats(); }
 
 function scopedMatches() {
   const played = matches.filter(isPlayed).slice().sort((a,b) =>
@@ -3172,6 +3197,121 @@ function statsPlayers(ms) {
 
 function pickTop(arr, cmp) { return arr.length ? arr.slice().sort(cmp)[0] : null; }
 function pct(x) { return Math.round(x*100) + '%'; }
+function goalsPerGame(record) { return record.pj ? record.goals / record.pj : 0; }
+function goalAverageMinimum(ms) { return Math.max(3, Math.ceil(ms.length * .30)); }
+
+function statFormDots(playerId, ms) {
+  const form = getPlayerForm(playerId, ms);
+  if (!form.last5.length) return '<span style="color:var(--muted);font-size:12px">Sin partidos suficientes</span>';
+  return form.last5.map(x => `<span class="form-dot ${x==='V'?'fd-v':x==='E'?'fd-e':'fd-d'}">${x}</span>`).join('');
+}
+
+function playerLastMatch(playerId, ms) {
+  const last = getPlayerMatchesChrono(playerId, ms).slice(-1)[0];
+  if (!last) return '';
+  const ti = (last.teams||[]).findIndex(t => (t.players||[]).some(p => p.id === playerId));
+  const result = last.result.winner === 'draw' ? 'Empate' : last.result.winner === ti ? 'Victoria' : 'Derrota';
+  const icon = result === 'Victoria' ? '✅' : result === 'Empate' ? '🤝' : '❌';
+  const goals = getGoals(last)[playerId] || 0;
+  return `${icon} Último partido: <b>${result}</b> · ${formatMatchDate(last)}${goals ? ` · ⚽ ${goals}` : ''}${last.result.mvp===playerId ? ' · ⭐ MVP' : ''}`;
+}
+
+function playerDashboardHTML(ms, player) {
+  const rec = recordIn(ms, player.id);
+  const gpp = goalsPerGame(rec);
+  const presentismo = rec.pj / Math.max(1, ms.length);
+  const minGpp = goalAverageMinimum(ms);
+  const streak = getMaxWinStreak(player.id, ms);
+  const unbeaten = getMaxUnbeatenStreak(player.id, ms);
+  const periodLabel = statsPeriod === 'all' ? 'histórico' : statsPeriod === 'last10' ? 'últimos 10 partidos' : statsPeriod;
+
+  return `<div class="admin-section player-hero">
+    <div class="player-hero-head">
+      <div>
+        <div class="player-hero-name">${player.name}</div>
+        <div class="player-hero-sub">Expediente individual · ${periodLabel} · ${rec.pj} de ${ms.length} partidos del grupo</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openPlayerProfile('${player.id}')">Ver carta</button>
+    </div>
+    <div class="stat-chips">
+      <div class="stat-chip"><b>${rec.pj}</b><span>PJ</span></div>
+      <div class="stat-chip"><b style="color:var(--green)">${pct(rec.wr)}</b><span>Victorias</span></div>
+      <div class="stat-chip"><b>${rec.ppp.toFixed(2)}</b><span>Pts / PJ</span></div>
+      <div class="stat-chip"><b style="color:var(--green)">⚽ ${rec.goals}</b><span>Goles</span></div>
+      <div class="stat-chip"><b style="color:var(--green)">${gpp.toFixed(2)}</b><span>Goles / PJ</span></div>
+      <div class="stat-chip"><b style="color:#60a5fa">${pct(presentismo)}</b><span>Presente</span></div>
+    </div>
+    <div class="form-line"><span>Forma reciente</span>${statFormDots(player.id, ms)}${streak >= 2 ? `<span style="margin-left:5px;color:var(--green)">🔥 ${streak}V seguidas</span>` : ''}</div>
+    <div style="position:relative;z-index:1;font-size:11px;color:var(--muted);margin-top:9px;line-height:1.55">${playerLastMatch(player.id, ms)}${unbeaten >= 3 ? ` · 🛡️ ${unbeaten} sin perder` : ''}${rec.mvps ? ` · ⭐ ${rec.mvps} MVP` : ''}<br>${rec.pj >= minGpp ? `🎯 Clasifica al promedio goleador (mín. ${minGpp} PJ).` : `🎯 Para clasificar al promedio goleador necesita ${minGpp-rec.pj} PJ más.`}</div>
+  </div>`;
+}
+
+function playerHeadToHeadHTML(ms, player) {
+  const { against } = getPairStats(ms);
+  const qualified = getPaternidades(ms);
+  const rows = Object.entries(against)
+    .filter(([key]) => key.split('|').includes(player.id))
+    .map(([key, v]) => {
+      const other = key.split('|').find(id => id !== player.id);
+      const w = v.wins[player.id] || 0;
+      const l = v.wins[other] || 0;
+      const d = v.draws || 0;
+      const tag = qualified.find(x => x.padre === player.id && x.hijo === other) ? 'child'
+        : qualified.find(x => x.hijo === player.id && x.padre === other) ? 'parent' : '';
+      return { other, w, d, l, games:v.games, wr:w/v.games, ppp:(w*3+d)/v.games, tag };
+    })
+    .sort((a,b) => b.games-a.games || b.ppp-a.ppp || a.other.localeCompare(b.other));
+
+  if (!rows.length) return `<div class="admin-section"><h3>⚔️ Cruces directos</h3><p class="sec-note">Todavía no hay cruces de ${player.name} contra otros jugadores en este período.</p></div>`;
+
+  const children = rows.filter(x=>x.tag==='child');
+  const parents = rows.filter(x=>x.tag==='parent');
+  const summary = [
+    children.length ? `<span class="chip" style="color:var(--green);border-color:rgba(34,197,94,.35)">👨‍👦 Tiene de hijo a ${children.length}</span>` : '',
+    parents.length ? `<span class="chip" style="color:var(--red);border-color:rgba(239,68,68,.35)">🍼 Lo tienen de hijo ${parents.length}</span>` : ''
+  ].filter(Boolean).join('');
+  const badge = row => row.tag === 'child' ? '👨‍👦' : row.tag === 'parent' ? '🍼' : '⚔️';
+
+  return `<div class="admin-section">
+    <h3>⚔️ ${player.name} vs todos</h3>
+    <p class="sec-note">Solo cuenta cuando estuvieron en equipos distintos. V-E-D está siempre visto desde ${player.name}.</p>
+    ${summary ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${summary}</div>` : ''}
+    <div class="table-scroll"><table class="mini-table">
+      <thead><tr><th>Rival</th><th>Cruces</th><th>V-E-D</th><th>%V</th><th>Pts/PJ</th></tr></thead>
+      <tbody>${rows.map(r => `<tr onclick="openPlayerProfile('${r.other}')">
+        <td><span class="h2h-badge">${badge(r)}</span>${playerNameById(r.other)}</td>
+        <td>${r.games}</td>
+        <td class="h2h-record" style="color:${r.w>r.l?'var(--green)':r.w<r.l?'var(--red)':'var(--gold)'}">${r.w}-${r.d}-${r.l}</td>
+        <td style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${pct(r.wr)}</td>
+        <td>${r.ppp.toFixed(2)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function playerPartnersHTML(ms, player) {
+  const { together } = getPairStats(ms);
+  const rows = Object.entries(together)
+    .filter(([key]) => key.split('|').includes(player.id))
+    .map(([key, v]) => {
+      const other = key.split('|').find(id => id !== player.id);
+      const pj = v.w + v.d + v.l;
+      return { other, ...v, pj, wr:v.w/pj, ppp:(v.w*3+v.d)/pj };
+    })
+    .sort((a,b) => b.pj-a.pj || b.ppp-a.ppp);
+  if (!rows.length) return '';
+  const best = rows.filter(r=>r.pj>=2).slice().sort((a,b)=>b.wr-a.wr||b.pj-a.pj)[0];
+  const worst = rows.filter(r=>r.pj>=2).slice().sort((a,b)=>a.wr-b.wr||b.pj-a.pj)[0];
+  return `<div class="admin-section">
+    <h3>🤝 Sociedades de ${player.name}</h3>
+    <p class="sec-note">Rendimiento cuando jugaron en el mismo equipo.</p>
+    ${best ? `<div class="fact-row"><span class="fact-emoji">✨</span><div><div class="fact-label">Mejor socio</div><div class="fact-val">${playerNameById(best.other)} · ${best.w}V ${best.d}E ${best.l}D (${pct(best.wr)})</div></div></div>` : ''}
+    ${worst && worst.other!==best?.other ? `<div class="fact-row"><span class="fact-emoji">🧊</span><div><div class="fact-label">Sociedad más difícil</div><div class="fact-val">${playerNameById(worst.other)} · ${worst.w}V ${worst.d}E ${worst.l}D (${pct(worst.wr)})</div></div></div>` : ''}
+    <div class="table-scroll" style="margin-top:8px"><table class="mini-table"><thead><tr><th>Compañero</th><th>PJ</th><th>V-E-D</th><th>%V</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr onclick="openPlayerProfile('${r.other}')"><td>🤝 ${playerNameById(r.other)}</td><td>${r.pj}</td><td class="h2h-record" style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${r.w}-${r.d}-${r.l}</td><td>${pct(r.wr)}</td></tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
 
 function renderStats() {
   const el = document.getElementById('partidos-stats');
@@ -3188,11 +3328,21 @@ function renderStats() {
 
   const years = [...new Set(allPlayed.map(m => (m.match_date||'').slice(0,4)).filter(Boolean))].sort().reverse();
   if (statsPeriod !== 'all' && statsPeriod !== 'last10' && !years.includes(statsPeriod)) statsPeriod = 'all';
+  let selectedPlayer = state.players.find(p => p.id === statsPlayerId);
+  if (statsPlayerId !== 'all' && !selectedPlayer) { statsPlayerId = 'all'; selectedPlayer = null; }
 
   let html = `<div class="period-bar">
     <button class="btn btn-sm ${statsPeriod==='all'?'btn-primary':'btn-ghost'}" onclick="setStatsPeriod('all')">🏛️ Histórico</button>
     ${allPlayed.length>10?`<button class="btn btn-sm ${statsPeriod==='last10'?'btn-primary':'btn-ghost'}" onclick="setStatsPeriod('last10')">🔟 Últimos 10</button>`:''}
     ${years.length>1?years.map(y=>`<button class="btn btn-sm ${statsPeriod===y?'btn-primary':'btn-ghost'}" onclick="setStatsPeriod('${y}')">${y}</button>`).join(''):''}
+  </div>`;
+
+  html += `<div class="stats-filter-card">
+    <label class="stats-filter-label" for="stats-player-select">👤 Ver</label>
+    <select id="stats-player-select" class="stats-filter-select" onchange="setStatsPlayer(this.value)">
+      <option value="all" ${statsPlayerId==='all'?'selected':''}>🏟️ Estadísticas de todo el grupo</option>
+      ${state.players.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}" ${p.id===statsPlayerId?'selected':''}>${p.name}</option>`).join('')}
+    </select>
   </div>`;
 
   const ms = scopedMatches();
@@ -3204,15 +3354,21 @@ function renderStats() {
 
   const players = statsPlayers(ms);
 
-  html += panoramaHTML(ms, players);
-  html += goleadoresHTML(ms, players);
-  html += factsHTML(ms, players);
-  html += paternidadesHTML(ms);
-  html += rendimientoHTML(ms, players);
-  html += duplasHTML(ms);
-  html += rivalidadesHTML(ms);
-  html += presentismoHTML(ms, players);
-  html += votacionHTML();
+  if (selectedPlayer) {
+    html += playerDashboardHTML(ms, selectedPlayer);
+    html += playerHeadToHeadHTML(ms, selectedPlayer);
+    html += playerPartnersHTML(ms, selectedPlayer);
+  } else {
+    html += panoramaHTML(ms, players);
+    html += goleadoresHTML(ms, players);
+    html += factsHTML(ms, players);
+    html += paternidadesHTML(ms);
+    html += rendimientoHTML(ms, players);
+    html += duplasHTML(ms);
+    html += rivalidadesHTML(ms);
+    html += presentismoHTML(ms, players);
+    html += votacionHTML();
+  }
 
   el.innerHTML = html;
 }
@@ -3288,8 +3444,11 @@ function goleadoresHTML(ms, players) {
     </div>`;
   }
 
-  const conGoles = players.filter(x => x.goals > 0).sort((a,b) => b.goals - a.goals || b.goals/b.pj - a.goals/a.pj);
+  const conGoles = players.filter(x => x.goals > 0).sort((a,b) => b.goals - a.goals || goalsPerGame(b) - goalsPerGame(a));
   const max = Math.max(1, ...conGoles.map(x => x.goals));
+  const minGpp = goalAverageMinimum(ms);
+  const maxGoleador = conGoles[0];
+  const efectivo = pickTop(conGoles.filter(x => x.pj >= minGpp), (a,b) => goalsPerGame(b) - goalsPerGame(a) || b.goals-a.goals || b.pj-a.pj);
 
   // Récord individual en un partido
   let bestSolo = null;
@@ -3311,6 +3470,7 @@ function goleadoresHTML(ms, players) {
       <span class="bar-name">${i===0?'🥇 ':''}${x.p.name}</span>
       <div class="bar-track"><div class="bar-fill green" style="width:${Math.round(x.goals/max*100)}%"></div></div>
       <span class="bar-val" style="color:var(--green)">${x.goals}</span>
+      <span class="bar-meta">${x.pj} PJ · ${goalsPerGame(x).toFixed(2)} G/PJ</span>
     </div>`).join('');
 
   const extras = [];
@@ -3320,7 +3480,11 @@ function goleadoresHTML(ms, players) {
 
   return `<div class="admin-section">
     <h3>⚽ Goleadores</h3>
-    <p class="sec-note">Goles anotados en la planilla (mín. 1). Los promedios usan solo los partidos que jugó cada uno.</p>
+    <div class="goal-leaders">
+      <div class="goal-leader"><span class="goal-leader-label">🥇 Máximo goleador</span><span class="goal-leader-name">${maxGoleador.p.name}</span><span class="goal-leader-value">${maxGoleador.goals} goles</span></div>
+      <div class="goal-leader"><span class="goal-leader-label">🚀 Más efectivo</span><span class="goal-leader-name">${efectivo ? efectivo.p.name : 'A definir'}</span><span class="goal-leader-value">${efectivo ? `${goalsPerGame(efectivo).toFixed(2)} G/PJ` : `mín. ${minGpp} PJ`}</span></div>
+    </div>
+    <p class="sec-note">La tabla es por goles totales. El promedio usa solo los partidos jugados y exige al menos ${minGpp} PJ (${Math.round(minGpp/ms.length*100)}% del período), para que sea comparable.</p>
     ${filas}
     <div style="font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.8">${extras.join('<br>')}</div>
   </div>`;
@@ -3372,8 +3536,9 @@ function factsHTML(ms, players) {
   const goleador = pickTop(players.filter(x=>x.goals>0), (a,b)=>b.goals-a.goals);
   if (goleador) facts.push(['🥇','Botín de oro', `${goleador.p.name} — ${goleador.goals} gol${goleador.goals===1?'':'es'}`]);
 
-  const promGol = pickTop(players.filter(x=>x.goals>0 && x.pj>=3), (a,b)=>(b.goals/b.pj)-(a.goals/a.pj));
-  if (promGol) facts.push(['🎯','Mejor promedio de gol', `${promGol.p.name} — ${(promGol.goals/promGol.pj).toFixed(2)} por partido`]);
+  const minGpp = goalAverageMinimum(ms);
+  const promGol = pickTop(players.filter(x=>x.goals>0 && x.pj>=minGpp), (a,b)=>goalsPerGame(b)-goalsPerGame(a));
+  if (promGol) facts.push(['🎯','Mejor promedio de gol', `${promGol.p.name} — ${goalsPerGame(promGol).toFixed(2)} por partido (mín. ${minGpp} PJ)`]);
 
   const paters = getPaternidades(ms);
   if (paters.length) {
@@ -3510,7 +3675,7 @@ function paternidadNivel(diff) {
 // Cruces directos donde uno le saca ventaja clara al otro
 function getPaternidades(ms, minGames, minDiff) {
   const { against } = getPairStats(ms);
-  const min = minGames || 2, dmin = minDiff || 2;
+  const min = minGames || 3, dmin = minDiff || 2;
   return Object.entries(against).map(([key, v]) => {
     const [a, b] = key.split('|');
     const aw = v.wins[a] || 0, bw = v.wins[b] || 0;
@@ -3529,7 +3694,7 @@ function paternidadesHTML(ms) {
     return `<div class="admin-section pater-card">
       <h3>👶 Paternidades</h3>
       ${babySVG(160, 'baby pater-watermark')}
-      <p class="sec-note" style="position:relative;z-index:1">Por ahora nadie tiene hijos: hace falta que alguien le gane al menos 2 partidos más que el otro en cruces directos. Todos limpios… por ahora.</p>
+      <p class="sec-note" style="position:relative;z-index:1">Por ahora nadie tiene hijos: hacen falta al menos 3 cruces directos y 2 victorias de ventaja. Todos limpios… por ahora.</p>
     </div>`;
   }
 
@@ -3540,7 +3705,7 @@ function paternidadesHTML(ms) {
   return `<div class="admin-section pater-card">
     <h3>👶 Paternidades</h3>
     ${babySVG(160, 'baby pater-watermark')}
-    <p class="sec-note" style="position:relative;z-index:1">Cara a cara en equipos distintos: el que saca 2 victorias o más de ventaja se lleva la patria potestad.</p>
+    <p class="sec-note" style="position:relative;z-index:1">Cara a cara en equipos distintos: mínimo 3 cruces y 2 victorias de ventaja para la patria potestad.</p>
     ${paters.slice(0, 8).map(d => `
       <div class="pater-row">
         ${babySVG(40)}
