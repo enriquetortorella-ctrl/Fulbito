@@ -1429,6 +1429,19 @@ function isPlayed(m) {
 
 function getGoals(m) { return (m && m.result && m.result.goals) || {}; }
 
+// Desde que existe la planilla de goles, los partidos guardan esta marca dentro
+// de result. Para los ya creados, la presencia de `goals` es compatible con la
+// versión anterior de la planilla: incluye también los 0-0 registrados.
+function hasGoalsTracking(m) {
+  if (!m || !m.result) return false;
+  if (Object.prototype.hasOwnProperty.call(m.result, 'goalsTracked')) return m.result.goalsTracked === true;
+  return Object.prototype.hasOwnProperty.call(m.result, 'goals');
+}
+
+function goalTrackedMatches(ms) {
+  return (ms || matches).filter(m => isPlayed(m) && hasGoalsTracking(m));
+}
+
 function teamGoals(m, ti) {
   const g = getGoals(m);
   let n = g['__t'+ti] || 0;
@@ -1469,20 +1482,23 @@ function matchPlayerName(m, id) {
 // RÉCORD / FORMA / MVP / GOLES POR JUGADOR (calculado desde matches)
 // ============================================================
 function getPlayerRecord(playerId, year) {
-  let w=0, d=0, l=0, mvps=0, goals=0;
+  let w=0, d=0, l=0, mvps=0, goals=0, goalPj=0;
   matches.forEach(m => {
     if (year && (m.match_date||'').slice(0,4) !== year) return;
     const teams = m.teams || [];
     const teamIdx = teams.findIndex(t => (t.players||[]).some(p => p.id === playerId));
     if (teamIdx === -1) return;
-    goals += getGoals(m)[playerId] || 0;
+    if (isPlayed(m) && hasGoalsTracking(m)) {
+      goals += getGoals(m)[playerId] || 0;
+      goalPj++;
+    }
     if (!isPlayed(m)) return;
     if (m.result.winner === 'draw') d++;
     else if (m.result.winner === teamIdx) w++;
     else l++;
     if (m.result.mvp === playerId) mvps++;
   });
-  return { w, d, l, mvps, goals, pj: w+d+l, pts: w*3 + d };
+  return { w, d, l, mvps, goals, goalPj, pj: w+d+l, pts: w*3 + d };
 }
 
 // Nombre de jugador por id (busca en plantel y, si fue borrado, en el historial)
@@ -1663,7 +1679,7 @@ function hubFixturePlayerHTML(matchPlayer) {
     ? `<img class="fixture-avatar" src="${photo}" alt="">`
     : `<div class="fixture-avatar fixture-avatar-ph">${posEmoji(pos) || '👤'}</div>`;
   const metrics = record
-    ? `<div class="fixture-player-metrics"><span class="fixture-player-metric"><b>${ovr}</b>OVR</span><span class="fixture-player-metric"><b>${record.pj}</b>PJ</span><span class="fixture-player-metric goal"><b>${record.pj ? (record.goals / record.pj).toFixed(2) : '—'}</b>G/P</span></div>`
+    ? `<div class="fixture-player-metrics"><span class="fixture-player-metric"><b>${ovr}</b>OVR</span><span class="fixture-player-metric"><b>${record.pj}</b>PJ</span><span class="fixture-player-metric goal"><b>${record.goalPj ? (record.goals / record.goalPj).toFixed(2) : '—'}</b>G/P</span></div>`
     : `<span class="fixture-player-guest">INVITADO</span>`;
   return `<div class="fixture-player">${avatar}<div style="min-width:0"><div class="fixture-player-name">${matchPlayer.name}</div><div class="fixture-player-pos">${POS_LABELS[pos] || pos}</div></div>${metrics}</div>`;
 }
@@ -1707,8 +1723,9 @@ function renderHub() {
   const latest = played[0] || null;
   const openMatch = hubOpenMatch();
   const rows = state.players.map(p => ({ p, rec: getPlayerRecord(p.id), ovr: getOverall(p) || 60 }));
+  const hubMinGpp = goalAverageMinimum(played);
   const byGoals = rows.slice().filter(x => x.rec.goals > 0).sort((a,b) => b.rec.goals - a.rec.goals || a.p.name.localeCompare(b.p.name))[0];
-  const byAverage = rows.slice().filter(x => x.rec.pj >= 2 && x.rec.goals > 0).sort((a,b) => (b.rec.goals / b.rec.pj) - (a.rec.goals / a.rec.pj) || b.rec.goals - a.rec.goals)[0];
+  const byAverage = rows.slice().filter(x => x.rec.goalPj >= hubMinGpp && x.rec.goals > 0).sort((a,b) => (b.rec.goals / b.rec.goalPj) - (a.rec.goals / a.rec.goalPj) || b.rec.goals - a.rec.goals)[0];
   const byGames = rows.slice().filter(x => x.rec.pj > 0).sort((a,b) => b.rec.pj - a.rec.pj || b.rec.pts - a.rec.pts)[0];
   const byOverall = rows.slice().sort((a,b) => b.ovr - a.ovr || a.p.name.localeCompare(b.p.name))[0];
   const greeting = (me?.name || 'equipo').split(' ')[0];
@@ -1741,7 +1758,7 @@ function renderHub() {
     </section>
     ${fixtureHTML}
     <section class="hub-grid"><div class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">ARCHIVO DEL CLUB</div><div class="hub-panel-title">ÚLTIMO PARTIDO</div></div><span class="chip">${played.length} jugado${played.length === 1 ? '' : 's'}</span></div>${lastMatchHTML}</div>
-      <aside class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div><div class="hub-leaders">${hubLeaderRow('⚽', 'GOLEADOR', byGoals, byGoals ? `${byGoals.rec.goals} G` : fallbackValue, byGoals ? `${byGoals.rec.pj || 0} PJ` : 'sin goles')} ${hubLeaderRow('📈', 'MEJOR PROMEDIO', byAverage, byAverage ? `${(byAverage.rec.goals / byAverage.rec.pj).toFixed(2)}` : fallbackValue, byAverage ? 'goles / partido' : 'mínimo 2 PJ')} ${hubLeaderRow('🗓️', 'MÁS PRESENTE', byGames, byGames ? `${byGames.rec.pj} PJ` : fallbackValue, byGames ? `${byGames.rec.w}V · ${byGames.rec.d}E · ${byGames.rec.l}D` : 'sin historial')} ${hubLeaderRow('🛡️', 'OVR DEL CLUB', byOverall, byOverall ? byOverall.ovr : fallbackValue, byOverall ? (POS_LABELS[getEffectivePosition(byOverall.p)] || getEffectivePosition(byOverall.p)) : 'plantel')}</div></aside>
+      <aside class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div><div class="hub-leaders">${hubLeaderRow('⚽', 'GOLEADOR', byGoals, byGoals ? `${byGoals.rec.goals} G` : fallbackValue, byGoals ? `${byGoals.rec.goalPj || 0} PJ registrados` : 'sin goles')} ${hubLeaderRow('📈', 'MEJOR PROMEDIO', byAverage, byAverage ? `${(byAverage.rec.goals / byAverage.rec.goalPj).toFixed(2)}` : fallbackValue, byAverage ? 'desde registro de goles' : `mínimo ${hubMinGpp} PJ registrados`)} ${hubLeaderRow('🗓️', 'MÁS PRESENTE', byGames, byGames ? `${byGames.rec.pj} PJ` : fallbackValue, byGames ? `${byGames.rec.w}V · ${byGames.rec.d}E · ${byGames.rec.l}D` : 'sin historial')} ${hubLeaderRow('🛡️', 'OVR DEL CLUB', byOverall, byOverall ? byOverall.ovr : fallbackValue, byOverall ? (POS_LABELS[getEffectivePosition(byOverall.p)] || getEffectivePosition(byOverall.p)) : 'plantel')}</div></aside>
     </section>
     <section class="hub-quick-grid"><button class="hub-quick" onclick="switchTab('asistencia')"><div class="hub-quick-icon">📣</div><div><b>Confirmar asistencia</b><span>Quién está para el sábado</span></div></button><button class="hub-quick" onclick="switchTab('jugadores')"><div class="hub-quick-icon">👥</div><div><b>Explorar plantel</b><span>${state.players.length} cartas del club</span></div></button>${quickThird}</section>
   </div>`;
@@ -1925,7 +1942,7 @@ function openPlayerProfile(id) {
     ? `<span class="chip" style="margin-top:8px;color:var(--gold);border-color:rgba(240,192,64,.4)">🏆 ${rec.pj} PJ · ${rec.w}V ${rec.d}E ${rec.l}D · ${rec.pts} pts${rec.mvps>0?` · ⭐${rec.mvps} MVP`:''}</span>${formDots}`
     : '';
   const goalChip = rec.goals > 0
-    ? `<span class="chip" style="margin-top:8px;color:var(--green);border-color:rgba(34,197,94,.4)">⚽ ${rec.goals} gol${rec.goals===1?'':'es'}${rec.pj?` · ${(rec.goals/rec.pj).toFixed(1)} por partido`:''}</span>`
+    ? `<span class="chip" style="margin-top:8px;color:var(--green);border-color:rgba(34,197,94,.4)">⚽ ${rec.goals} gol${rec.goals===1?'':'es'}${rec.goalPj?` · ${(rec.goals/rec.goalPj).toFixed(1)} por partido desde registro`:''}</span>`
     : '';
 
   let selfSection = '';
@@ -2865,8 +2882,9 @@ function queueSaveMatch(m) {
 function addGoal(mid, key, delta) {
   const m = matches.find(x => x.id === mid);
   if (!m) return;
-  if (!m.result) m.result = { winner: null, margin: null, mvp: null, goals: {} };
+  if (!m.result) m.result = { winner: null, margin: null, mvp: null, goals: {}, goalsTracked: true };
   if (!m.result.goals) m.result.goals = {};
+  m.result.goalsTracked = true;
   const next = Math.max(0, (m.result.goals[key] || 0) + delta);
   if (next === 0) delete m.result.goals[key];
   else m.result.goals[key] = next;
@@ -3018,7 +3036,8 @@ async function closeMatchFromGoals(mid) {
     winner,
     margin,
     mvp: mvpSugerido,
-    goals: getGoals(m)
+    goals: getGoals(m),
+    goalsTracked: true
   };
   await upsertMatch(m);
   renderHub();
@@ -3031,8 +3050,12 @@ async function resetGoals(mid) {
   const m = matches.find(x => x.id === mid);
   if (!m) return;
   if (!confirm('¿Borrar todos los goles de este partido?')) return;
-  if (isPlayed(m)) m.result.goals = {};
-  else m.result = null;
+  if (isPlayed(m)) {
+    m.result.goals = {};
+    m.result.goalsTracked = true;
+  } else {
+    m.result = { winner: null, margin: null, mvp: null, goals: {}, goalsTracked: true };
+  }
   await upsertMatch(m);
   renderHub();
   renderGoles();
@@ -3096,7 +3119,7 @@ function saveMatchFromTeams() {
         isGuest: !!p.isGuest
       }))
     })),
-    result: null,
+    result: { winner: null, margin: null, mvp: null, goals: {}, goalsTracked: true },
     created_by: state.currentUser.id
   };
   matches.unshift(m);
@@ -3329,8 +3352,8 @@ async function saveMatchResult() {
   if (resultWinner === null) return;
   const goals = getGoals(m);
   m.result = resultWinner === 'draw'
-    ? { winner: 'draw', margin: null, mvp: resultMvp || null, goals }
-    : { winner: resultWinner, margin: resultMargin, mvp: resultMvp || null, goals };
+    ? { winner: 'draw', margin: null, mvp: resultMvp || null, goals, goalsTracked: hasGoalsTracking(m) }
+    : { winner: resultWinner, margin: resultMargin, mvp: resultMvp || null, goals, goalsTracked: hasGoalsTracking(m) };
   await upsertMatch(m);
   closeModal('modal-result');
   renderHub();
@@ -3476,18 +3499,21 @@ function scopedMatches() {
 }
 
 function recordIn(ms, pid) {
-  let w=0, d=0, l=0, mvps=0, goals=0, routs=0;
+  let w=0, d=0, l=0, mvps=0, goals=0, goalPj=0, routs=0;
   ms.forEach(m => {
     const ti = (m.teams||[]).findIndex(t => (t.players||[]).some(p => p.id === pid));
     if (ti === -1) return;
-    goals += getGoals(m)[pid] || 0;
+    if (hasGoalsTracking(m)) {
+      goals += getGoals(m)[pid] || 0;
+      goalPj++;
+    }
     if (m.result.winner === 'draw') d++;
     else if (m.result.winner === ti) { w++; if (m.result.margin === 3) routs++; }
     else l++;
     if (m.result.mvp === pid) mvps++;
   });
   const pj = w+d+l;
-  return { w, d, l, pj, mvps, goals, routs, pts: w*3+d, ppp: pj ? (w*3+d)/pj : 0, wr: pj ? w/pj : 0 };
+  return { w, d, l, pj, mvps, goals, goalPj, routs, pts: w*3+d, ppp: pj ? (w*3+d)/pj : 0, wr: pj ? w/pj : 0 };
 }
 
 function statsPlayers(ms) {
@@ -3498,8 +3524,8 @@ function statsPlayers(ms) {
 
 function pickTop(arr, cmp) { return arr.length ? arr.slice().sort(cmp)[0] : null; }
 function pct(x) { return Math.round(x*100) + '%'; }
-function goalsPerGame(record) { return record.pj ? record.goals / record.pj : 0; }
-function goalAverageMinimum(ms) { return Math.max(3, Math.ceil(ms.length * .30)); }
+function goalsPerGame(record) { return record.goalPj ? record.goals / record.goalPj : 0; }
+function goalAverageMinimum(ms) { return Math.max(3, Math.ceil(goalTrackedMatches(ms).length * .30)); }
 
 function statFormDots(playerId, ms) {
   const form = getPlayerForm(playerId, ms);
@@ -3539,11 +3565,11 @@ function playerDashboardHTML(ms, player) {
       <div class="stat-chip"><b style="color:var(--green)">${pct(rec.wr)}</b><span>Victorias</span></div>
       <div class="stat-chip"><b>${rec.ppp.toFixed(2)}</b><span>Pts / PJ</span></div>
       <div class="stat-chip"><b style="color:var(--green)">⚽ ${rec.goals}</b><span>Goles</span></div>
-      <div class="stat-chip"><b style="color:var(--green)">${gpp.toFixed(2)}</b><span>Goles / PJ</span></div>
+      <div class="stat-chip"><b style="color:var(--green)">${gpp.toFixed(2)}</b><span>Goles / PJ registrado</span></div>
       <div class="stat-chip"><b style="color:#60a5fa">${pct(presentismo)}</b><span>Presente</span></div>
     </div>
     <div class="form-line"><span>Forma reciente</span>${statFormDots(player.id, ms)}${streak >= 2 ? `<span style="margin-left:5px;color:var(--green)">🔥 ${streak}V seguidas</span>` : ''}</div>
-    <div style="position:relative;z-index:1;font-size:11px;color:var(--muted);margin-top:9px;line-height:1.55">${playerLastMatch(player.id, ms)}${unbeaten >= 3 ? ` · 🛡️ ${unbeaten} sin perder` : ''}${rec.mvps ? ` · ⭐ ${rec.mvps} MVP` : ''}<br>${rec.pj >= minGpp ? `🎯 Clasifica al promedio goleador (mín. ${minGpp} PJ).` : `🎯 Para clasificar al promedio goleador necesita ${minGpp-rec.pj} PJ más.`}</div>
+    <div style="position:relative;z-index:1;font-size:11px;color:var(--muted);margin-top:9px;line-height:1.55">${playerLastMatch(player.id, ms)}${unbeaten >= 3 ? ` · 🛡️ ${unbeaten} sin perder` : ''}${rec.mvps ? ` · ⭐ ${rec.mvps} MVP` : ''}<br>${rec.goalPj >= minGpp ? `🎯 Clasifica al promedio goleador (mín. ${minGpp} PJ con registro).` : `🎯 Para clasificar al promedio goleador necesita ${minGpp-rec.goalPj} PJ con registro más.`}</div>
   </div>`;
 }
 
@@ -3678,8 +3704,8 @@ function renderStats() {
 function panoramaHTML(ms, players) {
   const draws = ms.filter(m => m.result.winner === 'draw').length;
   const routs = ms.filter(m => m.result.margin === 3).length;
-  const goles = ms.reduce((a,m) => a + matchTotalGoals(m), 0);
-  const conGoles = ms.filter(matchHasGoals).length;
+  const trackedGoals = goalTrackedMatches(ms);
+  const goles = trackedGoals.reduce((a,m) => a + matchTotalGoals(m), 0);
   const colorWins = [0,0,0];
   ms.forEach(m => { if (m.result.winner !== 'draw') colorWins[m.result.winner]++; });
   const ultimo = ms[0];
@@ -3691,9 +3717,9 @@ function panoramaHTML(ms, players) {
     ['💥', routs, 'Goleadas'],
     ['👥', players.length, 'Jugadores'],
   ];
-  if (goles > 0) {
+  if (trackedGoals.length) {
     chips.push(['⚽', goles, 'Goles']);
-    chips.push(['📊', (goles/Math.max(1,conGoles)).toFixed(1), 'Goles/partido']);
+    chips.push(['📊', (goles/trackedGoals.length).toFixed(1), 'Goles/partido reg.']);
   }
 
   // Partidos por mes (últimos 8 meses con actividad)
@@ -3737,31 +3763,39 @@ function panoramaHTML(ms, players) {
 
 // --- 2. Goleadores ---
 function goleadoresHTML(ms, players) {
-  const goles = ms.reduce((a,m) => a + matchTotalGoals(m), 0);
+  const trackedGoals = goalTrackedMatches(ms);
+  const goles = trackedGoals.reduce((a,m) => a + matchTotalGoals(m), 0);
+  const minGpp = goalAverageMinimum(ms);
+  const trackingStart = trackedGoals.length ? formatMatchDate(trackedGoals[trackedGoals.length - 1]) : '';
+  if (!trackedGoals.length) {
+    return `<div class="admin-section">
+      <h3>⚽ Goleadores</h3>
+      <p class="sec-note">Todavía no hay partidos marcados con registro de goles en este período.</p>
+    </div>`;
+  }
   if (!goles) {
     return `<div class="admin-section">
       <h3>⚽ Goleadores</h3>
-      <p class="sec-note">Todavía no hay goles cargados en este período. Anotalos desde la pestaña ⚽ Goles mientras juegan y esta tabla se llena sola.</p>
+      <p class="sec-note">Hay ${trackedGoals.length} partido${trackedGoals.length===1?'':'s'} con registro de goles, pero todavía no se cargaron goles. Los 0–0 también cuentan para el promedio.</p>
     </div>`;
   }
 
   const conGoles = players.filter(x => x.goals > 0).sort((a,b) => b.goals - a.goals || goalsPerGame(b) - goalsPerGame(a));
   const max = Math.max(1, ...conGoles.map(x => x.goals));
-  const minGpp = goalAverageMinimum(ms);
   const maxGoleador = conGoles[0];
-  const efectivo = pickTop(conGoles.filter(x => x.pj >= minGpp), (a,b) => goalsPerGame(b) - goalsPerGame(a) || b.goals-a.goals || b.pj-a.pj);
+  const efectivo = pickTop(conGoles.filter(x => x.goalPj >= minGpp), (a,b) => goalsPerGame(b) - goalsPerGame(a) || b.goals-a.goals || b.goalPj-a.goalPj);
 
   // Récord individual en un partido
   let bestSolo = null;
-  ms.forEach(m => {
+  trackedGoals.forEach(m => {
     matchScorers(m).forEach(s => {
       if (!bestSolo || s.goals > bestSolo.goals) bestSolo = { ...s, m };
     });
   });
   // Partido con más goles
-  const bestMatch = pickTop(ms.filter(matchHasGoals), (a,b) => matchTotalGoals(b) - matchTotalGoals(a));
+  const bestMatch = pickTop(trackedGoals.filter(matchHasGoals), (a,b) => matchTotalGoals(b) - matchTotalGoals(a));
   // Sin autor
-  const sinAutor = ms.reduce((a,m) => {
+  const sinAutor = trackedGoals.reduce((a,m) => {
     const g = getGoals(m);
     return a + Object.entries(g).filter(([k]) => k.startsWith('__t')).reduce((x,[,v]) => x+v, 0);
   }, 0);
@@ -3771,7 +3805,7 @@ function goleadoresHTML(ms, players) {
       <span class="bar-name">${i===0?'🥇 ':''}${x.p.name}</span>
       <div class="bar-track"><div class="bar-fill green" style="width:${Math.round(x.goals/max*100)}%"></div></div>
       <span class="bar-val" style="color:var(--green)">${x.goals}</span>
-      <span class="bar-meta">${x.pj} PJ · ${goalsPerGame(x).toFixed(2)} G/PJ</span>
+      <span class="bar-meta">${x.goalPj} PJ reg. · ${goalsPerGame(x).toFixed(2)} G/PJ</span>
     </div>`).join('');
 
   const extras = [];
@@ -3783,9 +3817,9 @@ function goleadoresHTML(ms, players) {
     <h3>⚽ Goleadores</h3>
     <div class="goal-leaders">
       <div class="goal-leader"><span class="goal-leader-label">🥇 Máximo goleador</span><span class="goal-leader-name">${maxGoleador.p.name}</span><span class="goal-leader-value">${maxGoleador.goals} goles</span></div>
-      <div class="goal-leader"><span class="goal-leader-label">🚀 Más efectivo</span><span class="goal-leader-name">${efectivo ? efectivo.p.name : 'A definir'}</span><span class="goal-leader-value">${efectivo ? `${goalsPerGame(efectivo).toFixed(2)} G/PJ` : `mín. ${minGpp} PJ`}</span></div>
+      <div class="goal-leader"><span class="goal-leader-label">🚀 Más efectivo</span><span class="goal-leader-name">${efectivo ? efectivo.p.name : 'A definir'}</span><span class="goal-leader-value">${efectivo ? `${goalsPerGame(efectivo).toFixed(2)} G/PJ` : `mín. ${minGpp} PJ reg.`}</span></div>
     </div>
-    <p class="sec-note">La tabla es por goles totales. El promedio usa solo los partidos jugados y exige al menos ${minGpp} PJ (${Math.round(minGpp/ms.length*100)}% del período), para que sea comparable.</p>
+    <p class="sec-note">Datos desde que se registra la planilla de goles${trackingStart ? ` (${trackingStart})` : ''}: ${trackedGoals.length} PJ registrados. El promedio exige al menos ${minGpp} PJ registrados, para que sea comparable. Los partidos históricos sin planilla no afectan este promedio.</p>
     ${filas}
     <div style="font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.8">${extras.join('<br>')}</div>
   </div>`;
@@ -3838,8 +3872,8 @@ function factsHTML(ms, players) {
   if (goleador) facts.push(['🥇','Botín de oro', `${goleador.p.name} — ${goleador.goals} gol${goleador.goals===1?'':'es'}`]);
 
   const minGpp = goalAverageMinimum(ms);
-  const promGol = pickTop(players.filter(x=>x.goals>0 && x.pj>=minGpp), (a,b)=>goalsPerGame(b)-goalsPerGame(a));
-  if (promGol) facts.push(['🎯','Mejor promedio de gol', `${promGol.p.name} — ${goalsPerGame(promGol).toFixed(2)} por partido (mín. ${minGpp} PJ)`]);
+  const promGol = pickTop(players.filter(x=>x.goals>0 && x.goalPj>=minGpp), (a,b)=>goalsPerGame(b)-goalsPerGame(a));
+  if (promGol) facts.push(['🎯','Mejor promedio de gol', `${promGol.p.name} — ${goalsPerGame(promGol).toFixed(2)} por partido (mín. ${minGpp} PJ registrados)`]);
 
   const paters = getPaternidades(ms);
   if (paters.length) {
