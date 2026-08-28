@@ -54,6 +54,52 @@
   Un partido se considera JUGADO solo si result.winner !== null,
   así se pueden ir cargando goles en vivo con el partido todavía abierto.
   La clave "__t0" / "__t1" / "__t2" guarda goles sin autor (o en contra) de cada equipo.
+
+  ============================================================
+  v5 — CLUBES INDEPENDIENTES (ejecutar una vez para multigrupo)
+  ============================================================
+  create table if not exists fulbito_clubs (
+    id text primary key,
+    name text not null,
+    invite_code text unique not null,
+    created_by text,
+    created_at timestamptz default now()
+  );
+
+  alter table fulbito_players add column if not exists club_id text;
+  alter table fulbito_matches add column if not exists club_id text;
+
+  insert into fulbito_clubs (id, name, invite_code, created_by)
+  values ('club-fulbito-sabado', 'Fulbito del Sábado', 'SABADO', 'legacy')
+  on conflict (id) do nothing;
+
+  update fulbito_players set club_id = 'club-fulbito-sabado' where club_id is null;
+  update fulbito_matches set club_id = 'club-fulbito-sabado' where club_id is null;
+
+  alter table fulbito_players alter column club_id set not null;
+  alter table fulbito_matches alter column club_id set not null;
+
+  alter table fulbito_players drop constraint if exists fulbito_players_username_key;
+  create unique index if not exists fulbito_players_club_username_unique
+    on fulbito_players (club_id, lower(username));
+  create index if not exists fulbito_players_club_id_idx on fulbito_players (club_id);
+  create index if not exists fulbito_matches_club_id_idx on fulbito_matches (club_id);
+
+  alter table fulbito_clubs enable row level security;
+  drop policy if exists "public_all_clubs" on fulbito_clubs;
+  create policy "public_all_clubs" on fulbito_clubs for all using (true) with check (true);
+
+  do $$
+  begin
+    if not exists (
+      select 1 from pg_publication_rel r
+      join pg_publication p on p.oid = r.prpubid
+      where p.pubname = 'supabase_realtime'
+        and r.prrelid = 'public.fulbito_clubs'::regclass
+    ) then
+      alter publication supabase_realtime add table fulbito_clubs;
+    end if;
+  end $$;
 -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -132,6 +178,13 @@ body{
 .btn-register{width:100%;background:transparent;border:1.5px solid var(--border);color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;font-weight:500;border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:all .2s}
 .btn-register:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
 .login-error{color:var(--red);font-size:13px;margin-top:8px;display:none;line-height:1.5}
+
+/* ===== SELECTOR DE CLUBES ===== */
+#screen-club{display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse 65% 48% at 50% -8%,rgba(182,242,61,.13),transparent 62%),radial-gradient(ellipse 55% 48% at 50% 105%,rgba(240,192,64,.10),transparent 65%),var(--bg);padding:24px}
+#screen-club.active{display:flex}
+.club-shell{width:100%;max-width:760px}.club-intro{text-align:center;margin-bottom:22px}.club-intro-crest{width:54px;height:62px;display:grid;place-items:center;margin:0 auto 12px;clip-path:polygon(50% 0,93% 14%,86% 80%,50% 100%,14% 80%,7% 14%);background:linear-gradient(145deg,#dcff75,var(--lime) 52%,#7da724);color:#11180c;font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:-2px;box-shadow:0 0 32px rgba(182,242,61,.2)}.club-intro h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(42px,7vw,65px);letter-spacing:1px;line-height:.9;color:var(--text)}.club-intro h1 strong{color:var(--gold);font-weight:inherit}.club-intro p{color:var(--muted);font-size:13px;margin-top:9px}
+.club-box{background:linear-gradient(160deg,rgba(26,35,47,.96),rgba(13,19,27,.98));border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow-pop)}.club-box-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:16px}.club-box-head h2{font-family:'Bebas Neue',sans-serif;font-size:27px;color:var(--gold);letter-spacing:.55px;line-height:1}.club-box-head p{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4}.club-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.club-card{display:flex;align-items:center;gap:11px;text-align:left;padding:14px 13px;border:1px solid rgba(255,255,255,.1);border-radius:13px;background:rgba(255,255,255,.025);color:var(--text);font-family:'Barlow',sans-serif;cursor:pointer;transition:transform .18s,border-color .18s,background .18s}.club-card:hover{transform:translateY(-2px);border-color:rgba(240,192,64,.55);background:rgba(240,192,64,.08)}.club-card-crest{display:grid;place-items:center;width:38px;height:42px;flex-shrink:0;clip-path:polygon(50% 0,93% 14%,86% 80%,50% 100%,14% 80%,7% 14%);background:linear-gradient(145deg,#ffe18e,var(--gold),#a96e16);color:#221703;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:-1px}.club-card-copy{min-width:0;flex:1}.club-card-name{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:.65px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.club-card-meta{font-size:9.5px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.45px}.club-card-arrow{color:var(--gold);font-size:17px}.club-empty{grid-column:1/-1;border:1px dashed var(--border);border-radius:12px;padding:20px;color:var(--muted);font-size:13px;text-align:center}
+.club-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.9px;margin:19px 0 13px}.club-divider:before,.club-divider:after{content:'';height:1px;flex:1;background:var(--border)}.club-join{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.club-join input,.club-create input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:11px 12px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;outline:none;text-transform:uppercase}.club-join input:focus,.club-create input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}.club-create-note{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:15px}.club-code-reveal{background:rgba(182,242,61,.09);border:1px solid rgba(182,242,61,.28);border-radius:10px;padding:10px 12px;color:var(--lime);font-family:'Bebas Neue',sans-serif;letter-spacing:1.2px;font-size:21px;text-align:center;margin:12px 0}.btn-club-switch{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:11px;font-family:'Barlow',sans-serif;font-weight:700;padding:7px 8px;cursor:pointer;max-width:154px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.btn-club-switch:hover{color:var(--gold);border-color:rgba(240,192,64,.45)}
 
 /* ===== TOPBAR / IDENTIDAD DEL CLUB ===== */
 #screen-app{max-width:1600px;margin:0 auto;padding:0 22px 46px}
@@ -553,6 +606,7 @@ body{
 }
 @media (max-width:640px){
   #screen-app{padding:0 12px 30px}
+  #screen-club{padding:16px}.club-box{padding:17px;border-radius:16px}.club-list{grid-template-columns:1fr}.club-intro{margin-bottom:18px}.club-intro h1{font-size:48px}.club-intro p{font-size:12px}.club-join{grid-template-columns:1fr}.club-join .btn{justify-content:center}
   .topbar{padding:11px 0}.topbar-user #topbar-username{display:none}
   .brand-crest{width:31px;height:36px}.topbar-logo{font-size:23px}.brand-caption{font-size:7px}
   .nav-tabs{top:59px;margin-bottom:4px}.nav-tab{flex:0 0 74px;min-width:74px;font-size:9px;padding:9px 5px}.nav-tab-icon{font-size:16px}
@@ -582,10 +636,63 @@ body{
 </head>
 <body>
 
+<!-- CLUB SELECTOR -->
+<div id="screen-club" class="screen">
+  <div class="club-shell">
+    <section class="club-intro">
+      <div class="club-intro-crest">FC</div>
+      <h1>TU <strong>CLUB.</strong><br>TUS NÚMEROS.</h1>
+      <p>Un espacio independiente para cada grupo, partido y rivalidad.</p>
+    </section>
+
+    <section class="club-box" id="club-chooser-box">
+      <div class="club-box-head">
+        <div>
+          <h2>Elegí tu club</h2>
+          <p>Entrá al grupo con el que venís jugando.</p>
+        </div>
+        <span style="font-size:24px">🏟️</span>
+      </div>
+      <div class="club-list" id="club-list"></div>
+      <div class="club-divider">¿Tenés un código?</div>
+      <div class="club-join">
+        <input id="club-invite-input" maxlength="16" placeholder="Ej: SABADO-123" autocomplete="off">
+        <button class="btn btn-gold" onclick="joinClubByCode()">Ingresar</button>
+      </div>
+      <div class="login-divider">¿Organizás otro grupo?</div>
+      <button class="btn-register" onclick="showCreateClubForm()">＋ Crear mi club</button>
+      <div class="login-error" id="club-error"></div>
+    </section>
+
+    <section class="club-box hidden" id="club-create-box">
+      <div class="club-box-head">
+        <div>
+          <h2>Creá tu club</h2>
+          <p>Vas a recibir un código para invitar a tus amigos.</p>
+        </div>
+        <span style="font-size:24px">✨</span>
+      </div>
+      <div id="club-create-form">
+        <p class="club-create-note">Cada club tiene su propio plantel, asistencia, partidos, estadísticas y enfrentamientos. El primer usuario será administrador.</p>
+        <div class="form-group">
+          <label>Nombre del grupo</label>
+          <input id="club-create-name" maxlength="48" placeholder="Ej: Fulbito de los jueves" autocomplete="organization">
+        </div>
+        <button class="btn-login" onclick="createClub()">CREAR MI CLUB</button>
+        <div class="login-divider"></div>
+        <button class="btn-register" onclick="showClubChooser()">← Volver</button>
+      </div>
+      <div id="club-create-success" class="hidden"></div>
+      <div class="login-error" id="club-create-error"></div>
+    </section>
+  </div>
+</div>
+
 <!-- LOGIN SCREEN -->
 <div id="screen-login" class="screen">
   <div class="login-logo">⚽ FULBITO</div>
   <div class="login-sub">del Sábado</div>
+  <div id="login-club-context" class="hidden" style="margin:-23px 0 25px;padding:7px 11px;border:1px solid rgba(182,242,61,.28);border-radius:999px;background:rgba(182,242,61,.08);color:var(--lime);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase"></div>
 
   <!-- LOGIN FORM -->
   <div class="login-box" id="login-form-box">
@@ -604,6 +711,8 @@ body{
     <button class="btn-register" onclick="showRegisterForm()">Registrarse</button>
     <div class="login-divider">¿Olvidaste tu contraseña?</div>
     <button class="btn-register" onclick="showForgotForm()">Recuperar contraseña</button>
+    <div class="login-divider">¿Entrás a otro grupo?</div>
+    <button class="btn-register" onclick="showClubChooser()">🏟️ Cambiar club</button>
   </div>
 
   <!-- FORGOT PASSWORD FORM -->
@@ -613,7 +722,7 @@ body{
       <strong style="color:var(--gold)">¿Cómo funciona?</strong><br>
       1. Ingresá tu usuario abajo<br>
       2. Tocá "Pedir reset"<br>
-      3. Avisale al admin (Enrique)<br>
+      3. Avisale a un admin de tu club<br>
       4. El admin te resetea la clave a <strong style="color:var(--gold)">1234</strong><br>
       5. Entrás con 1234 y la cambiás en "Mi perfil"
     </div>
@@ -679,10 +788,11 @@ body{
       <div class="brand-crest">FS</div>
       <div>
         <div class="topbar-logo">FULBITO <span id="conn-dot" style="font-size:8px;vertical-align:middle" title="Conexión">🟡</span></div>
-        <div class="brand-caption">CLUB DEL SÁBADO</div>
+        <div class="brand-caption" id="club-caption">CLUB DEL SÁBADO</div>
       </div>
     </div>
     <div class="topbar-user">
+      <button class="btn-club-switch" id="topbar-club-switch" onclick="showClubChooser()" title="Cambiar club">🏟️ Club</button>
       <span id="topbar-username"></span>
       <div id="topbar-avatar-wrap"></div>
       <button class="btn-logout" onclick="doLogout()" title="Salir">🚪</button>
@@ -822,6 +932,10 @@ body{
 
   <!-- TAB: ADMIN -->
   <div class="tab-content" id="tab-admin" style="padding:16px">
+    <div class="admin-section" id="club-admin-section">
+      <h3>🏟️ Tu club</h3>
+      <div id="club-admin-info"></div>
+    </div>
     <div class="admin-section">
       <h3>👥 Jugadores registrados</h3>
       <div id="admin-players-list"></div>
@@ -889,9 +1003,28 @@ async function getSB() { return sb; }
 // ============================================================
 // STORAGE — Supabase compartido
 // ============================================================
-async function loadPlayers() {
+const LEGACY_CLUB_ID = 'club-fulbito-sabado';
+
+async function loadClubs() {
   const client = await getSB();
-  const { data, error } = await client.from('fulbito_players').select('*');
+  const { data, error } = await client.from('fulbito_clubs').select('*').order('created_at', { ascending: true });
+  if (error) {
+    console.error('loadClubs error:', error);
+    return [];
+  }
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    inviteCode: row.invite_code,
+    createdBy: row.created_by,
+    createdAt: row.created_at
+  }));
+}
+
+async function loadPlayers(clubId = state.currentClub?.id) {
+  if (!clubId) return [];
+  const client = await getSB();
+  const { data, error } = await client.from('fulbito_players').select('*').eq('club_id', clubId);
   if (!error && data) {
     return mapPlayers(data);
   }
@@ -916,7 +1049,8 @@ function mapPlayers(data) {
     isAdmin: row.is_admin,
     attendance: row.attendance,
     ratings: row.ratings || {},
-    _resetRequested: row._reset_requested || false
+    _resetRequested: row._reset_requested || false,
+    clubId: row.club_id
   }));
 }
 
@@ -925,6 +1059,11 @@ async function savePlayers(players) {
 }
 
 async function upsertPlayer(p) {
+  const clubId = p.clubId || state.currentClub?.id;
+  if (!clubId) {
+    console.error('upsertPlayer: no club selected');
+    return false;
+  }
   const client = await getSB();
   const { error } = await client.from('fulbito_players').upsert({
     id: p.id,
@@ -937,14 +1076,17 @@ async function upsertPlayer(p) {
     is_admin: p.isAdmin || false,
     attendance: p.attendance || null,
     ratings: p.ratings || {},
-    _reset_requested: p._resetRequested || false
+    _reset_requested: p._resetRequested || false,
+    club_id: clubId
   }, { onConflict: 'id' });
   if (error) console.error('upsertPlayer:', error);
+  return !error;
 }
 
 async function deletePlayer(id) {
+  if (!state.currentClub?.id) return;
   const client = await getSB();
-  const { error } = await client.from('fulbito_players').delete().eq('id', id);
+  const { error } = await client.from('fulbito_players').delete().eq('id', id).eq('club_id', state.currentClub.id);
   if (error) console.error('deletePlayer:', error);
 }
 
@@ -960,8 +1102,9 @@ function sortMatches() {
   );
 }
 
-async function loadMatches() {
-  const { data, error } = await sb.from('fulbito_matches').select('*').order('created_at', { ascending: false });
+async function loadMatches(clubId = state.currentClub?.id) {
+  if (!clubId) return [];
+  const { data, error } = await sb.from('fulbito_matches').select('*').eq('club_id', clubId).order('created_at', { ascending: false });
   if (error) {
     console.error('loadMatches:', error);
     return [];
@@ -975,12 +1118,18 @@ async function loadMatches() {
 }
 
 async function upsertMatch(m) {
+  const clubId = m.clubId || m.club_id || state.currentClub?.id;
+  if (!clubId) {
+    console.error('upsertMatch: no club selected');
+    return;
+  }
   const { error } = await sb.from('fulbito_matches').upsert({
     id: m.id,
     match_date: m.match_date,
     teams: m.teams,
     result: m.result || null,
-    created_by: m.created_by || null
+    created_by: m.created_by || null,
+    club_id: clubId
   }, { onConflict: 'id' });
   if (error) {
     console.error('upsertMatch:', error);
@@ -989,7 +1138,8 @@ async function upsertMatch(m) {
 }
 
 async function deleteMatchDb(id) {
-  const { error } = await sb.from('fulbito_matches').delete().eq('id', id);
+  if (!state.currentClub?.id) return;
+  const { error } = await sb.from('fulbito_matches').delete().eq('id', id).eq('club_id', state.currentClub.id);
   if (error) console.error('deleteMatch:', error);
 }
 
@@ -1005,6 +1155,8 @@ const SESSION = {
 // ============================================================
 let state = {
   currentUser: null,
+  currentClub: null,
+  clubs: [],
   players: [],
   numTeams: 2,
   fieldType: 5,
@@ -1032,36 +1184,180 @@ const CARD_TIERS = [
 // ============================================================
 // INIT
 // ============================================================
-async function init() {
-  showScreen('screen-login');
-  showLoginForm();
-  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+}
 
-  const loadingDiv = document.createElement('div');
-  loadingDiv.id = 'loading-players';
-  loadingDiv.style.cssText = 'text-align:center;color:var(--muted);font-size:13px;margin-top:8px';
-  loadingDiv.textContent = '⏳ Cargando jugadores...';
-  document.getElementById('login-form-box').appendChild(loadingDiv);
+function showClubError(message, target = 'club-error') {
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.display = message ? 'block' : 'none';
+}
 
-  const loginBtn = document.querySelector('.btn-login');
-  if (loginBtn) loginBtn.disabled = true;
+function makeClubId() {
+  return `club-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+}
 
-  state.players = await loadPlayers();
+function makeInviteCode(name) {
+  const prefix = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0,7) || 'CLUB';
+  return `${prefix}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
+}
 
-  document.getElementById('loading-players')?.remove();
-  if (loginBtn) loginBtn.disabled = false;
+function renderClubChooser() {
+  const list = document.getElementById('club-list');
+  if (!list) return;
+  const originalClub = state.clubs.find(club => club.id === LEGACY_CLUB_ID);
+  if (!originalClub) {
+    list.innerHTML = '<div class="club-empty">Ingresá el código de tu grupo o creá el primer club.</div>';
+    return;
+  }
+  list.innerHTML = `
+    <button class="club-card" type="button" data-club-id="${escapeHtml(originalClub.id)}">
+      <span class="club-card-crest">FC</span>
+      <span class="club-card-copy"><span class="club-card-name">${escapeHtml(originalClub.name)}</span><span class="club-card-meta">Club original</span></span>
+      <span class="club-card-arrow">›</span>
+    </button>`;
+  list.querySelectorAll('[data-club-id]').forEach(button => {
+    button.addEventListener('click', () => selectClub(button.dataset.clubId));
+  });
+}
 
-  const sess = SESSION.get();
-  if (sess) {
-    const stillExists = state.players.find(p => p.id === sess.id);
-    if (stillExists) {
-      state.currentUser = sess;
+async function refreshClubChooser() {
+  const list = document.getElementById('club-list');
+  if (list) list.innerHTML = '<div class="club-empty">⏳ Cargando clubes...</div>';
+  state.clubs = await loadClubs();
+  renderClubChooser();
+}
+
+function showClubLanding() {
+  document.getElementById('club-chooser-box').classList.remove('hidden');
+  document.getElementById('club-create-box').classList.add('hidden');
+  showClubError('');
+  showClubError('', 'club-create-error');
+  showScreen('screen-club');
+  renderClubChooser();
+}
+
+async function showClubChooser() {
+  SESSION.del();
+  state.currentUser = null;
+  state.currentClub = null;
+  state.players = [];
+  matches = [];
+  stopSync();
+  showClubLanding();
+  await refreshClubChooser();
+}
+
+function showCreateClubForm() {
+  document.getElementById('club-chooser-box').classList.add('hidden');
+  document.getElementById('club-create-box').classList.remove('hidden');
+  document.getElementById('club-create-form').classList.remove('hidden');
+  document.getElementById('club-create-success').classList.add('hidden');
+  document.getElementById('club-create-name').value = '';
+  showClubError('', 'club-create-error');
+}
+
+async function createClub() {
+  const name = document.getElementById('club-create-name').value.trim();
+  if (name.length < 3) {
+    showClubError('Elegí un nombre de al menos 3 caracteres.', 'club-create-error');
+    return;
+  }
+  const club = { id: makeClubId(), name, inviteCode: makeInviteCode(name), createdBy: 'pending' };
+  const client = await getSB();
+  const { error } = await client.from('fulbito_clubs').insert({
+    id: club.id,
+    name: club.name,
+    invite_code: club.inviteCode,
+    created_by: club.createdBy
+  });
+  if (error) {
+    console.error('createClub:', error);
+    showClubError(`No se pudo crear el club: ${error.message}`, 'club-create-error');
+    return;
+  }
+  state.clubs.push(club);
+  window.__newClubInviteCode = club.inviteCode;
+  document.getElementById('club-create-form').classList.add('hidden');
+  const success = document.getElementById('club-create-success');
+  success.innerHTML = `
+    <p class="club-create-note">¡Listo! Compartí este código con tu grupo para que entren al espacio correcto.</p>
+    <div class="club-code-reveal">${escapeHtml(club.inviteCode)}</div>
+    <button class="btn-login" onclick="selectClub('${club.id}')">CONTINUAR Y CREAR MI CUENTA</button>
+    <div class="login-divider"></div>
+    <button class="btn-register" onclick="showClubChooser()">Volver a mis clubes</button>`;
+  success.classList.remove('hidden');
+}
+
+async function joinClubByCode() {
+  const input = document.getElementById('club-invite-input');
+  const code = input.value.trim().toUpperCase();
+  if (!code) {
+    showClubError('Ingresá el código que te compartieron.');
+    return;
+  }
+  await refreshClubChooser();
+  const club = state.clubs.find(item => item.inviteCode?.toUpperCase() === code);
+  if (!club) {
+    showClubError('No encontramos un club con ese código. Revisalo e intentá de nuevo.');
+    return;
+  }
+  input.value = '';
+  showClubError('');
+  await selectClub(club.id);
+}
+
+function updateLoginClubContext() {
+  const context = document.getElementById('login-club-context');
+  if (!context || !state.currentClub) return;
+  const code = window.__newClubInviteCode && state.currentClub.inviteCode === window.__newClubInviteCode
+    ? ` · Código ${state.currentClub.inviteCode}` : '';
+  context.textContent = `🏟️ ${state.currentClub.name}${code}`;
+  context.classList.remove('hidden');
+}
+
+async function selectClub(clubId, { restoreSession = false } = {}) {
+  const club = state.clubs.find(item => item.id === clubId);
+  if (!club) {
+    showClubError('No pudimos abrir ese club. Actualizá e intentá de nuevo.');
+    return;
+  }
+  state.currentClub = club;
+  state.players = await loadPlayers(club.id);
+  matches = [];
+  updateLoginClubContext();
+
+  const saved = SESSION.get();
+  const savedClubId = saved?.clubId || (saved ? LEGACY_CLUB_ID : null);
+  if (restoreSession && saved && savedClubId === club.id) {
+    const player = state.players.find(item => item.id === saved.id);
+    if (player) {
+      state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, clubId: club.id };
+      SESSION.set(state.currentUser);
       showApp();
       return;
-    } else {
-      SESSION.del();
     }
+    SESSION.del();
   }
+  showScreen('screen-login');
+  showLoginForm();
+  document.getElementById('login-user').focus();
+}
+
+async function init() {
+  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  showScreen('screen-club');
+  await refreshClubChooser();
+  const sess = SESSION.get();
+  const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
+  if (sess && state.clubs.some(club => club.id === clubId)) {
+    await selectClub(clubId, { restoreSession: true });
+    return;
+  }
+  if (sess) SESSION.del();
+  showClubLanding();
 }
 
 async function refreshPlayers() {
@@ -1089,6 +1385,7 @@ function showLoginForm() {
   document.getElementById('login-form-box').classList.remove('hidden');
   document.getElementById('register-form-box').classList.add('hidden');
   document.getElementById('forgot-form-box').classList.add('hidden');
+  updateLoginClubContext();
 }
 function showRegisterForm() {
   document.getElementById('login-form-box').classList.add('hidden');
@@ -1102,6 +1399,7 @@ function showForgotForm() {
 }
 
 async function doLogin() {
+  if (!state.currentClub) { showClubChooser(); return; }
   const userInput = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
@@ -1110,7 +1408,7 @@ async function doLogin() {
   if (state.players.length === 0) {
     state.players = await loadPlayers();
     if (state.players.length === 0) {
-      errEl.textContent = '❌ No se pudo conectar. Revisá tu conexión e intentá de nuevo.';
+      errEl.textContent = 'Todavía no hay cuentas en este club. Creá la primera para empezar.';
       errEl.style.display = 'block'; return;
     }
   }
@@ -1128,14 +1426,15 @@ async function doLogin() {
     errEl.style.display='block'; return;
   }
   if (storedPass === btoa(btoa(pass))) { player.password = btoa(pass); upsertPlayer(player); }
-  if (player.username.toLowerCase() === 'titi' && !player.isAdmin) { player.isAdmin = true; upsertPlayer(player); }
+  if (state.currentClub.id === LEGACY_CLUB_ID && player.username.toLowerCase() === 'titi' && !player.isAdmin) { player.isAdmin = true; upsertPlayer(player); }
 
-  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin };
+  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, clubId: state.currentClub.id };
   SESSION.set(state.currentUser);
   showApp();
 }
 
 async function doRegister() {
+  if (!state.currentClub) { showClubChooser(); return; }
   const name = document.getElementById('reg-name').value.trim();
   const user = document.getElementById('reg-user').value.trim().toLowerCase();
   const pass = document.getElementById('reg-pass').value;
@@ -1147,7 +1446,7 @@ async function doRegister() {
   if (state.players.find(p => p.username.toLowerCase()===user)) { errEl.textContent='Ese usuario ya existe'; errEl.style.display='block'; return; }
 
   const newPlayer = {
-    id: 'p'+Date.now(),
+    id: `p${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
     username: user,
     name: name,
     password: btoa(pass),
@@ -1156,12 +1455,18 @@ async function doRegister() {
     posSecondary: regPosSecondary || regPosPrimary,
     ratings: {},
     attendance: null,
-    isAdmin: user === 'titi' || !state.players.some(p => p.isAdmin)
+    isAdmin: !state.players.some(p => p.isAdmin),
+    clubId: state.currentClub.id
   };
+  const saved = await upsertPlayer(newPlayer);
+  if (!saved) {
+    errEl.textContent = 'No se pudo crear tu cuenta. Revisá la conexión e intentá de nuevo.';
+    errEl.style.display = 'block';
+    return;
+  }
   state.players.push(newPlayer);
-  await upsertPlayer(newPlayer);
 
-  state.currentUser = { id: newPlayer.id, username: newPlayer.username, name: newPlayer.name, isAdmin: false };
+  state.currentUser = { id: newPlayer.id, username: newPlayer.username, name: newPlayer.name, isAdmin: !!newPlayer.isAdmin, clubId: state.currentClub.id };
   SESSION.set(state.currentUser);
   showApp();
 }
@@ -1222,9 +1527,12 @@ function showScreen(id) {
 }
 
 function showApp() {
+  if (!state.currentClub || !state.currentUser) { showClubChooser(); return; }
   showScreen('screen-app');
   startSync();
   document.getElementById('topbar-username').textContent = state.currentUser.name;
+  document.getElementById('club-caption').textContent = state.currentClub.name.toUpperCase();
+  document.getElementById('topbar-club-switch').textContent = `🏟️ ${state.currentClub.name}`;
   const wrap = document.getElementById('topbar-avatar-wrap');
   const me = getMe();
   if (me && me.photo) {
@@ -1234,6 +1542,8 @@ function showApp() {
   }
   if (state.currentUser.isAdmin) {
     document.getElementById('admin-tab').style.display='flex';
+  } else {
+    document.getElementById('admin-tab').style.display='none';
   }
   loadMatches().then(m => {
     matches = m;
@@ -2207,7 +2517,7 @@ function requestReset() {
 async function toggleAdmin(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
-  if (p.username.toLowerCase() === 'titi') { showToast('⚠️ Titi siempre es admin'); return; }
+  if (state.currentClub?.id === LEGACY_CLUB_ID && p.username.toLowerCase() === 'titi') { showToast('⚠️ Titi siempre es admin en el Fulbito original'); return; }
   p.isAdmin = !p.isAdmin;
   await upsertPlayer(p);
   renderAdmin();
@@ -3107,7 +3417,7 @@ function saveMatchFromTeams() {
   if (!confirm('¿Guardar este partido y abrir la planilla de goles?')) return;
 
   const m = {
-    id: 'm' + Date.now(),
+    id: `m${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
     match_date: new Date().toISOString().slice(0,10),
     teams: teams.map((t, i) => ({
       name: TEAM_NAMES[i] || String(i+1),
@@ -4159,6 +4469,14 @@ function votacionHTML() {
 // ADMIN
 // ============================================================
 function renderAdmin() {
+  const clubInfo = document.getElementById('club-admin-info');
+  if (clubInfo && state.currentClub) {
+    clubInfo.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px">
+        <div><div style="font-weight:700">${escapeHtml(state.currentClub.name)}</div><div class="sec-note" style="margin-top:3px">Compartí el código para que entren al grupo.</div></div>
+        <button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()">${escapeHtml(state.currentClub.inviteCode)}</button>
+      </div>`;
+  }
   const list = document.getElementById('admin-players-list');
   list.innerHTML = state.players.map(p => `
     <div class="admin-player-row">
@@ -4169,6 +4487,17 @@ function renderAdmin() {
       <button class="btn-icon" title="Eliminar" onclick="removePlayer('${p.id}')">🗑️</button>
     </div>
   `).join('');
+}
+
+async function copyClubInviteCode() {
+  const code = state.currentClub?.inviteCode;
+  if (!code) return;
+  try {
+    await navigator.clipboard.writeText(code);
+    showToast(`✅ Código ${code} copiado`);
+  } catch {
+    showToast(`Código del club: ${code}`, 4000);
+  }
 }
 
 async function removePlayer(id) {
@@ -4188,11 +4517,12 @@ async function removePlayer(id) {
 let realtimeChannel = null;
 
 async function startSync() {
+  if (!state.currentClub?.id) return;
   const client = await getSB();
   if (realtimeChannel) { client.removeChannel(realtimeChannel); }
   realtimeChannel = client
-    .channel('fulbito_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_players' }, async (payload) => {
+    .channel(`fulbito_changes_${state.currentClub.id}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_players', filter: `club_id=eq.${state.currentClub.id}` }, async (payload) => {
       const fresh = await loadPlayers();
       state.players = fresh;
       const tabName = getActiveTabName();
@@ -4201,7 +4531,7 @@ async function startSync() {
       if (tabName==='asistencia') renderAttendance();
       if (tabName==='admin') renderAdmin();
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_matches' }, async (payload) => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_matches', filter: `club_id=eq.${state.currentClub.id}` }, async (payload) => {
       // Si hay goles locales sin guardar, no recargamos para no pisarlos
       if (_goalSaveTimer) return;
       matches = await loadMatches();
