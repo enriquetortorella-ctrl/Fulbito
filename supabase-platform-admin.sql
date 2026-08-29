@@ -236,7 +236,7 @@ create or replace function public.fulbito_login_player(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare
   v_player public.fulbito_players%rowtype;

@@ -223,7 +223,7 @@ create or replace function public.fulbito_create_club(p_name text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare
   v_uid uuid := auth.uid();
@@ -267,7 +267,7 @@ create or replace function public.fulbito_register_player(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare
   v_uid uuid := auth.uid();
@@ -337,7 +337,7 @@ create or replace function public.fulbito_login_player(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare
   v_uid uuid := auth.uid();
@@ -396,7 +396,7 @@ create or replace function public.fulbito_update_my_profile(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare
   v_uid uuid := auth.uid();
@@ -611,7 +611,7 @@ create or replace function public.fulbito_admin_reset_player(p_club_id text, p_p
 returns void
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 begin
   if not public.fulbito_is_admin(p_club_id) then
