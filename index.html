@@ -6,100 +6,13 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://yhedcxxbjprgbodfrumu.supabase.co wss://yhedcxxbjprgbodfrumu.supabase.co; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <title>⚽ Fulbito del Sábado</title>
 <!--
-  SUPABASE SQL — correr en SQL Editor de Supabase UNA sola vez:
-
-  create table if not exists fulbito_players (
-    id text primary key,
-    username text unique not null,
-    name text not null,
-    password text not null,
-    photo text,
-    pos_primary text default 'MED',
-    pos_secondary text default 'MED',
-    is_admin boolean default false,
-    attendance text,
-    ratings jsonb default '{}',
-    created_at timestamptz default now()
-  );
-  alter table fulbito_players enable row level security;
-  create policy "public_all" on fulbito_players for all using (true) with check (true);
-  alter publication supabase_realtime add table fulbito_players;
-
-  ============================================================
-  v2 — historial de partidos (ya creada):
-  ============================================================
-
-  create table if not exists fulbito_matches (
-    id text primary key,
-    match_date date default now(),
-    teams jsonb not null,
-    result jsonb,
-    created_by text,
-    created_at timestamptz default now()
-  );
-  alter table fulbito_matches enable row level security;
-  create policy "public_all_matches" on fulbito_matches for all using (true) with check (true);
-  alter publication supabase_realtime add table fulbito_matches;
-
-  v3 no requiere cambios de base de datos (el MVP se guarda dentro del jsonb "result").
-
-  ============================================================
-  v4 — contador de goles + stats ampliadas
-  ============================================================
-  TAMPOCO requiere cambios de base de datos.
-  Los goles viven dentro del jsonb "result":
-      result = { winner, margin, mvp, goals: { "<playerId>": 3, "__t0": 1 } }
-  Un partido se considera JUGADO solo si result.winner !== null,
-  así se pueden ir cargando goles en vivo con el partido todavía abierto.
-  La clave "__t0" / "__t1" / "__t2" guarda goles sin autor (o en contra) de cada equipo.
-
-  ============================================================
-  v5 — CLUBES INDEPENDIENTES (ejecutar una vez para multigrupo)
-  ============================================================
-  create table if not exists fulbito_clubs (
-    id text primary key,
-    name text not null,
-    invite_code text unique not null,
-    created_by text,
-    created_at timestamptz default now()
-  );
-
-  alter table fulbito_players add column if not exists club_id text;
-  alter table fulbito_matches add column if not exists club_id text;
-
-  insert into fulbito_clubs (id, name, invite_code, created_by)
-  values ('club-fulbito-sabado', 'Fulbito del Sábado', 'SABADO', 'legacy')
-  on conflict (id) do nothing;
-
-  update fulbito_players set club_id = 'club-fulbito-sabado' where club_id is null;
-  update fulbito_matches set club_id = 'club-fulbito-sabado' where club_id is null;
-
-  alter table fulbito_players alter column club_id set not null;
-  alter table fulbito_matches alter column club_id set not null;
-
-  alter table fulbito_players drop constraint if exists fulbito_players_username_key;
-  create unique index if not exists fulbito_players_club_username_unique
-    on fulbito_players (club_id, lower(username));
-  create index if not exists fulbito_players_club_id_idx on fulbito_players (club_id);
-  create index if not exists fulbito_matches_club_id_idx on fulbito_matches (club_id);
-
-  alter table fulbito_clubs enable row level security;
-  drop policy if exists "public_all_clubs" on fulbito_clubs;
-  create policy "public_all_clubs" on fulbito_clubs for all using (true) with check (true);
-
-  do $$
-  begin
-    if not exists (
-      select 1 from pg_publication_rel r
-      join pg_publication p on p.oid = r.prpubid
-      where p.pubname = 'supabase_realtime'
-        and r.prrelid = 'public.fulbito_clubs'::regclass
-    ) then
-      alter publication supabase_realtime add table fulbito_clubs;
-    end if;
-  end $$;
+  La estructura y las políticas se administran en supabase-security.sql.
+  Esta versión usa Supabase Auth anónimo + RPC protegidas: el navegador nunca
+  obtiene acceso directo a las tablas ni a las contraseñas.
 -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -998,52 +911,64 @@ body{
 const SUPABASE_URL = 'https://yhedcxxbjprgbodfrumu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloZWRjeHhianByZ2JvZGZydW11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMzI5ODgsImV4cCI6MjA5MDkwODk4OH0.RlIHWB6w9jQXgxb1-FbaCMI4mk_SHGRcYSryzETQ-oo';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-async function getSB() { return sb; }
+let anonymousSessionReady = null;
+
+// La clave anónima es pública por diseño. La identidad anónima y las RPC con
+// RLS son las que autorizan cada acción del usuario en el servidor.
+async function getSB() {
+  if (!anonymousSessionReady) {
+    anonymousSessionReady = (async () => {
+      const { data: { session }, error: sessionError } = await sb.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) {
+        const { error } = await sb.auth.signInAnonymously();
+        if (error) throw error;
+      }
+    })().catch(error => {
+      anonymousSessionReady = null;
+      throw error;
+    });
+  }
+  await anonymousSessionReady;
+  return sb;
+}
+
+async function callRpc(name, args = {}) {
+  const client = await getSB();
+  const { data, error } = await client.rpc(name, args);
+  if (error) throw new Error(error.message || 'No se pudo completar la operación');
+  return data;
+}
 
 // ============================================================
 // STORAGE — Supabase compartido
 // ============================================================
 const LEGACY_CLUB_ID = 'club-fulbito-sabado';
+const LEGACY_CLUB = { id: LEGACY_CLUB_ID, name: 'Fulbito del Sábado' };
 
 async function loadClubs() {
-  const client = await getSB();
-  const { data, error } = await client.from('fulbito_clubs').select('*').order('created_at', { ascending: true });
-  if (error) {
-    console.error('loadClubs error:', error);
-    return [];
-  }
-  return (data || []).map(row => ({
-    id: row.id,
-    name: row.name,
-    inviteCode: row.invite_code,
-    createdBy: row.created_by,
-    createdAt: row.created_at
-  }));
+  // Los demás clubes no se enumeran: se ingresa con código de invitación.
+  const knownClubs = state.clubs.filter(club => club.id !== LEGACY_CLUB_ID);
+  return [LEGACY_CLUB, ...knownClubs];
 }
 
 async function loadPlayers(clubId = state.currentClub?.id) {
   if (!clubId) return [];
-  const client = await getSB();
-  const { data, error } = await client.from('fulbito_players').select('*').eq('club_id', clubId);
-  if (!error && data) {
-    return mapPlayers(data);
+  try {
+    const data = await callRpc('fulbito_get_players', { p_club_id: clubId });
+    return mapPlayers(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error('loadPlayers error:', error);
+    return [];
   }
-  console.error('loadPlayers error:', error);
-  const errMsg = document.getElementById('loading-players');
-  if (errMsg) {
-    errMsg.innerHTML = `❌ Error conectando a Supabase.<br><span style="font-size:11px">Error: ${error?.message}</span>`;
-    errMsg.style.color = 'var(--red)';
-  }
-  return [];
 }
 
 function mapPlayers(data) {
   return data.map(row => ({
-    id: row.id,
-    username: row.username,
-    name: row.name,
-    password: row.password,
-    photo: row.photo,
+    id: String(row.id || '').replace(/[^a-zA-Z0-9_-]/g, ''),
+    username: safePlainText(row.username, 32),
+    name: safePlainText(row.name, 48),
+    photo: safePhotoUrl(row.photo),
     posPrimary: row.pos_primary,
     posSecondary: row.pos_secondary,
     isAdmin: row.is_admin,
@@ -1064,30 +989,28 @@ async function upsertPlayer(p) {
     console.error('upsertPlayer: no club selected');
     return false;
   }
-  const client = await getSB();
-  const { error } = await client.from('fulbito_players').upsert({
-    id: p.id,
-    username: p.username,
-    name: p.name,
-    password: p.password,
-    photo: p.photo || null,
-    pos_primary: p.posPrimary,
-    pos_secondary: p.posSecondary,
-    is_admin: p.isAdmin || false,
-    attendance: p.attendance || null,
-    ratings: p.ratings || {},
-    _reset_requested: p._resetRequested || false,
-    club_id: clubId
-  }, { onConflict: 'id' });
-  if (error) console.error('upsertPlayer:', error);
-  return !error;
+  try {
+    const data = await callRpc('fulbito_update_my_profile', {
+      p_club_id: clubId,
+      p_name: p.name,
+      p_username: p.username,
+      p_pos_primary: p.posPrimary,
+      p_pos_secondary: p.posSecondary,
+      p_photo: p.photo || null
+    });
+    const saved = mapPlayers([data])[0];
+    Object.assign(p, saved);
+    return true;
+  } catch (error) {
+    console.error('upsertPlayer:', error);
+    showToast(`❌ ${error.message}`);
+    return false;
+  }
 }
 
 async function deletePlayer(id) {
   if (!state.currentClub?.id) return;
-  const client = await getSB();
-  const { error } = await client.from('fulbito_players').delete().eq('id', id).eq('club_id', state.currentClub.id);
-  if (error) console.error('deletePlayer:', error);
+  await callRpc('fulbito_delete_player', { p_club_id: state.currentClub.id, p_player_id: id });
 }
 
 // ============================================================
@@ -1104,17 +1027,18 @@ function sortMatches() {
 
 async function loadMatches(clubId = state.currentClub?.id) {
   if (!clubId) return [];
-  const { data, error } = await sb.from('fulbito_matches').select('*').eq('club_id', clubId).order('created_at', { ascending: false });
-  if (error) {
+  try {
+    const data = await callRpc('fulbito_get_matches', { p_club_id: clubId });
+    const list = Array.isArray(data) ? data : [];
+    list.sort((a,b) =>
+      (b.match_date||'').localeCompare(a.match_date||'') ||
+      (b.created_at||'').localeCompare(a.created_at||'')
+    );
+    return list;
+  } catch (error) {
     console.error('loadMatches:', error);
     return [];
   }
-  const list = data || [];
-  list.sort((a,b) =>
-    (b.match_date||'').localeCompare(a.match_date||'') ||
-    (b.created_at||'').localeCompare(a.created_at||'')
-  );
-  return list;
 }
 
 async function upsertMatch(m) {
@@ -1123,24 +1047,24 @@ async function upsertMatch(m) {
     console.error('upsertMatch: no club selected');
     return;
   }
-  const { error } = await sb.from('fulbito_matches').upsert({
-    id: m.id,
-    match_date: m.match_date,
-    teams: m.teams,
-    result: m.result || null,
-    created_by: m.created_by || null,
-    club_id: clubId
-  }, { onConflict: 'id' });
-  if (error) {
+  try {
+    await callRpc('fulbito_upsert_match', { p_club_id: clubId, p_match: {
+      id: m.id,
+      match_date: m.match_date,
+      teams: m.teams,
+      result: m.result || null
+    }});
+    return true;
+  } catch (error) {
     console.error('upsertMatch:', error);
-    showToast('❌ Error guardando (¿creaste la tabla fulbito_matches?)', 3500);
+    showToast(`❌ ${error.message}`, 3500);
+    return false;
   }
 }
 
 async function deleteMatchDb(id) {
   if (!state.currentClub?.id) return;
-  const { error } = await sb.from('fulbito_matches').delete().eq('id', id).eq('club_id', state.currentClub.id);
-  if (error) console.error('deleteMatch:', error);
+  await callRpc('fulbito_delete_match', { p_club_id: state.currentClub.id, p_match_id: id });
 }
 
 // Session sigue local (es personal)
@@ -1188,20 +1112,20 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 }
 
+function safePlainText(value, maxLength = 80) {
+  return String(value ?? '').replace(/[<>&"'`\u0000-\u001F\u007F]/g, '').slice(0, maxLength);
+}
+
+function safePhotoUrl(value) {
+  const src = String(value || '');
+  return /^(data:image\/(png|jpeg|webp);base64,|https:\/\/)/i.test(src) ? src : '';
+}
+
 function showClubError(message, target = 'club-error') {
   const el = document.getElementById(target);
   if (!el) return;
   el.textContent = message || '';
   el.style.display = message ? 'block' : 'none';
-}
-
-function makeClubId() {
-  return `club-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-}
-
-function makeInviteCode(name) {
-  const prefix = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0,7) || 'CLUB';
-  return `${prefix}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
 }
 
 function renderClubChooser() {
@@ -1265,19 +1189,15 @@ async function createClub() {
     showClubError('Elegí un nombre de al menos 3 caracteres.', 'club-create-error');
     return;
   }
-  const club = { id: makeClubId(), name, inviteCode: makeInviteCode(name), createdBy: 'pending' };
-  const client = await getSB();
-  const { error } = await client.from('fulbito_clubs').insert({
-    id: club.id,
-    name: club.name,
-    invite_code: club.inviteCode,
-    created_by: club.createdBy
-  });
-  if (error) {
+  let data;
+  try {
+    data = await callRpc('fulbito_create_club', { p_name: name });
+  } catch (error) {
     console.error('createClub:', error);
     showClubError(`No se pudo crear el club: ${error.message}`, 'club-create-error');
     return;
   }
+  const club = { id: data.id, name: data.name, inviteCode: data.invite_code };
   state.clubs.push(club);
   window.__newClubInviteCode = club.inviteCode;
   document.getElementById('club-create-form').classList.add('hidden');
@@ -1298,8 +1218,15 @@ async function joinClubByCode() {
     showClubError('Ingresá el código que te compartieron.');
     return;
   }
-  await refreshClubChooser();
-  const club = state.clubs.find(item => item.inviteCode?.toUpperCase() === code);
+  let data;
+  try {
+    data = await callRpc('fulbito_lookup_club', { p_invite_code: code });
+  } catch (error) {
+    console.error('joinClubByCode:', error);
+    showClubError('No pudimos validar ese código. Intentá nuevamente.');
+    return;
+  }
+  const club = data ? { id: data.id, name: data.name, inviteCode: code } : null;
   if (!club) {
     showClubError('No encontramos un club con ese código. Revisalo e intentá de nuevo.');
     return;
@@ -1325,16 +1252,19 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
     return;
   }
   state.currentClub = club;
-  state.players = await loadPlayers(club.id);
+  state.players = [];
   matches = [];
   updateLoginClubContext();
 
   const saved = SESSION.get();
   const savedClubId = saved?.clubId || (saved ? LEGACY_CLUB_ID : null);
   if (restoreSession && saved && savedClubId === club.id) {
-    const player = state.players.find(item => item.id === saved.id);
+    let player = null;
+    try { player = await callRpc('fulbito_get_my_player', { p_club_id: club.id }); } catch (_) { player = null; }
     if (player) {
-      state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, clubId: club.id };
+      const mapped = mapPlayers([player])[0];
+      state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, clubId: club.id };
+      state.players = await loadPlayers(club.id);
       SESSION.set(state.currentUser);
       showApp();
       return;
@@ -1349,6 +1279,7 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
 async function init() {
   document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   showScreen('screen-club');
+  try { await getSB(); } catch (error) { showClubError(`No se pudo iniciar una sesión segura: ${error.message}`); }
   await refreshClubChooser();
   const sess = SESSION.get();
   const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
@@ -1368,10 +1299,6 @@ async function refreshPlayers() {
   renderPlayers();
   renderAttendance();
   showToast(`✅ ${state.players.length} jugadores cargados`);
-}
-
-function saveAll() {
-  state.players.forEach(p => upsertPlayer(p));
 }
 
 // ============================================================
@@ -1404,33 +1331,19 @@ async function doLogin() {
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
-
-  if (state.players.length === 0) {
-    state.players = await loadPlayers();
-    if (state.players.length === 0) {
-      errEl.textContent = 'Todavía no hay cuentas en este club. Creá la primera para empezar.';
-      errEl.style.display = 'block'; return;
-    }
+  if (!userInput || !pass) { errEl.textContent = 'Ingresá usuario y contraseña.'; errEl.style.display = 'block'; return; }
+  try {
+    const data = await callRpc('fulbito_login_player', {
+      p_club_id: state.currentClub.id,
+      p_username: userInput,
+      p_password: pass
+    });
+    await openAuthorizedPlayer(data);
+  } catch (_) {
+    // El servidor devuelve el mismo mensaje para usuario y contraseña para no revelar cuentas.
+    errEl.innerHTML = 'Usuario o contraseña incorrectos. <a href="#" onclick="showForgotForm();return false" style="color:var(--gold)">¿La olvidaste?</a>';
+    errEl.style.display = 'block';
   }
-
-  const player = state.players.find(p => p.username.toLowerCase() === userInput.toLowerCase());
-  if (!player) {
-    errEl.innerHTML = `Usuario no encontrado. <a href="#" onclick="showForgotForm();return false" style="color:var(--gold)">¿Olvidaste tu usuario?</a>`;
-    errEl.style.display='block'; return;
-  }
-
-  const storedPass = player.password || '';
-  const match = storedPass === btoa(pass) || storedPass === pass || storedPass === btoa(btoa(pass));
-  if (!match) {
-    errEl.innerHTML = 'Contraseña incorrecta. <a href="#" onclick="showForgotForm();return false" style="color:var(--gold)">¿La olvidaste?</a>';
-    errEl.style.display='block'; return;
-  }
-  if (storedPass === btoa(btoa(pass))) { player.password = btoa(pass); upsertPlayer(player); }
-  if (state.currentClub.id === LEGACY_CLUB_ID && player.username.toLowerCase() === 'titi' && !player.isAdmin) { player.isAdmin = true; upsertPlayer(player); }
-
-  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, clubId: state.currentClub.id };
-  SESSION.set(state.currentUser);
-  showApp();
 }
 
 async function doRegister() {
@@ -1443,38 +1356,40 @@ async function doRegister() {
 
   if (!name || !user || !pass) { errEl.textContent='Completá nombre, usuario y contraseña'; errEl.style.display='block'; return; }
   if (!regPosPrimary) { errEl.textContent='Elegí tu posición principal'; errEl.style.display='block'; return; }
-  if (state.players.find(p => p.username.toLowerCase()===user)) { errEl.textContent='Ese usuario ya existe'; errEl.style.display='block'; return; }
-
-  const newPlayer = {
-    id: `p${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-    username: user,
-    name: name,
-    password: btoa(pass),
-    photo: regPhotoData || null,
-    posPrimary: regPosPrimary,
-    posSecondary: regPosSecondary || regPosPrimary,
-    ratings: {},
-    attendance: null,
-    isAdmin: !state.players.some(p => p.isAdmin),
-    clubId: state.currentClub.id
-  };
-  const saved = await upsertPlayer(newPlayer);
-  if (!saved) {
-    errEl.textContent = 'No se pudo crear tu cuenta. Revisá la conexión e intentá de nuevo.';
+  const inviteCode = state.currentClub.inviteCode || (state.currentClub.id === LEGACY_CLUB_ID ? '__LEGACY_PUBLIC__' : '');
+  if (!inviteCode) { errEl.textContent = 'Volvé a ingresar al club con el código de invitación.'; errEl.style.display = 'block'; return; }
+  try {
+    const data = await callRpc('fulbito_register_player', {
+      p_invite_code: inviteCode,
+      p_name: name,
+      p_username: user,
+      p_password: pass,
+      p_pos_primary: regPosPrimary,
+      p_pos_secondary: regPosSecondary || regPosPrimary,
+      p_photo: regPhotoData || null
+    });
+    await openAuthorizedPlayer(data);
+  } catch (error) {
+    errEl.textContent = error.message || 'No se pudo crear la cuenta.';
     errEl.style.display = 'block';
-    return;
   }
-  state.players.push(newPlayer);
+}
 
-  state.currentUser = { id: newPlayer.id, username: newPlayer.username, name: newPlayer.name, isAdmin: !!newPlayer.isAdmin, clubId: state.currentClub.id };
+async function openAuthorizedPlayer(data) {
+  const player = mapPlayers([data])[0];
+  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, clubId: state.currentClub.id };
   SESSION.set(state.currentUser);
+  state.players = await loadPlayers(state.currentClub.id);
+  matches = await loadMatches(state.currentClub.id);
   showApp();
 }
 
-function doLogout() {
+async function doLogout() {
   state.currentUser = null;
   SESSION.del();
   stopSync();
+  await sb.auth.signOut();
+  anonymousSessionReady = null;
   showScreen('screen-login');
   showLoginForm();
 }
@@ -1535,8 +1450,9 @@ function showApp() {
   document.getElementById('topbar-club-switch').textContent = `🏟️ ${state.currentClub.name}`;
   const wrap = document.getElementById('topbar-avatar-wrap');
   const me = getMe();
-  if (me && me.photo) {
-    wrap.innerHTML = `<img class="topbar-avatar" src="${me.photo}">`;
+  const avatarUrl = safePhotoUrl(me?.photo);
+  if (avatarUrl) {
+    wrap.innerHTML = `<img class="topbar-avatar" src="${escapeHtml(avatarUrl)}" alt="">`;
   } else {
     wrap.innerHTML = `<div class="topbar-avatar-placeholder">👤</div>`;
   }
@@ -2189,8 +2105,9 @@ function renderFifaCard(p) {
   const tier = getCardTier(ovr);
   const pos = getEffectivePosition(p);
   const stats = getAvgStats(p) || {};
-  const photo = p.photo
-    ? `<img class="fifa-card-photo" src="${p.photo}" alt="${p.name}">`
+  const photoUrl = safePhotoUrl(p.photo);
+  const photo = photoUrl
+    ? `<img class="fifa-card-photo" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(p.name)}">`
     : `<div class="fifa-card-photo fifa-photo-ph">👤</div>`;
 
   const rec = getPlayerRecord(p.id);
@@ -2210,7 +2127,7 @@ function renderFifaCard(p) {
       ${photo}
     </div>
     <div class="fifa-divider"></div>
-    <div class="fifa-card-name">${p.username.toUpperCase()}</div>
+    <div class="fifa-card-name">${escapeHtml(p.username.toUpperCase())}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
     ${recHTML}
   </div>`;
@@ -2224,7 +2141,8 @@ function openPlayerProfile(id) {
   const tier = getCardTier(ovr);
   const pos = getEffectivePosition(p);
   const stats = getAvgStats(p) || {};
-  const photo = p.photo ? `<img src="${p.photo}" style="width:100px;height:100px;border-radius:10px;object-fit:cover;border:2px solid var(--gold);display:block;margin:0 auto 12px">` : `<div style="font-size:64px;text-align:center;margin-bottom:12px">👤</div>`;
+  const profilePhotoUrl = safePhotoUrl(p.photo);
+  const photo = profilePhotoUrl ? `<img src="${escapeHtml(profilePhotoUrl)}" alt="" style="width:100px;height:100px;border-radius:10px;object-fit:cover;border:2px solid var(--gold);display:block;margin:0 auto 12px">` : `<div style="font-size:64px;text-align:center;margin-bottom:12px">👤</div>`;
 
   const statBars = STATS.map(s => {
     const fifa = statToFifa(stats[s]||0);
@@ -2389,7 +2307,7 @@ function openEditProfile() {
   editPhotoData = me.photo;
 
   const photoHTML = me.photo
-    ? `<img src="${me.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    ? `<img src="${escapeHtml(safePhotoUrl(me.photo))}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
     : '📷';
 
   document.getElementById('modal-edit-content').innerHTML = `
@@ -2450,7 +2368,7 @@ function handleEditPhoto(input) {
   };
   r.readAsDataURL(file);
 }
-function saveEditProfile() {
+async function saveEditProfile() {
   const me = getMe(); if(!me) return;
   const nameEl = document.getElementById('edit-name');
   const userEl = document.getElementById('edit-username');
@@ -2465,35 +2383,32 @@ function saveEditProfile() {
   const newPass = passEl.value;
   const currentPass = passCurrentEl ? passCurrentEl.value : '';
 
-  const changingCredentials = (newUser && newUser !== me.username) || newPass;
-  if (changingCredentials) {
-    if (!currentPass) { errEl.textContent='Ingresá tu contraseña actual para cambiar usuario o contraseña'; errEl.style.display='block'; return; }
-    if (btoa(currentPass) !== me.password) { errEl.textContent='Contraseña actual incorrecta'; errEl.style.display='block'; return; }
+  try {
+    const data = await callRpc('fulbito_update_my_profile', {
+      p_club_id: state.currentClub.id,
+      p_name: nameEl.value.trim() || me.name,
+      p_username: newUser || me.username,
+      p_pos_primary: primarySel?.dataset.pos || me.posPrimary,
+      p_pos_secondary: secondarySel?.dataset.pos || me.posSecondary,
+      p_photo: editPhotoData || null,
+      p_current_password: currentPass || null,
+      p_new_password: newPass || null
+    });
+    const saved = mapPlayers([data])[0];
+    Object.assign(me, saved);
+    state.currentUser.name = saved.name;
+    state.currentUser.username = saved.username;
+    SESSION.set(state.currentUser);
+    closeModal('modal-edit-profile');
+    showApp();
+    showToast('✅ Perfil actualizado');
+  } catch (error) {
+    errEl.textContent = error.message || 'No se pudo actualizar el perfil';
+    errEl.style.display = 'block';
   }
-
-  if (newUser && newUser !== me.username) {
-    if (state.players.find(p => p.id !== me.id && p.username.toLowerCase() === newUser)) {
-      errEl.textContent='Ese usuario ya lo usa otro jugador'; errEl.style.display='block'; return;
-    }
-    me.username = newUser;
-  }
-
-  if (nameEl.value.trim()) me.name = nameEl.value.trim();
-  if (primarySel) me.posPrimary = primarySel.dataset.pos;
-  if (secondarySel) me.posSecondary = secondarySel.dataset.pos;
-  if (editPhotoData) me.photo = editPhotoData;
-  if (newPass) me.password = btoa(newPass);
-
-  state.currentUser.name = me.name;
-  state.currentUser.username = me.username;
-  SESSION.set(state.currentUser);
-  upsertPlayer(me);
-  closeModal('modal-edit-profile');
-  showApp();
-  showToast('✅ Perfil actualizado');
 }
 
-function requestReset() {
+async function requestReset() {
   const user = document.getElementById('forgot-user').value.trim();
   const msgEl = document.getElementById('forgot-msg');
   if (!user) {
@@ -2501,38 +2416,39 @@ function requestReset() {
     msgEl.style.background='rgba(239,68,68,.1)'; msgEl.style.color='var(--red)';
     msgEl.style.display='block'; return;
   }
-  const p = state.players.find(x => x.username.toLowerCase() === user.toLowerCase());
-  if (!p) {
-    msgEl.textContent='No existe ese usuario. Revisá si lo escribiste bien.';
+  try {
+    await callRpc('fulbito_request_reset', { p_club_id: state.currentClub.id, p_username: user });
+    msgEl.innerHTML = `✅ Listo. Si existe esa cuenta, el pedido fue enviado al admin.<br><strong style="color:var(--gold)">Cuando lo resetee, entrá con la clave 1234.</strong>`;
+    msgEl.style.background='rgba(34,197,94,.1)'; msgEl.style.color='var(--green)';
+    msgEl.style.display='block';
+  } catch (error) {
+    msgEl.textContent = error.message || 'No se pudo enviar el pedido.';
     msgEl.style.background='rgba(239,68,68,.1)'; msgEl.style.color='var(--red)';
-    msgEl.style.display='block'; return;
+    msgEl.style.display='block';
   }
-  p._resetRequested = true;
-  upsertPlayer(p);
-  msgEl.innerHTML = `✅ Listo! El pedido fue enviado.<br><strong style="color:var(--gold)">Avisale al admin que querés resetear la contraseña de "@${p.username}".</strong><br>Cuando lo haga, entrá con la clave <strong>1234</strong>.`;
-  msgEl.style.background='rgba(34,197,94,.1)'; msgEl.style.color='var(--green)';
-  msgEl.style.display='block';
 }
 
 async function toggleAdmin(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
-  if (state.currentClub?.id === LEGACY_CLUB_ID && p.username.toLowerCase() === 'titi') { showToast('⚠️ Titi siempre es admin en el Fulbito original'); return; }
-  p.isAdmin = !p.isAdmin;
-  await upsertPlayer(p);
-  renderAdmin();
-  showToast(p.isAdmin ? `👑 ${p.username} es admin` : `${p.username} ya no es admin`);
+  try {
+    const data = await callRpc('fulbito_set_admin', { p_club_id: state.currentClub.id, p_player_id: id, p_is_admin: !p.isAdmin });
+    Object.assign(p, mapPlayers([data])[0]);
+    renderAdmin();
+    showToast(p.isAdmin ? `👑 ${p.username} es admin` : `${p.username} ya no es admin`);
+  } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
 async function adminResetPassword(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
   if (!confirm(`¿Resetear contraseña de ${p.name} (@${p.username}) a "1234"?`)) return;
-  p.password = btoa('1234');
-  p._resetRequested = false;
-  await upsertPlayer(p);
-  renderAdmin();
-  showToast(`🔑 Contraseña de ${p.username} reseteada a 1234`);
+  try {
+    await callRpc('fulbito_admin_reset_player', { p_club_id: state.currentClub.id, p_player_id: id });
+    p._resetRequested = false;
+    renderAdmin();
+    showToast(`🔑 Contraseña de ${p.username} reseteada a 1234`);
+  } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
 function posEmoji(pos) { return {POR:'🧤',DEF:'🛡️',MED:'⚙️',DEL:'⚡'}[pos]||'' }
@@ -2569,26 +2485,36 @@ function renderAttendance() {
   }).join('');
 }
 
-function setAttendance(id, val) {
+async function setAttendance(id, val) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
   if (p.id !== state.currentUser.id && !state.currentUser.isAdmin) {
     showToast('⚠️ Solo podés marcar tu propia asistencia');
     return;
   }
-  p.attendance = p.attendance === val ? null : val;
-  upsertPlayer(p);
-  renderHub();
-  renderAttendance();
+  const nextValue = p.attendance === val ? null : val;
+  try {
+    await callRpc('fulbito_set_attendance', {
+      p_club_id: state.currentClub.id,
+      p_player_id: id,
+      p_attendance: nextValue
+    });
+    p.attendance = nextValue;
+    renderHub();
+    renderAttendance();
+  } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
-function clearAllAttendance() {
+async function clearAllAttendance() {
   if (!confirm('¿Borrar toda la asistencia?')) return;
-  state.players.forEach(p => p.attendance = null);
-  saveAll();
-  renderHub();
-  renderAttendance();
-  showToast('🗑️ Asistencia borrada');
+  if (!state.currentUser?.isAdmin) { showToast('⚠️ Solo un admin puede borrar toda la asistencia'); return; }
+  try {
+    await callRpc('fulbito_clear_attendance', { p_club_id: state.currentClub.id });
+    state.players.forEach(p => p.attendance = null);
+    renderHub();
+    renderAttendance();
+    showToast('🗑️ Asistencia borrada');
+  } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
 function resetAllAttendance() { clearAllAttendance(); }
@@ -2641,14 +2567,19 @@ function toggleRatePlayer(id) {
   body.style.display = body.style.display==='none' ? 'block' : 'none';
 }
 
-function rateStat(playerId, stat, val) {
+async function rateStat(playerId, stat, val) {
   const myId = state.currentUser.id;
   const p = state.players.find(x=>x.id===playerId);
   if (!p) return;
-  if (!p.ratings) p.ratings = {};
-  if (!p.ratings[myId]) p.ratings[myId] = {};
-  p.ratings[myId][stat] = val;
-  upsertPlayer(p);
+  try {
+    const data = await callRpc('fulbito_rate_player', {
+      p_club_id: state.currentClub.id,
+      p_player_id: playerId,
+      p_stat: stat,
+      p_value: val
+    });
+    Object.assign(p, mapPlayers([data])[0]);
+  } catch (error) { showToast(`❌ ${error.message}`); return; }
   const container = document.getElementById(`stars-${playerId}-${stat}`);
   if (container) {
     container.innerHTML = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateStat('${playerId}','${stat}',${n})">★</span>`).join('');
@@ -2754,13 +2685,16 @@ function exportVotesCSV() {
   showToast('📥 CSV descargado');
 }
 
-function resetAllRatings() {
+async function resetAllRatings() {
   if (!confirm('¿Borrar TODAS las calificaciones?')) return;
-  state.players.forEach(p => p.ratings = {});
-  saveAll();
-  renderRate();
-  renderPlayers();
-  showToast('🗑️ Calificaciones borradas');
+  if (!state.currentUser?.isAdmin) { showToast('⚠️ Solo un admin puede borrar las calificaciones'); return; }
+  try {
+    await callRpc('fulbito_clear_ratings', { p_club_id: state.currentClub.id });
+    state.players.forEach(p => p.ratings = {});
+    renderRate();
+    renderPlayers();
+    showToast('🗑️ Calificaciones borradas');
+  } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
 // ============================================================
@@ -4512,46 +4446,37 @@ async function removePlayer(id) {
 }
 
 // ============================================================
-// AUTO SYNC — Supabase realtime
+// AUTO SYNC — consulta protegida periódica. No se suscriben tablas públicas.
 // ============================================================
-let realtimeChannel = null;
+let secureSyncTimer = null;
 
 async function startSync() {
   if (!state.currentClub?.id) return;
-  const client = await getSB();
-  if (realtimeChannel) { client.removeChannel(realtimeChannel); }
-  realtimeChannel = client
-    .channel(`fulbito_changes_${state.currentClub.id}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_players', filter: `club_id=eq.${state.currentClub.id}` }, async (payload) => {
-      const fresh = await loadPlayers();
-      state.players = fresh;
-      const tabName = getActiveTabName();
-      if (tabName==='inicio') renderHub();
-      if (tabName==='jugadores') renderPlayers();
-      if (tabName==='asistencia') renderAttendance();
-      if (tabName==='admin') renderAdmin();
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'fulbito_matches', filter: `club_id=eq.${state.currentClub.id}` }, async (payload) => {
-      // Si hay goles locales sin guardar, no recargamos para no pisarlos
-      if (_goalSaveTimer) return;
-      matches = await loadMatches();
-      const tabName = getActiveTabName();
-      if (tabName==='inicio') renderHub();
-      if (tabName==='partidos') renderPartidos();
-      if (tabName==='jugadores') renderPlayers();
-      if (tabName==='goles') renderGoles();
-    })
-    .subscribe(status => {
-      const dot = document.getElementById('conn-dot');
-      if (dot) dot.textContent = status === 'SUBSCRIBED' ? '🟢' : '🟡';
-    });
+  stopSync();
+  const sync = async () => {
+    if (!state.currentClub?.id || _goalSaveTimer) return;
+    const [freshPlayers, freshMatches] = await Promise.all([loadPlayers(), loadMatches()]);
+    if (!freshPlayers.length && state.players.length) return;
+    state.players = freshPlayers;
+    matches = freshMatches;
+    const tabName = getActiveTabName();
+    if (tabName==='inicio') renderHub();
+    if (tabName==='jugadores') renderPlayers();
+    if (tabName==='asistencia') renderAttendance();
+    if (tabName==='admin') renderAdmin();
+    if (tabName==='partidos') renderPartidos();
+    if (tabName==='goles') renderGoles();
+    const dot = document.getElementById('conn-dot');
+    if (dot) dot.textContent = '🟢';
+  };
+  secureSyncTimer = window.setInterval(sync, 30000);
+  const dot = document.getElementById('conn-dot');
+  if (dot) dot.textContent = '🟢';
 }
 
 function stopSync() {
-  if (realtimeChannel) {
-    sb.removeChannel(realtimeChannel);
-    realtimeChannel = null;
-  }
+  if (secureSyncTimer) window.clearInterval(secureSyncTimer);
+  secureSyncTimer = null;
 }
 
 // ============================================================
