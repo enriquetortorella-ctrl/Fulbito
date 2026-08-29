@@ -1265,7 +1265,7 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
       const mapped = mapPlayers([player])[0];
       state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, clubId: club.id };
       state.players = await loadPlayers(club.id);
-      SESSION.set(state.currentUser);
+      SESSION.set({ ...state.currentUser, clubName: club.name });
       showApp();
       return;
     }
@@ -1283,6 +1283,9 @@ async function init() {
   await refreshClubChooser();
   const sess = SESSION.get();
   const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
+  if (sess && clubId !== LEGACY_CLUB_ID && sess.clubName && !state.clubs.some(club => club.id === clubId)) {
+    state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club' });
+  }
   if (sess && state.clubs.some(club => club.id === clubId)) {
     await selectClub(clubId, { restoreSession: true });
     return;
@@ -1378,7 +1381,7 @@ async function doRegister() {
 async function openAuthorizedPlayer(data) {
   const player = mapPlayers([data])[0];
   state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, clubId: state.currentClub.id };
-  SESSION.set(state.currentUser);
+  SESSION.set({ ...state.currentUser, clubName: state.currentClub.name });
   state.players = await loadPlayers(state.currentClub.id);
   matches = await loadMatches(state.currentClub.id);
   showApp();
@@ -2398,7 +2401,7 @@ async function saveEditProfile() {
     Object.assign(me, saved);
     state.currentUser.name = saved.name;
     state.currentUser.username = saved.username;
-    SESSION.set(state.currentUser);
+    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name });
     closeModal('modal-edit-profile');
     showApp();
     showToast('✅ Perfil actualizado');
