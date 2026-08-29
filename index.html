@@ -706,6 +706,7 @@ body{
     </div>
     <div class="topbar-user">
       <button class="btn-club-switch" id="topbar-club-switch" onclick="showClubChooser()" title="Cambiar club">🏟️ Club</button>
+      <button class="btn-icon" id="platform-admin-launch" onclick="openPlatformAdmin()" title="Centro de soporte maestro" style="display:none;border-color:rgba(240,192,64,.48);color:var(--gold)">🛡️</button>
       <span id="topbar-username"></span>
       <div id="topbar-avatar-wrap"></div>
       <button class="btn-logout" onclick="doLogout()" title="Salir">🚪</button>
@@ -737,7 +738,7 @@ body{
       </div>
       <div class="roster-hero-actions">
         <button class="btn btn-ghost btn-sm" onclick="refreshPlayers()">↻ <span>Actualizar</span></button>
-        <button class="btn btn-primary btn-sm" onclick="openEditProfile()">✏️ Mi perfil</button>
+        <button class="btn btn-primary btn-sm" id="edit-profile-button" onclick="openEditProfile()">✏️ Mi perfil</button>
       </div>
     </section>
     <section class="roster-toolbar">
@@ -881,6 +882,15 @@ body{
     <button class="modal-close" onclick="closeModal('modal-edit-profile')">✕</button>
     <h2>MI PERFIL</h2>
     <div id="modal-edit-content"></div>
+  </div>
+</div>
+
+<!-- MODAL: CENTRO DE SOPORTE MAESTRO -->
+<div class="modal-overlay" id="modal-platform-admin">
+  <div class="modal" style="max-width:680px">
+    <button class="modal-close" onclick="closeModal('modal-platform-admin')">✕</button>
+    <h2>🛡️ CENTRO DE SOPORTE</h2>
+    <div id="modal-platform-admin-content"></div>
   </div>
 </div>
 
@@ -1082,6 +1092,9 @@ let state = {
   currentClub: null,
   clubs: [],
   players: [],
+  platformClubs: [],
+  supportMode: false,
+  supportHome: null,
   numTeams: 2,
   fieldType: 5,
   builtTeams: null
@@ -1168,6 +1181,8 @@ async function showClubChooser() {
   state.currentUser = null;
   state.currentClub = null;
   state.players = [];
+  state.supportMode = false;
+  state.supportHome = null;
   matches = [];
   stopSync();
   showClubLanding();
@@ -1252,6 +1267,8 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
     return;
   }
   state.currentClub = club;
+  state.supportMode = false;
+  state.supportHome = null;
   state.players = [];
   matches = [];
   updateLoginClubContext();
@@ -1263,7 +1280,7 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
     try { player = await callRpc('fulbito_get_my_player', { p_club_id: club.id }); } catch (_) { player = null; }
     if (player) {
       const mapped = mapPlayers([player])[0];
-      state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, clubId: club.id };
+      state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, isPlatformAdmin: !!player.is_platform_admin, clubId: club.id };
       state.players = await loadPlayers(club.id);
       SESSION.set({ ...state.currentUser, clubName: club.name });
       showApp();
@@ -1380,7 +1397,9 @@ async function doRegister() {
 
 async function openAuthorizedPlayer(data) {
   const player = mapPlayers([data])[0];
-  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, clubId: state.currentClub.id };
+  state.supportMode = false;
+  state.supportHome = null;
+  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, isPlatformAdmin: !!data.is_platform_admin, clubId: state.currentClub.id };
   SESSION.set({ ...state.currentUser, clubName: state.currentClub.name });
   state.players = await loadPlayers(state.currentClub.id);
   matches = await loadMatches(state.currentClub.id);
@@ -1448,9 +1467,17 @@ function showApp() {
   if (!state.currentClub || !state.currentUser) { showClubChooser(); return; }
   showScreen('screen-app');
   startSync();
-  document.getElementById('topbar-username').textContent = state.currentUser.name;
+  const isSupport = !!state.currentUser.supportMode;
+  document.getElementById('topbar-username').textContent = isSupport ? 'Soporte maestro' : state.currentUser.name;
   document.getElementById('club-caption').textContent = state.currentClub.name.toUpperCase();
-  document.getElementById('topbar-club-switch').textContent = `🏟️ ${state.currentClub.name}`;
+  const switcher = document.getElementById('topbar-club-switch');
+  switcher.textContent = isSupport ? '← Mi club' : `🏟️ ${state.currentClub.name}`;
+  switcher.title = isSupport ? 'Volver a mi club' : 'Cambiar club';
+  switcher.onclick = isSupport ? exitSupportMode : showClubChooser;
+  const masterButton = document.getElementById('platform-admin-launch');
+  masterButton.style.display = state.currentUser.isPlatformAdmin ? 'inline-flex' : 'none';
+  const profileButton = document.getElementById('edit-profile-button');
+  if (profileButton) profileButton.style.display = isSupport ? 'none' : '';
   const wrap = document.getElementById('topbar-avatar-wrap');
   const me = getMe();
   const avatarUrl = safePhotoUrl(me?.photo);
@@ -1500,6 +1527,68 @@ function switchTab(name) {
 // HELPERS
 // ============================================================
 function getMe() { return state.players.find(p => p.id === state.currentUser?.id); }
+
+// ============================================================
+// CENTRO DE SOPORTE MAESTRO
+// ============================================================
+async function openPlatformAdmin() {
+  if (!state.currentUser?.isPlatformAdmin) return;
+  const root = document.getElementById('modal-platform-admin-content');
+  root.innerHTML = '<div class="empty-state">⏳ Cargando clubes disponibles...</div>';
+  openModal('modal-platform-admin');
+  try {
+    const clubs = await callRpc('fulbito_platform_list_clubs');
+    state.platformClubs = Array.isArray(clubs) ? clubs : [];
+    root.innerHTML = `
+      <div style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:10px;padding:12px 14px;margin-bottom:14px;color:var(--text);font-size:13px;line-height:1.5">
+        <b style="color:var(--gold)">Acceso maestro</b> · Elegí un club para asistirlo. Podés administrar plantel, asistencia y partidos; las votaciones quedan bloqueadas para preservar la autoría de cada jugador.
+      </div>
+      <div style="display:grid;gap:9px;max-height:50vh;overflow:auto;padding-right:3px">
+        ${state.platformClubs.map(club => `<button class="club-card" type="button" onclick="enterSupportClub('${safePlainText(club.id, 90)}')" style="width:100%;text-align:left">
+          <span class="club-card-crest">${escapeHtml((club.name || 'FC').slice(0,2).toUpperCase())}</span>
+          <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">${Number(club.players_count)||0} jugadores · ${Number(club.admins_count)||0} admin${Number(club.admins_count)===1?'':'s'}</span></span>
+          <span class="club-card-arrow">›</span>
+        </button>`).join('') || '<div class="empty-state">No hay clubes para mostrar.</div>'}
+      </div>`;
+  } catch (error) {
+    root.innerHTML = `<div class="empty-state">No se pudo abrir el centro de soporte: ${escapeHtml(error.message || 'sin acceso')}</div>`;
+  }
+}
+
+async function enterSupportClub(clubId) {
+  if (!state.currentUser?.isPlatformAdmin) return;
+  const club = state.platformClubs.find(item => item.id === clubId);
+  if (!club) { showToast('❌ No encontramos ese club'); return; }
+  if (!state.supportMode) {
+    state.supportHome = { club: { ...state.currentClub }, user: { ...state.currentUser } };
+  }
+  state.currentClub = { id: club.id, name: safePlainText(club.name, 50) || 'Club', inviteCode: null };
+  state.currentUser = { ...state.currentUser, name: 'Soporte maestro', isAdmin: true, supportMode: true, clubId: club.id };
+  state.supportMode = true;
+  state.builtTeams = null;
+  closeModal('modal-platform-admin');
+  showToast('⏳ Abriendo modo soporte...');
+  const [players, savedMatches] = await Promise.all([loadPlayers(club.id), loadMatches(club.id)]);
+  state.players = players;
+  matches = savedMatches;
+  showApp();
+  showToast(`🛡️ Modo soporte: ${state.currentClub.name}`);
+}
+
+async function exitSupportMode() {
+  const home = state.supportHome;
+  if (!home) { showClubChooser(); return; }
+  state.currentClub = { ...home.club };
+  state.currentUser = { ...home.user, supportMode: false };
+  state.supportMode = false;
+  state.supportHome = null;
+  state.builtTeams = null;
+  const [players, savedMatches] = await Promise.all([loadPlayers(home.club.id), loadMatches(home.club.id)]);
+  state.players = players;
+  matches = savedMatches;
+  showApp();
+  showToast('🏟️ Volviste a tu club');
+}
 
 // ============================================================
 // NORMALIZACIÓN DE VOTOS POR SESGO DEL VOTANTE
@@ -1934,6 +2023,14 @@ function renderHub() {
   const root = document.getElementById('hub-content');
   if (!root) return;
 
+  if (state.currentUser?.supportMode) {
+    const going = state.players.filter(p => p.attendance === 'going').length;
+    const pending = state.players.filter(p => !p.attendance).length;
+    const openMatches = matches.filter(m => !isPlayed(m)).length;
+    root.innerHTML = `<div class="hub-shell"><section class="hub-hero"><div class="hub-hero-copy"><div><div class="hub-kicker"><span class="hub-live-dot"></span> SOPORTE MAESTRO · ACCESO VERIFICADO</div><h1>GESTIONANDO<br><strong>${escapeHtml(state.currentClub.name.toUpperCase())}</strong></h1><p>Administrá el plantel y los partidos sin mezclar tu perfil con el de este club.</p></div><div class="hub-hero-actions"><button class="btn btn-primary btn-sm" onclick="switchTab('admin')">⚙️ Administrar club</button><button class="btn btn-ghost btn-sm" onclick="openPlatformAdmin()">🛡️ Cambiar club</button></div></div><aside class="hub-attendance"><div class="hub-panel-label">ESTADO DEL CLUB</div><div class="hub-attendance-meter"><div class="going"><b>${going}</b><span>Van</span></div><div><b>${pending}</b><span>Faltan</span></div><div><b>${openMatches}</b><span>Abiertos</span></div></div><div class="hub-attendance-copy" style="margin-top:14px">Las votaciones son personales y se mantienen fuera del modo soporte.</div></aside></section></div>`;
+    return;
+  }
+
   const me = getMe() || state.currentUser;
   const going = state.players.filter(p => p.attendance === 'going').length;
   const notgoing = state.players.filter(p => p.attendance === 'notgoing').length;
@@ -2305,6 +2402,7 @@ function openPlayerProfile(id) {
 let editPhotoData = null;
 
 function openEditProfile() {
+  if (state.currentUser?.supportMode) { showToast('🛡️ Salí del modo soporte para editar tu perfil.'); return; }
   const me = getMe();
   if (!me) return;
   editPhotoData = me.photo;
@@ -2527,6 +2625,10 @@ function resetAllAttendance() { clearAllAttendance(); }
 // ============================================================
 function renderRate() {
   const list = document.getElementById('rate-list');
+  if (state.currentUser?.supportMode) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛡️</div><div>Modo soporte</div><div class="sec-note" style="margin-top:8px">Las calificaciones son personales. Volvé a tu club para votar.</div></div>`;
+    return;
+  }
   const myId = state.currentUser.id;
 
   const me = state.players.find(p => p.id === myId);
@@ -2571,6 +2673,7 @@ function toggleRatePlayer(id) {
 }
 
 async function rateStat(playerId, stat, val) {
+  if (state.currentUser?.supportMode) { showToast('🛡️ El soporte no puede emitir votos.'); return; }
   const myId = state.currentUser.id;
   const p = state.players.find(x=>x.id===playerId);
   if (!p) return;
@@ -4408,7 +4511,8 @@ function votacionHTML() {
 function renderAdmin() {
   const clubInfo = document.getElementById('club-admin-info');
   if (clubInfo && state.currentClub) {
-    clubInfo.innerHTML = `
+    clubInfo.innerHTML = state.currentUser?.supportMode ? `
+      <div style="padding:10px 0 2px"><div style="font-weight:700">${escapeHtml(state.currentClub.name)}</div><div class="sec-note" style="margin-top:3px;color:var(--gold)">🛡️ Modo soporte maestro · código de invitación oculto</div></div>` : `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px">
         <div><div style="font-weight:700">${escapeHtml(state.currentClub.name)}</div><div class="sec-note" style="margin-top:3px">Compartí el código para que entren al grupo.</div></div>
         <button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()">${escapeHtml(state.currentClub.inviteCode)}</button>
