@@ -3257,7 +3257,9 @@ function queueGoalWrite(mid, key, delta) {
       _goalWritesPending--;
       if (_goalWritesPending === 0) {
         _goalSaveTimer = setTimeout(async () => {
-          matches = await loadMatches();
+          _goalSaveTimer = null;
+          const freshMatches = await loadMatches();
+          if (freshMatches.length || !matches.length) matches = freshMatches;
           renderGoles();
           setSaveState('✅ Guardado');
           setTimeout(() => setSaveState(''), 1600);
