@@ -229,6 +229,15 @@ body{
 .fifa-card.rare .fifa-card-photo{border-color:rgba(242,232,255,.4);box-shadow:0 0 0 2px rgba(139,92,246,.45), 0 0 16px rgba(168,85,247,.4)}
 .fifa-card.rare .fifa-card-record{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18)}
 
+/* Retrato de carta: ocupa el tramo que antes quedaba vacío, sin exigir fotos profesionales. */
+.fifa-card-portrait{position:absolute;z-index:0;left:8%;bottom:11px;width:84%;height:38%;overflow:hidden;pointer-events:none;clip-path:polygon(50% 0,91% 9%,100% 27%,94% 100%,6% 100%,0 27%,9% 9%);opacity:.83;-webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.25) 23%,#000 58%);mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.25) 23%,#000 58%)}
+.fifa-card-portrait img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 30%;filter:saturate(1.18) contrast(1.12) drop-shadow(0 9px 13px rgba(0,0,0,.36));transform:translateY(4%) scale(1.08);animation:portraitDrift 6.5s ease-in-out infinite alternate}
+.fifa-card-portrait::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 22%,rgba(8,8,20,.05) 54%,rgba(7,8,17,.38) 100%),linear-gradient(118deg,transparent 31%,rgba(255,255,255,.17) 47%,transparent 59%);background-size:100% 100%,220% 100%;background-position:center,0% 0%;animation:portraitSheen 8s ease-in-out infinite}
+.fifa-card-portrait.is-placeholder{display:grid;place-items:end center;padding-bottom:12px;background:radial-gradient(ellipse at center 110%,rgba(255,255,255,.2),transparent 60%);color:rgba(255,255,255,.36);font-size:42px}
+.fifa-card.gold .fifa-card-portrait::after{background:linear-gradient(180deg,transparent 22%,rgba(92,54,0,.08) 54%,rgba(58,31,0,.40) 100%),linear-gradient(118deg,transparent 31%,rgba(255,247,189,.20) 47%,transparent 59%);background-size:100% 100%,220% 100%;background-position:center,0% 0%}
+.fifa-card.rare .fifa-card-portrait{opacity:.93;filter:drop-shadow(0 0 15px rgba(188,139,255,.32))}
+.fifa-card.rare .fifa-card-portrait::after{background:linear-gradient(180deg,transparent 21%,rgba(66,17,112,.10) 52%,rgba(24,6,53,.42) 100%),linear-gradient(118deg,transparent 31%,rgba(239,212,255,.24) 47%,transparent 59%);background-size:100% 100%,220% 100%;background-position:center,0% 0%}
+
 /* ===== CLUB HOUSE: CABECERA Y CONTROLES DEL PLANTEL ===== */
 .roster-hero{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:150px;padding:26px 28px;margin-bottom:12px;border:1px solid rgba(182,242,61,.25);border-radius:20px;background:linear-gradient(118deg,rgba(22,38,22,.94),rgba(18,25,35,.91) 52%,rgba(31,25,50,.86));box-shadow:0 18px 38px rgba(0,0,0,.23)}
 .roster-hero::before{content:'';position:absolute;inset:0;z-index:-1;opacity:.42;background:linear-gradient(112deg,transparent 0 45%,rgba(182,242,61,.08) 45.1% 45.35%,transparent 45.5% 100%),repeating-radial-gradient(ellipse at 112% 120%,transparent 0 32px,rgba(182,242,61,.11) 33px 34px,transparent 35px 58px)}
@@ -865,6 +874,8 @@ body::after{
 @keyframes foilGlide{0%,18%{transform:translateX(-135%)}50%,100%{transform:translateX(135%)}}
 @keyframes scorerGlow{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @keyframes mvpGlow{0%,100%{opacity:1}50%{opacity:.72}}
+@keyframes portraitDrift{0%{transform:translateY(5%) scale(1.06)}100%{transform:translateY(-2%) scale(1.13)}}
+@keyframes portraitSheen{0%,18%{background-position:center,0% 0%}58%,100%{background-position:center,100% 0%}}
 @keyframes overlayIn{from{opacity:0}to{opacity:1}}
 @keyframes modalLift{from{opacity:0;transform:translateY(22px) scale(.96);filter:blur(7px)}to{opacity:1;transform:none;filter:none}}
 @media (max-width:640px){
@@ -902,6 +913,7 @@ html,body{max-width:100%;overflow-x:clip}
   .fifa-card-stat span:first-child{font-size:15px}
   .fifa-card-stat.best span:first-child{font-size:17px}
   .fifa-card-record{font-size:10.5px;line-height:1.1;padding:3px 7px;margin:9px auto 0}
+  .fifa-card-portrait{left:7%;width:86%;bottom:9px;height:37%}
 }
 @media (max-width:370px){
   .fifa-card{padding:13px 7px 15px}
@@ -912,9 +924,10 @@ html,body{max-width:100%;overflow-x:clip}
   .fifa-card-stat span:first-child{font-size:14px}
   .fifa-card-stat.best span:first-child{font-size:16px}
   .fifa-card-record{font-size:9.5px}
+  .fifa-card-portrait{height:35%;bottom:8px}
 }
 @media (prefers-reduced-motion:reduce){
-  body::after,.brand-crest,.topbar::before,.hub-hero::before,.roster-hero::before,.fifa-card,.fifa-card.card-hot::after,.fifa-card.card-hot .fifa-card-photo,.fifa-card.card-hot .fifa-shine,.fifa-card.card-top-scorer .fifa-card-overall,.fifa-card.card-mvp .fifa-card-name,.card-spotlight,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
+  body::after,.brand-crest,.topbar::before,.hub-hero::before,.roster-hero::before,.fifa-card,.fifa-card-portrait img,.fifa-card-portrait::after,.fifa-card.card-hot::after,.fifa-card.card-hot .fifa-card-photo,.fifa-card.card-hot .fifa-shine,.fifa-card.card-top-scorer .fifa-card-overall,.fifa-card.card-mvp .fifa-card-name,.card-spotlight,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
   .nav-tab,.btn-primary::after,.btn-login::after,.hub-panel,.hub-fixture,.team-card,.match-card,.admin-section,.goal-team,.stats-filter-card,.fifa-card{transition:none!important}
 }
 </style>
@@ -2604,9 +2617,9 @@ function renderFifaCard(p, highlights) {
   const pos = getEffectivePosition(p);
   const stats = getAvgStats(p) || {};
   const photoUrl = safePhotoUrl(p.photo);
-  const photo = photoUrl
-    ? `<img class="fifa-card-photo" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(p.name)}">`
-    : `<div class="fifa-card-photo fifa-photo-ph">👤</div>`;
+  const portrait = photoUrl
+    ? `<div class="fifa-card-portrait"><img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(p.name)}"></div>`
+    : `<div class="fifa-card-portrait is-placeholder" aria-hidden="true">⚽</div>`;
 
   const rec = getPlayerRecord(p.id);
   const extras = (rec.mvps>0?` · ⭐${rec.mvps}`:'') + (rec.goals>0?` · ⚽${rec.goals}`:'');
@@ -2622,13 +2635,13 @@ function renderFifaCard(p, highlights) {
 
   return `<div class="fifa-card ${cardClasses}" onclick="openPlayerProfile('${p.id}')">
     <span class="fifa-shine"></span>
+    ${portrait}
     <div class="fifa-top">
       <div class="fifa-left">
         <div class="fifa-card-overall">${ovr}</div>
         <div class="fifa-card-pos">${pos}</div>
         <div class="fifa-card-tier">${tier.label}</div>
       </div>
-      ${photo}
     </div>
     <div class="fifa-divider"></div>
     <div class="fifa-card-name">${escapeHtml(p.username.toUpperCase())}</div>
