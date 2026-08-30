@@ -973,6 +973,31 @@ html,body{max-width:100%;overflow-x:clip}
 
 @keyframes navPulse{0%,100%{transform:translateY(-1px) scale(1.06)}50%{transform:translateY(-3px) scale(1.13)}}
 @media (max-width:640px){.topbar{border-radius:0 0 12px 12px}.nav-tabs{border-radius:12px}.hub-hero,.roster-hero,.hub-fixture,.hub-panel{border-radius:13px}.hub-score,.hub-score-single{font-size:54px}.nav-tab{min-height:51px}}
+
+/* ===== COLECCIÓN / GEMINI INSPIRED =====
+   Marco de carta más compacto, legible y cercano a una colección de juego. */
+#tab-jugadores{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse 90% 42% at 50% 76%,rgba(48,183,255,.12),transparent 68%),linear-gradient(180deg,rgba(4,11,21,.10),rgba(4,9,18,.28))}
+#tab-jugadores::before{content:'';position:absolute;z-index:-1;left:-15%;right:-15%;bottom:-17%;height:58%;background:repeating-linear-gradient(112deg,transparent 0 52px,rgba(118,218,255,.055) 53px 54px,transparent 55px 106px);transform:perspective(420px) rotateX(52deg);transform-origin:center bottom;mask-image:linear-gradient(to top,rgba(0,0,0,.8),transparent 82%);pointer-events:none}
+#tab-jugadores .roster-grid-head{position:relative;padding-top:13px;margin-top:4px}
+#tab-jugadores .roster-grid-head::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,rgba(88,215,255,.72),rgba(88,215,255,.08) 42%,transparent 78%);box-shadow:0 0 12px rgba(88,215,255,.35)}
+#tab-jugadores .roster-eyebrow{color:#d6f47b;text-shadow:0 0 10px rgba(190,255,102,.25)}
+#tab-jugadores .roster-grid-head h2{color:#f7fbff;text-shadow:0 2px 0 #02070b,0 0 18px rgba(113,211,255,.18)}
+#tab-jugadores .players-grid{grid-template-columns:repeat(auto-fit,minmax(220px,260px));justify-content:center;gap:28px 20px;max-width:1240px;margin:0 auto}
+#tab-jugadores .fifa-card{width:100%;max-width:260px;min-height:0;aspect-ratio:.72;padding:17px 10px 23px;border:2px solid rgba(226,241,255,.56);border-radius:12px;background:linear-gradient(145deg,rgba(255,255,255,.16),transparent 16%),linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.08) 48%,rgba(0,0,0,.30));box-shadow:inset 0 0 0 1px rgba(0,0,0,.78),inset 0 0 0 4px rgba(255,255,255,.12),0 18px 28px rgba(0,0,0,.48),0 0 0 1px rgba(89,194,255,.12);clip-path:polygon(50% 0,82% 5%,100% 14%,100% 84%,50% 100%,0 84%,0 14%,18% 5%);overflow:hidden}
+#tab-jugadores .fifa-card::before{background:radial-gradient(ellipse 130% 45% at 50% -8%,rgba(255,255,255,.80),transparent 51%),linear-gradient(112deg,transparent 0 27%,rgba(255,255,255,.17) 39%,transparent 48%),repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 1px,transparent 1px 7px),linear-gradient(180deg,transparent 45%,rgba(0,0,0,.42) 100%)}
+#tab-jugadores .fifa-card::after{inset:5px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.64),inset 0 0 0 3px rgba(4,10,19,.56),inset 0 0 0 5px rgba(255,255,255,.12),inset 0 -34px 40px rgba(0,0,0,.27)}
+#tab-jugadores .fifa-card-portrait{left:10%;width:80%;bottom:5%;height:43%;opacity:.90;mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 16%,#000 48%,rgba(0,0,0,.86) 86%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 16%,#000 48%,rgba(0,0,0,.86) 86%,transparent 100%);clip-path:polygon(50% 0,88% 8%,100% 28%,94% 100%,6% 100%,0 28%,12% 8%);filter:drop-shadow(0 0 14px rgba(102,208,255,.19))}
+#tab-jugadores .fifa-card-portrait img{object-position:center 18%;transform:translateY(3%) scale(1.17);filter:saturate(1.25) contrast(1.15) drop-shadow(0 10px 14px rgba(0,0,0,.44))}
+#tab-jugadores .fifa-card.gold{border-color:rgba(255,226,139,.84);box-shadow:inset 0 0 0 1px rgba(102,50,0,.68),inset 0 0 0 4px rgba(255,246,184,.24),0 18px 28px rgba(0,0,0,.48),0 0 22px rgba(255,206,76,.16)}
+#tab-jugadores .fifa-card.rare{border-color:rgba(234,211,255,.92);box-shadow:inset 0 0 0 1px rgba(31,8,62,.72),inset 0 0 0 4px rgba(255,255,255,.20),0 18px 28px rgba(0,0,0,.48),0 0 28px rgba(161,96,255,.34)}
+#tab-jugadores .fifa-card-name{font-size:clamp(18px,1.35vw,22px);letter-spacing:1.8px;text-shadow:0 1px 0 rgba(255,255,255,.54),0 2px 5px rgba(0,0,0,.28)}
+#tab-jugadores .fifa-card-stats{width:90%;gap:4px 0;margin-top:10px}
+#tab-jugadores .fifa-card-stat{font-size:clamp(9px,.72vw,11px);line-height:1.48}
+#tab-jugadores .fifa-card-stat span:first-child{font-size:clamp(15px,1.1vw,18px)}
+#tab-jugadores .fifa-card-record{margin-top:10px;font-size:clamp(10px,.78vw,12px);padding:4px 9px;background:rgba(0,0,0,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 5px 8px rgba(0,0,0,.14)}
+#tab-jugadores .fifa-card.has-card-spotlight{padding-bottom:31px}
+@media (max-width:640px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,260px));gap:26px 16px}#tab-jugadores .fifa-card{max-width:260px}}
+@media (max-width:500px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}#tab-jugadores .fifa-card{max-width:none}}
 @media (prefers-reduced-motion:reduce){
   body::after,.brand-crest,.topbar::before,.hub-hero::before,.roster-hero::before,.fifa-card,.fifa-card-portrait img,.fifa-card-portrait::after,.fifa-card.card-hot::after,.fifa-card.card-hot .fifa-card-photo,.fifa-card.card-hot .fifa-shine,.fifa-card.card-top-scorer .fifa-card-overall,.fifa-card.card-mvp .fifa-card-name,.card-spotlight,.nav-tab.active .nav-tab-icon,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
   .nav-tab,.btn-primary::after,.btn-login::after,.hub-panel,.hub-fixture,.team-card,.match-card,.admin-section,.goal-team,.stats-filter-card,.fifa-card{transition:none!important}
