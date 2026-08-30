@@ -1,173 +1,130 @@
-/* ===== CARTAS DEL CLUB — rediseño ====================================
-   Se carga DESPUÉS de theme-aurora.css para recuperar los gradientes
-   metálicos que el override #tab-jugadores estaba tapando con gris.
-   Cada regla se declara para los dos contextos (plantel y podio).
+/* ===== CARTAS DEL CLUB — escudo por tier =============================
+   Se carga DESPUÉS de theme-aurora.css para ganarle al override
+   #tab-jugadores, que tapaba los tiers con un lavado gris.
+
+   El bug anterior era posicionamiento absoluto: la foto flotaba encima
+   del nombre. Acá TODO vive en una grilla de filas fijas, así que
+   ningún bloque puede pisar a otro. La foto ocupa su celda y nada más.
    ==================================================================== */
 
 .fifa-card,
 #tab-jugadores .fifa-card,
 .podium-slot .fifa-card{
   position:relative;width:100%;max-width:250px;justify-self:center;
-  aspect-ratio:.70;min-height:0;display:grid;
-  grid-template-rows:minmax(0,1fr) auto auto auto;
-  gap:0;padding:0;overflow:hidden;isolation:isolate;cursor:pointer;
-  clip-path:none;border-radius:14px;
-  border:2px solid rgba(255,255,255,.5);
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.5), 0 14px 26px rgba(0,0,0,.5);
-  filter:none;
-  transition:transform .26s cubic-bezier(.16,1,.3,1), box-shadow .26s ease;
-}
-.fifa-card:hover,
-#tab-jugadores .fifa-card:hover{transform:translateY(-7px);box-shadow:inset 0 0 0 1px rgba(0,0,0,.5),0 22px 34px rgba(0,0,0,.55)}
+  aspect-ratio:.667;min-height:0;cursor:pointer;overflow:visible;
+  clip-path:none;border:0;border-radius:0;box-shadow:none;filter:none;
+  background:url('../assets/cards/gold.webp') center/100% 100% no-repeat;
+  padding:0;
 
-/* Materiales por tier. El brillo va en ::before para no tapar el contenido. */
-.fifa-card,#tab-jugadores .fifa-card{background:var(--card-gold)}
-.fifa-card.silver,#tab-jugadores .fifa-card.silver{background:var(--card-silver);border-color:rgba(255,255,255,.72)}
-.fifa-card.bronze,#tab-jugadores .fifa-card.bronze{background:var(--card-bronze);border-color:rgba(255,222,180,.5)}
-.fifa-card.rare,#tab-jugadores .fifa-card.rare{background:var(--card-rare);border-color:rgba(226,205,255,.75)}
-
-.fifa-card::before,#tab-jugadores .fifa-card::before{
-  content:'';position:absolute;inset:0;z-index:0;pointer-events:none;background:
-    linear-gradient(118deg,transparent 0 26%,rgba(255,255,255,.3) 40%,transparent 54%),
-    repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 8px),
-    linear-gradient(180deg,transparent 46%,rgba(0,0,0,.34) 100%);
+  display:grid;
+  grid-template-columns:44% 56%;
+  /* 13% cabecera · 40% foto+datos · nombre · stats · resto para la punta */
+  grid-template-rows:13% 40% auto auto 1fr;
+  align-items:stretch;
+  transition:transform .26s cubic-bezier(.16,1,.3,1);
 }
-.fifa-card::after,#tab-jugadores .fifa-card::after{
-  content:'';position:absolute;inset:5px;z-index:3;pointer-events:none;border-radius:9px;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.42),inset 0 0 0 3px rgba(0,0,0,.22);
-}
-.fifa-shine{z-index:4}
+.fifa-card:hover,#tab-jugadores .fifa-card:hover{transform:translateY(-7px)}
 
-/* --- Bloque superior: datos a la izquierda, foto a la derecha --- */
+/* El tier elige el escudo */
+.fifa-card.gold,#tab-jugadores .fifa-card.gold{background-image:url('../assets/cards/gold.webp')}
+.fifa-card.silver,#tab-jugadores .fifa-card.silver{background-image:url('../assets/cards/silver.webp')}
+.fifa-card.bronze,#tab-jugadores .fifa-card.bronze{background-image:url('../assets/cards/bronze.webp')}
+.fifa-card.rare,#tab-jugadores .fifa-card.rare{background-image:url('../assets/cards/icon.webp')}
+/* Los dos rojos ganan al tier */
+.fifa-card.card-top-scorer,#tab-jugadores .fifa-card.card-top-scorer{background-image:url('../assets/cards/scorer.webp')}
+.fifa-card.card-mvp,#tab-jugadores .fifa-card.card-mvp{background-image:url('../assets/cards/mvp.webp')}
+
+/* El escudo ya trae su propio relieve: fuera las capas viejas */
+.fifa-card::before,#tab-jugadores .fifa-card::before,
+.fifa-card::after,#tab-jugadores .fifa-card::after{content:none}
+.fifa-shine{display:none}
+
+/* --- Fila 2, izquierda: OVR, tier, posición --- */
 .fifa-top{
-  position:relative;z-index:2;display:block;
-  padding:15px 0 0 15px;width:42%;align-self:start;
+  grid-column:1;grid-row:2;display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-start;
+  padding:0 0 0 15%;min-width:0;
 }
 .fifa-left{display:block;text-align:left}
-.fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:clamp(34px,3.4vw,46px);line-height:.85;letter-spacing:0;color:#1c1305}
-.fifa-card-tier{font-size:9px;font-weight:800;letter-spacing:1.9px;text-transform:uppercase;color:#3a2a0c;margin-top:5px;opacity:.9}
-.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.2px;color:#1c1305;margin-top:3px;padding-top:5px;border-top:1px solid rgba(0,0,0,.26);display:inline-block;min-width:38px}
+.fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,3.1vw,42px);line-height:.85;color:#1c1305}
+.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:clamp(12px,1.1vw,16px);letter-spacing:1.1px;color:#1c1305;margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,0,0,.3);display:inline-block;min-width:34px}
+.fifa-card-tier{font-size:8px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#3a2a0c;margin-top:3px;opacity:.85}
 
+/* --- Fila 2, derecha: la foto, enmarcada, dentro de su celda --- */
 .fifa-card-portrait{
-  position:absolute;z-index:2;right:13px;top:13px;width:49%;height:45%;
-  overflow:hidden;border-radius:9px;background:rgba(0,0,0,.3);
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,.45),
-    0 0 0 3px rgba(255,255,255,.42),
-    0 0 0 4px rgba(0,0,0,.3),
-    0 7px 16px rgba(0,0,0,.42);
+  grid-column:2;grid-row:2;position:relative;
+  margin:0 15% 0 0;border-radius:8px;overflow:hidden;
+  background:rgba(0,0,0,.28);
+  box-shadow:0 0 0 1px rgba(0,0,0,.45),0 0 0 3px rgba(255,255,255,.42),
+             0 0 0 4px rgba(0,0,0,.28),0 6px 14px rgba(0,0,0,.4);
   mask-image:none;-webkit-mask-image:none;filter:none;
 }
-.fifa-card-portrait::after{
-  content:'';position:absolute;inset:0;pointer-events:none;border-radius:9px;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),inset 0 -14px 22px rgba(0,0,0,.3);
-}
-.fifa-card-portrait img{width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block;filter:saturate(1.1) contrast(1.06)}
-.fifa-card-portrait.is-placeholder{display:grid;place-items:center;font-size:34px;opacity:.5;background:rgba(0,0,0,.22)}
+.fifa-card-portrait img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block}
+.fifa-card-portrait.is-placeholder{display:grid;place-items:center;font-size:30px;opacity:.45}
 
-/* El marco toma el metal del tier */
-.fifa-card.silver .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.4),0 0 0 3px rgba(255,255,255,.62),0 0 0 4px rgba(0,0,0,.26),0 7px 16px rgba(0,0,0,.4)}
-.fifa-card.bronze .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.45),0 0 0 3px rgba(255,214,166,.5),0 0 0 4px rgba(0,0,0,.3),0 7px 16px rgba(0,0,0,.42)}
-.fifa-card.rare .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 0 3px rgba(224,202,255,.62),0 0 0 4px rgba(20,4,44,.5),0 7px 16px rgba(0,0,0,.48)}
-.fifa-card.card-mvp .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 0 3px rgba(255,168,168,.66),0 0 0 4px rgba(60,0,0,.4),0 7px 16px rgba(0,0,0,.45)}
-.fifa-card.card-top-scorer .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.45),0 0 0 3px rgba(255,224,150,.7),0 0 0 4px rgba(60,28,0,.36),0 7px 16px rgba(0,0,0,.44)}
-
-/* --- Nombre --- */
-.fifa-divider{position:relative;z-index:2;height:1px;margin:0 14px;background:rgba(0,0,0,.3)}
+/* --- Nombre y stats: ancho completo, cada uno en su fila --- */
+.fifa-divider{grid-column:1/-1;grid-row:3;height:1px;margin:7px 17% 0;background:rgba(0,0,0,.28);align-self:start}
 .fifa-card-name{
-  position:relative;z-index:2;font-family:'Bebas Neue',sans-serif;
-  font-size:clamp(17px,1.5vw,23px);letter-spacing:1.5px;line-height:1;
-  color:#1c1305;text-align:center;padding:9px 10px 7px;
-  text-shadow:0 1px 0 rgba(255,255,255,.35);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  grid-column:1/-1;grid-row:3;align-self:end;
+  font-family:'Bebas Neue',sans-serif;font-size:clamp(15px,1.35vw,20px);
+  letter-spacing:1.3px;line-height:1;color:#1c1305;text-align:center;
+  padding:0 12% 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-
-/* --- Stats en dos columnas de tres --- */
 .fifa-card-stats{
-  position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;
-  gap:2px 0;width:auto;margin:0;padding:0 15px 10px;
+  grid-column:1/-1;grid-row:4;position:relative;
+  display:grid;grid-template-columns:1fr 1fr;gap:1px 0;
+  width:auto;margin:0;padding:0 15%;align-content:start;
 }
-.fifa-card-stats::before{content:'';position:absolute;left:50%;top:2px;bottom:10px;width:1px;background:rgba(0,0,0,.24)}
+.fifa-card-stats::before{content:'';position:absolute;left:50%;top:1px;bottom:1px;width:1px;background:rgba(0,0,0,.24)}
 .fifa-card-stat{
-  display:flex;align-items:baseline;justify-content:flex-start;gap:6px;
-  padding-left:12%;font-size:clamp(9px,.75vw,11px);font-weight:800;
-  letter-spacing:.4px;color:#2a1d06;line-height:1.5;border-radius:0;
+  display:flex;align-items:baseline;justify-content:center;gap:5px;
+  font-size:clamp(8px,.68vw,10px);font-weight:800;color:#2a1d06;line-height:1.45;border-radius:0;
 }
-.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:clamp(15px,1.2vw,19px);letter-spacing:.3px;color:#140d02;min-width:26px}
-.fifa-card-stat.best span:first-child{color:#000;text-shadow:0 0 9px rgba(255,255,255,.5)}
+.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:clamp(13px,1.05vw,17px);color:#140d02;min-width:22px;text-align:right}
+.fifa-card-stat.best span:first-child{color:#000}
 
-/* --- Franja de récord --- */
+/* --- Récord y distintivos: fila baja, lejos de la punta --- */
 .fifa-card-record{
-  position:relative;z-index:2;margin:0 14px 11px;padding:4px 9px;
-  border-radius:6px;background:rgba(0,0,0,.2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
-  font-size:clamp(9.5px,.75vw,11px);font-weight:700;color:#1c1305;text-align:center;
+  grid-column:1/-1;grid-row:5;align-self:start;
+  margin:5px 19% 0;padding:3px 6px;border-radius:5px;
+  background:rgba(0,0,0,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);
+  font-size:clamp(8px,.65vw,10px);font-weight:700;color:#1c1305;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
+.card-spotlights{
+  grid-column:1/-1;grid-row:5;align-self:start;margin-top:26px;
+  display:flex;justify-content:center;gap:4px;flex-wrap:wrap;padding:0 12%;
+}
+.fifa-card.has-card-spotlight{padding-bottom:0}
 
-/* --- Tier oscuro: el texto se invierte --- */
+/* --- Fondos oscuros: el texto se invierte --- */
 .fifa-card.rare .fifa-card-overall,.fifa-card.rare .fifa-card-pos,
 .fifa-card.rare .fifa-card-name,.fifa-card.rare .fifa-card-stat,
-.fifa-card.rare .fifa-card-record,#tab-jugadores .fifa-card.rare .fifa-card-name{color:#f4ecff;text-shadow:none}
-.fifa-card.rare .fifa-card-tier{color:#d9c2ff}
-.fifa-card.rare .fifa-card-stat span:first-child{color:#fff}
-.fifa-card.rare .fifa-divider,.fifa-card.rare .fifa-card-stats::before{background:rgba(230,214,255,.3)}
-.fifa-card.rare .fifa-card-pos{border-top-color:rgba(230,214,255,.3)}
-
-/* --- Distintivos: MVP en rojo, goleador en fuego --- */
-.fifa-card.card-mvp{border-color:rgba(255,150,150,.8)}
-.fifa-card.card-mvp::after{box-shadow:inset 0 0 0 1px rgba(255,190,190,.6),inset 0 0 0 3px rgba(90,0,0,.34)}
-.fifa-card.card-top-scorer{border-color:rgba(255,215,130,.9)}
-.fifa-card.card-top-scorer::after{box-shadow:inset 0 0 0 1px rgba(255,230,160,.7),inset 0 0 0 3px rgba(80,40,0,.3)}
-.fifa-card.card-hot::after{box-shadow:inset 0 0 0 1px rgba(255,200,130,.65),inset 0 0 0 3px rgba(90,30,0,.3)}
-
-.card-spotlights{position:relative;z-index:5}
-.fifa-card.has-card-spotlight{padding-bottom:0}
+.fifa-card.rare .fifa-card-record,
+.fifa-card.card-mvp .fifa-card-overall,.fifa-card.card-mvp .fifa-card-pos,
+.fifa-card.card-mvp .fifa-card-name,.fifa-card.card-mvp .fifa-card-stat,
+.fifa-card.card-mvp .fifa-card-record,
+.fifa-card.card-top-scorer .fifa-card-overall,.fifa-card.card-top-scorer .fifa-card-pos,
+.fifa-card.card-top-scorer .fifa-card-name,.fifa-card.card-top-scorer .fifa-card-stat,
+.fifa-card.card-top-scorer .fifa-card-record{color:#f6f1ff;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.fifa-card.rare .fifa-card-stat span:first-child,
+.fifa-card.card-mvp .fifa-card-stat span:first-child,
+.fifa-card.card-top-scorer .fifa-card-stat span:first-child{color:#fff}
+.fifa-card.rare .fifa-card-tier,.fifa-card.card-mvp .fifa-card-tier,
+.fifa-card.card-top-scorer .fifa-card-tier{color:rgba(255,255,255,.72)}
+.fifa-card.rare .fifa-divider,.fifa-card.rare .fifa-card-stats::before,
+.fifa-card.card-mvp .fifa-divider,.fifa-card.card-mvp .fifa-card-stats::before,
+.fifa-card.card-top-scorer .fifa-divider,.fifa-card.card-top-scorer .fifa-card-stats::before{background:rgba(255,255,255,.3)}
+.fifa-card.rare .fifa-card-pos,.fifa-card.card-mvp .fifa-card-pos,
+.fifa-card.card-top-scorer .fifa-card-pos{border-top-color:rgba(255,255,255,.3)}
+.fifa-card.rare .fifa-card-record,.fifa-card.card-mvp .fifa-card-record,
+.fifa-card.card-top-scorer .fifa-card-record{background:rgba(0,0,0,.32)}
 
 @media (max-width:640px){
   #tab-jugadores .fifa-card,.fifa-card{max-width:none}
-  .fifa-top{padding:11px 0 0 11px}
-  .fifa-card-portrait{right:10px;top:10px}
-  .fifa-card-stats{padding:0 11px 8px}
-  .fifa-card-stat{padding-left:8%}
-  .fifa-card-record{margin:0 10px 9px}
-  .fifa-divider{margin:0 10px}
+  .fifa-top{padding-left:13%}
+  .fifa-card-portrait{margin-right:13%}
 }
 @media (prefers-reduced-motion:reduce){
   .fifa-card,.fifa-card:hover,#tab-jugadores .fifa-card:hover{transition:none;transform:none}
 }
-
-/* ===== ORNAMENTOS =====================================================
-   Tres SVG de 8 KB en total. Van como capas de fondo sobre el metal, con
-   modo de fusión, así toman el color del tier sin duplicar archivos.
-   ==================================================================== */
-
-/* Veta metálica sobre todos los tiers */
-.fifa-card::before,#tab-jugadores .fifa-card::before{
-  background:
-    url('../assets/vein.svg') center/100% 100% no-repeat,
-    linear-gradient(118deg,transparent 0 26%,rgba(255,255,255,.3) 40%,transparent 54%),
-    repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 8px),
-    linear-gradient(180deg,transparent 46%,rgba(0,0,0,.34) 100%);
-  mix-blend-mode:soft-light;
-}
-.fifa-card.rare::before,#tab-jugadores .fifa-card.rare::before{mix-blend-mode:overlay;opacity:.85}
-
-/* Laurel: distintivo del tier Icon */
-.fifa-card.rare .fifa-card-stats::after,
-#tab-jugadores .fifa-card.rare .fifa-card-stats::after{
-  content:'';position:absolute;left:50%;top:50%;z-index:-1;
-  width:150%;height:190%;transform:translate(-50%,-52%);
-  background:url('../assets/laurel.svg') center/contain no-repeat;
-  opacity:.17;pointer-events:none;
-}
-
-/* Escudo del club, marca de agua detrás del nombre */
-.fifa-card-name::before{
-  content:'';position:absolute;left:50%;top:50%;z-index:-1;
-  width:34px;height:40px;transform:translate(-50%,-50%);
-  background:url('../assets/crest.svg') center/contain no-repeat;
-  opacity:.13;pointer-events:none;
-}
-.fifa-card-name{position:relative}
-.fifa-card.rare .fifa-card-name::before{opacity:.22}
