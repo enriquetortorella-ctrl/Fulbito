@@ -237,7 +237,6 @@ body{
 .fifa-card.gold .fifa-card-portrait::after{background:linear-gradient(180deg,transparent 22%,rgba(92,54,0,.08) 54%,rgba(58,31,0,.40) 100%),linear-gradient(118deg,transparent 31%,rgba(255,247,189,.20) 47%,transparent 59%);background-size:100% 100%,220% 100%;background-position:center,0% 0%}
 .fifa-card.rare .fifa-card-portrait{opacity:.93;filter:drop-shadow(0 0 15px rgba(188,139,255,.32))}
 .fifa-card.rare .fifa-card-portrait::after{background:linear-gradient(180deg,transparent 21%,rgba(66,17,112,.10) 52%,rgba(24,6,53,.42) 100%),linear-gradient(118deg,transparent 31%,rgba(239,212,255,.24) 47%,transparent 59%);background-size:100% 100%,220% 100%;background-position:center,0% 0%}
-
 /* ===== CLUB HOUSE: CABECERA Y CONTROLES DEL PLANTEL ===== */
 .roster-hero{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:150px;padding:26px 28px;margin-bottom:12px;border:1px solid rgba(182,242,61,.25);border-radius:20px;background:linear-gradient(118deg,rgba(22,38,22,.94),rgba(18,25,35,.91) 52%,rgba(31,25,50,.86));box-shadow:0 18px 38px rgba(0,0,0,.23)}
 .roster-hero::before{content:'';position:absolute;inset:0;z-index:-1;opacity:.42;background:linear-gradient(112deg,transparent 0 45%,rgba(182,242,61,.08) 45.1% 45.35%,transparent 45.5% 100%),repeating-radial-gradient(ellipse at 112% 120%,transparent 0 32px,rgba(182,242,61,.11) 33px 34px,transparent 35px 58px)}
@@ -2847,7 +2846,7 @@ function openPlayerProfile(id) {
 
   document.getElementById('modal-profile-title').textContent = p.name.toUpperCase();
   document.getElementById('modal-profile-content').innerHTML = `
-    ${photo}
+      ${photo}
     <div style="text-align:center;margin-bottom:16px">
       <span style="font-family:'Bebas Neue',sans-serif;font-size:48px">${ovr}</span>
       <span style="display:block;color:var(--muted);font-size:13px">${tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
