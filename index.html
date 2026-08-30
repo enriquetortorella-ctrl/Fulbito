@@ -850,6 +850,48 @@ body::after{
   .topbar::before{animation-duration:10s}.nav-tab:hover{transform:none}
   .hub-panel:hover,.hub-fixture:hover,.team-card:hover,.match-card:hover,.admin-section:hover,.goal-team:hover,.stats-filter-card:hover{transform:none}
 }
+
+/* MÓVIL · Cartas legibles y navegación que se desplaza por sí misma. */
+html,body{max-width:100%;overflow-x:clip}
+#screen-app{width:100%;min-width:0;overflow-x:clip}
+.nav-tabs{
+  overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{scroll-snap-align:start}
+@media (max-width:640px){
+  .nav-tabs{margin:7px 0;padding:4px 4px;gap:3px;width:100%;max-width:100%;touch-action:pan-x pan-y}
+  .nav-tab{flex:0 0 74px;min-width:74px}
+
+  /* La carta conserva su silueta, pero ahora el contenido ocupa el espacio útil. */
+  .fifa-card{padding:14px 8px 16px;aspect-ratio:.675}
+  .fifa-top{gap:9px;margin-top:0}
+  .fifa-card-photo{width:64px;height:64px}
+  .fifa-card-overall{font-size:44px}
+  .fifa-card-pos{font-size:13px;margin-top:4px;padding-top:4px}
+  .fifa-card-tier{font-size:8px;letter-spacing:1.8px;margin-top:4px}
+  .fifa-divider{width:86%;margin:8px 0 6px}
+  .fifa-card-name{font-size:16px;letter-spacing:1px;line-height:1.08}
+  .fifa-card-stats{width:92%;gap:4px 0;margin-top:8px}
+  .fifa-card-stat{font-size:10px;line-height:1.5;gap:3px}
+  .fifa-card-stat span:first-child{font-size:15px}
+  .fifa-card-stat.best span:first-child{font-size:17px}
+  .fifa-card-record{font-size:10.5px;line-height:1.1;padding:3px 7px;margin:9px auto 0}
+}
+@media (max-width:370px){
+  .fifa-card{padding:13px 7px 15px}
+  .fifa-card-photo{width:58px;height:58px}
+  .fifa-card-overall{font-size:40px}
+  .fifa-card-name{font-size:15px}
+  .fifa-card-stat{font-size:9.5px}
+  .fifa-card-stat span:first-child{font-size:14px}
+  .fifa-card-stat.best span:first-child{font-size:16px}
+  .fifa-card-record{font-size:9.5px}
+}
 @media (prefers-reduced-motion:reduce){
   body::after,.brand-crest,.topbar::before,.fifa-card,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
   .nav-tab,.btn-primary::after,.btn-login::after,.hub-panel,.hub-fixture,.team-card,.match-card,.admin-section,.goal-team,.stats-filter-card,.fifa-card{transition:none!important}
