@@ -539,7 +539,7 @@ body{
   .roster-toolbar{gap:11px;padding:11px;border-radius:12px;margin-bottom:20px}.roster-summary{width:100%;justify-content:space-between}.roster-metric{min-width:0;flex:1;padding:0 8px}.roster-metric:first-child{padding-left:0}.roster-metric span{font-size:8px;letter-spacing:.55px}.roster-metric b{font-size:21px}.roster-leader{max-width:none}
   .roster-controls{gap:7px}.roster-search{min-width:0;height:35px}.roster-controls select{height:35px;max-width:132px;font-size:11px}
   .roster-grid-head{margin-bottom:12px}.roster-grid-head h2{font-size:25px}.roster-visible-count{font-size:10px;padding:5px 8px}
-  .players-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 10px}
+  .players-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:18px 12px}
   .fifa-card{max-width:100%;min-height:0;padding:18px 11px 28px;filter:drop-shadow(0 9px 14px rgba(0,0,0,.45))}
   .fifa-card:hover{transform:translateY(-4px) scale(1.015)}
   .fifa-card-photo{width:60px;height:60px}.fifa-card-overall{font-size:38px}.fifa-card-pos{font-size:12px}.fifa-card-tier{font-size:7px;letter-spacing:1.6px}
@@ -549,6 +549,7 @@ body{
   .roster-hero p{max-width:165px}.roster-metric span{font-size:7px}.roster-metric b{font-size:19px}
   .fifa-card{padding:16px 8px 25px}.fifa-top{gap:7px}.fifa-card-photo{width:55px;height:55px}.fifa-card-overall{font-size:34px}.fifa-card-name{font-size:13px}.fifa-card-stats{width:94%}.fifa-card-record{font-size:8px;padding:2px 5px}
 }
+
 @media (prefers-reduced-motion: reduce){
   *{transition:none!important;animation:none!important}
 }
@@ -702,6 +703,156 @@ body::before{
   .nav-tab{border-radius:8px}
   .hub-hero,.roster-hero{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
   .hub-attendance,.hub-panel,.hub-fixture,.team-card,.score-board,.attend-stat,.attend-player,.rate-player,.field-btn,.match-card,.rank-row,.admin-section,.goal-team,.stats-filter-card,.player-hero{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+}
+
+/* ===== FULBITO / AURORA STADIUM GLASS ===== */
+:root{
+  --aurora-cyan:#70d7ff;
+  --aurora-violet:#9d79ff;
+  --aurora-lime:#c9ff63;
+  --aurora-gold:#ffd36a;
+  --panel-edge:rgba(206,231,255,.22);
+  --panel-deep:rgba(8,17,33,.72);
+  --panel-light:rgba(47,79,125,.34);
+}
+body{isolation:isolate;background-color:#050914}
+body::after{
+  content:'';position:fixed;inset:-20vmax;z-index:-2;pointer-events:none;opacity:.74;
+  background:
+    radial-gradient(circle at 24% 23%,rgba(112,215,255,.16),transparent 17%),
+    radial-gradient(circle at 74% 12%,rgba(201,255,99,.13),transparent 18%),
+    radial-gradient(circle at 66% 76%,rgba(157,121,255,.16),transparent 19%),
+    radial-gradient(circle at 19% 83%,rgba(255,211,106,.11),transparent 17%);
+  filter:blur(18px);animation:auroraDrift 18s ease-in-out infinite alternate;
+}
+#screen-app::before{
+  content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.44;
+  background:
+    linear-gradient(100deg,transparent 0 20%,rgba(112,215,255,.05) 31%,transparent 45% 70%,rgba(201,255,99,.045) 83%,transparent 100%),
+    repeating-linear-gradient(90deg,transparent 0 94px,rgba(206,231,255,.024) 95px 96px);
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.92),transparent 80%);
+}
+
+/* Entrada de producto: se nota al volver, sin interferir con los datos. */
+#screen-login.active .login-logo,#screen-club.active .club-intro{animation:heroBoot .72s cubic-bezier(.16,1,.3,1) both}
+#screen-login.active .login-box,#screen-club.active .club-box{animation:glassRise .72s .10s cubic-bezier(.16,1,.3,1) both}
+.login-logo{
+  color:#fff3bd;text-shadow:0 0 6px rgba(255,255,255,.35),0 0 32px rgba(255,211,106,.55),0 0 78px rgba(112,215,255,.17);
+  letter-spacing:2px;
+}
+.login-sub{color:#b7cff4;text-shadow:0 0 18px rgba(112,215,255,.2)}
+.club-box,.login-box,.register-form,.modal{
+  border-color:var(--panel-edge);
+  background:linear-gradient(135deg,rgba(54,86,135,.55),rgba(10,19,37,.82) 46%,rgba(22,28,58,.70));
+  box-shadow:0 26px 70px rgba(0,0,0,.39),0 0 0 1px rgba(112,215,255,.035),inset 0 1px 0 rgba(255,255,255,.13);
+}
+
+/* Marco de estadio y navegación HUD. */
+.topbar{
+  overflow:hidden;border-color:rgba(206,231,255,.19);
+  background:linear-gradient(105deg,rgba(6,15,31,.94),rgba(31,59,101,.62) 48%,rgba(8,16,31,.93));
+  box-shadow:0 18px 38px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.13),inset 0 -1px 0 rgba(112,215,255,.10);
+}
+.topbar::before{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.8;
+  background:linear-gradient(108deg,transparent 10%,rgba(255,255,255,.11) 24%,transparent 32% 67%,rgba(201,255,99,.10) 80%,transparent 91%);
+  transform:translateX(-72%);animation:topbarSweep 8s ease-in-out infinite;
+}
+.topbar>*{position:relative;z-index:1}
+.brand-crest{
+  background:linear-gradient(145deg,#edffb0 0%,#c9ff63 45%,#8dcc27 100%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.3),0 0 0 5px rgba(201,255,99,.06),0 0 31px rgba(201,255,99,.34),0 16px 25px rgba(0,0,0,.34);
+  animation:crestPulse 3.8s ease-in-out infinite;
+}
+.topbar-logo{color:#f4f8ff;letter-spacing:1.8px;text-shadow:0 0 25px rgba(112,215,255,.23)}
+.brand-caption{color:var(--aurora-lime);letter-spacing:2.3px}
+.topbar-avatar,.topbar-avatar-placeholder{border-color:var(--aurora-gold);box-shadow:0 0 0 4px rgba(255,211,106,.11),0 0 19px rgba(112,215,255,.14)}
+
+.nav-tabs{
+  overflow:visible;border-color:rgba(206,231,255,.17);
+  background:linear-gradient(105deg,rgba(8,18,37,.78),rgba(25,45,78,.57),rgba(8,17,34,.79));
+  box-shadow:0 15px 34px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.09);
+}
+.nav-tab{isolation:isolate;overflow:hidden;transition:color .25s ease,transform .25s cubic-bezier(.2,.9,.2,1),border-color .25s,background .25s;}
+.nav-tab::before{content:'';position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .25s;background:radial-gradient(circle at 50% 0,rgba(112,215,255,.24),transparent 62%)}
+.nav-tab:hover{color:#fff;transform:translateY(-2px)}
+.nav-tab:hover::before{opacity:1}
+.nav-tab.active{
+  color:#f6ffe2;border-color:rgba(201,255,99,.55);
+  background:linear-gradient(145deg,rgba(201,255,99,.22),rgba(112,215,255,.12));
+  box-shadow:0 9px 21px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.18),0 0 17px rgba(201,255,99,.11);
+}
+.nav-tab.active::before{opacity:1;background:linear-gradient(90deg,transparent,rgba(255,255,255,.20),transparent)}
+.nav-tab.active .nav-tab-icon{filter:drop-shadow(0 0 7px rgba(201,255,99,.65));transform:translateY(-1px) scale(1.08)}
+
+/* Profundidad y reacción en los módulos de juego. */
+.hub-attendance,.hub-panel,.hub-fixture,.team-card,.score-board,.attend-stat,.attend-player,.rate-player,.field-btn,.match-card,.rank-row,.admin-section,.goal-team,.stats-filter-card,.player-hero{
+  position:relative;border-color:var(--panel-edge);
+  background:linear-gradient(145deg,rgba(50,83,132,.48),rgba(10,20,39,.78) 63%,rgba(30,31,67,.58));
+  box-shadow:0 19px 44px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.11),inset 0 -1px 0 rgba(112,215,255,.045);
+}
+.hub-panel-head,.fixture-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));border-bottom-color:rgba(206,231,255,.15)}
+.hub-hero,.roster-hero{
+  overflow:hidden;
+  background:linear-gradient(124deg,rgba(29,76,119,.73),rgba(19,31,67,.72) 44%,rgba(49,31,82,.64));
+  box-shadow:0 28px 62px rgba(0,0,0,.31),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(112,215,255,.12);
+}
+.hub-hero::before,.roster-hero::before{opacity:.9;background:linear-gradient(112deg,rgba(255,255,255,.16),transparent 18% 64%,rgba(112,215,255,.08) 75%,rgba(201,255,99,.12));mask-image:none}
+.hub-kicker,.roster-kicker{color:var(--aurora-lime);text-shadow:0 0 15px rgba(201,255,99,.32)}
+.hub-live-dot,.roster-kicker span{box-shadow:0 0 0 5px rgba(201,255,99,.10),0 0 18px rgba(201,255,99,.94)}
+.hub-score,.hub-score-single{color:#fff0a8;text-shadow:0 0 12px rgba(255,211,106,.45),0 0 32px rgba(255,211,106,.17)}
+.fixture-status{box-shadow:0 0 16px rgba(201,255,99,.12)}
+.score-board{border-color:rgba(255,211,106,.44);background:linear-gradient(120deg,rgba(35,54,84,.84),rgba(13,22,41,.94),rgba(67,44,77,.72));box-shadow:0 21px 46px rgba(0,0,0,.35),0 0 34px rgba(255,211,106,.08),inset 0 1px 0 rgba(255,255,255,.15)}
+.score-side .snum{filter:drop-shadow(0 0 10px currentColor)}
+.roster-toolbar{border-color:rgba(206,231,255,.19);background:linear-gradient(100deg,rgba(40,68,108,.42),rgba(10,20,38,.66));box-shadow:0 18px 35px rgba(0,0,0,.19),inset 0 1px 0 rgba(255,255,255,.09)}
+.roster-metric b{color:#fff4b5;text-shadow:0 0 14px rgba(255,211,106,.22)}
+
+/* Cartas con foil, profundidad y animación de reparto. */
+.fifa-card{
+  border:1px solid rgba(255,255,255,.17);
+  filter:drop-shadow(0 15px 22px rgba(0,0,0,.52)) drop-shadow(0 0 11px rgba(112,215,255,.07));
+  transform:translateZ(0);
+  animation:cardDeal .62s cubic-bezier(.16,1,.3,1) both;
+}
+.fifa-card::before{background:radial-gradient(ellipse 128% 53% at 50% -10%,rgba(255,255,255,.64),transparent 54%),linear-gradient(112deg,transparent 0 30%,rgba(255,255,255,.16) 43%,transparent 52%),repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 7px),repeating-linear-gradient(0deg,rgba(0,0,0,.026) 0 1px,transparent 1px 9px),linear-gradient(180deg,transparent 54%,rgba(0,0,0,.28) 100%)}
+.fifa-card::after{inset:7px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),inset 0 0 0 4px rgba(255,255,255,.07),inset 0 -22px 30px rgba(0,0,0,.17)}
+.fifa-card.rare{filter:drop-shadow(0 15px 22px rgba(0,0,0,.52)) drop-shadow(0 0 18px rgba(157,121,255,.38))}
+.fifa-card.rare::before{background:radial-gradient(ellipse 130% 55% at 50% -10%,rgba(232,213,255,.66),transparent 53%),linear-gradient(112deg,transparent 0 30%,rgba(255,255,255,.20) 43%,transparent 52%),repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 1px,transparent 1px 7px),linear-gradient(180deg,transparent 54%,rgba(0,0,0,.35) 100%)}
+.fifa-card-photo{box-shadow:0 0 0 3px rgba(255,255,255,.35),0 0 0 5px rgba(112,215,255,.11),0 10px 19px rgba(0,0,0,.34)}
+.fifa-card-record{box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 5px 8px rgba(0,0,0,.10)}
+.players-grid .fifa-card:nth-child(2){animation-delay:.05s}.players-grid .fifa-card:nth-child(3){animation-delay:.10s}.players-grid .fifa-card:nth-child(4){animation-delay:.15s}.players-grid .fifa-card:nth-child(5){animation-delay:.20s}.players-grid .fifa-card:nth-child(6){animation-delay:.25s}.players-grid .fifa-card:nth-child(7){animation-delay:.30s}.players-grid .fifa-card:nth-child(8){animation-delay:.35s}.players-grid .fifa-card:nth-child(9){animation-delay:.40s}
+
+.btn-primary,.btn-login{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.30);box-shadow:0 12px 27px rgba(240,192,64,.28),inset 0 1px 0 rgba(255,255,255,.72)}
+.btn-primary::after,.btn-login::after{content:'';position:absolute;inset:-20% -50%;pointer-events:none;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.58) 50%,transparent 60%);transform:translateX(-55%) rotate(8deg);transition:transform .55s ease}
+.btn-primary:hover::after,.btn-login:hover::after{transform:translateX(55%) rotate(8deg)}
+.btn-ghost,.btn-register,.hub-mini-btn{transition:transform .22s ease,background .22s,border-color .22s,box-shadow .22s}
+.btn-ghost:hover,.btn-register:hover,.hub-mini-btn:hover{transform:translateY(-2px);box-shadow:0 11px 22px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.11)}
+
+/* Transiciones de pantallas, módulos y modales. */
+.tab-content.active{animation:tabEnter .52s cubic-bezier(.16,1,.3,1) both}
+.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid{animation:glassRise .65s .08s cubic-bezier(.16,1,.3,1) both}
+.modal-overlay.open{animation:overlayIn .24s ease both}
+.modal-overlay.open .modal{animation:modalLift .38s cubic-bezier(.16,1,.3,1) both}
+@media (hover:hover){
+  .hub-panel:hover,.hub-fixture:hover,.team-card:hover,.match-card:hover,.admin-section:hover,.goal-team:hover,.stats-filter-card:hover{transform:translateY(-4px);border-color:rgba(112,215,255,.36);box-shadow:0 28px 52px rgba(0,0,0,.34),0 0 28px rgba(112,215,255,.06),inset 0 1px 0 rgba(255,255,255,.14)}
+  .fifa-card:hover{transform:translateY(-10px) scale(1.024) rotateX(2deg);filter:drop-shadow(0 25px 32px rgba(0,0,0,.46)) drop-shadow(0 0 20px rgba(255,211,106,.22))}
+}
+@keyframes auroraDrift{0%{transform:translate3d(-2%,-1%,0) scale(1)}100%{transform:translate3d(3%,2%,0) scale(1.08)}}
+@keyframes topbarSweep{0%,18%{transform:translateX(-76%)}48%,100%{transform:translateX(76%)}}
+@keyframes crestPulse{0%,100%{filter:drop-shadow(0 0 10px rgba(201,255,99,.28))}50%{filter:drop-shadow(0 0 19px rgba(201,255,99,.58))}}
+@keyframes heroBoot{from{opacity:0;transform:translateY(-16px);filter:blur(7px)}to{opacity:1;transform:none;filter:none}}
+@keyframes glassRise{from{opacity:0;transform:translateY(20px) scale(.985);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+@keyframes tabEnter{from{opacity:0;transform:translateY(11px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+@keyframes cardDeal{from{opacity:0;transform:translateY(22px) scale(.94) rotateX(7deg);filter:blur(5px)}to{opacity:1;transform:translateZ(0);filter:drop-shadow(0 15px 22px rgba(0,0,0,.52)) drop-shadow(0 0 11px rgba(112,215,255,.07))}}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+@keyframes modalLift{from{opacity:0;transform:translateY(22px) scale(.96);filter:blur(7px)}to{opacity:1;transform:none;filter:none}}
+@media (max-width:640px){
+  .topbar::before{animation-duration:10s}.nav-tab:hover{transform:none}
+  .hub-panel:hover,.hub-fixture:hover,.team-card:hover,.match-card:hover,.admin-section:hover,.goal-team:hover,.stats-filter-card:hover{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  body::after,.brand-crest,.topbar::before,.fifa-card,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
+  .nav-tab,.btn-primary::after,.btn-login::after,.hub-panel,.hub-fixture,.team-card,.match-card,.admin-section,.goal-team,.stats-filter-card,.fifa-card{transition:none!important}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
