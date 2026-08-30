@@ -251,34 +251,19 @@ body::after{
 .roster-toolbar{border-color:rgba(206,231,255,.19);background:linear-gradient(100deg,rgba(40,68,108,.42),rgba(10,20,38,.66));box-shadow:0 18px 35px rgba(0,0,0,.19),inset 0 1px 0 rgba(255,255,255,.09)}
 .roster-metric b{color:#fff4b5;text-shadow:0 0 14px rgba(255,211,106,.22)}
 
-/* Cartas con foil, profundidad y animación de reparto. */
-.fifa-card{
+/* Cartas con foil{
   border:1px solid rgba(255,255,255,.17);
   filter:drop-shadow(0 15px 22px rgba(0,0,0,.52)) drop-shadow(0 0 11px rgba(112,215,255,.07));
   transform:translateZ(0);
   animation:cardDeal .62s cubic-bezier(.16,1,.3,1) both;
 }
-.fifa-card::before{background:radial-gradient(ellipse 128% 53% at 50% -10%,rgba(255,255,255,.64),transparent 54%),linear-gradient(112deg,transparent 0 30%,rgba(255,255,255,.16) 43%,transparent 52%),repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 7px),repeating-linear-gradient(0deg,rgba(0,0,0,.026) 0 1px,transparent 1px 9px),linear-gradient(180deg,transparent 54%,rgba(0,0,0,.28) 100%)}
-.fifa-card::after{inset:7px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),inset 0 0 0 4px rgba(255,255,255,.07),inset 0 -22px 30px rgba(0,0,0,.17)}
-.fifa-card.rare{filter:drop-shadow(0 15px 22px rgba(0,0,0,.52)) drop-shadow(0 0 18px rgba(157,121,255,.38))}
-.fifa-card.rare::before{background:radial-gradient(ellipse 130% 55% at 50% -10%,rgba(232,213,255,.66),transparent 53%),linear-gradient(112deg,transparent 0 30%,rgba(255,255,255,.20) 43%,transparent 52%),repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 1px,transparent 1px 7px),linear-gradient(180deg,transparent 54%,rgba(0,0,0,.35) 100%)}
-.fifa-card-photo{box-shadow:0 0 0 3px rgba(255,255,255,.35),0 0 0 5px rgba(112,215,255,.11),0 10px 19px rgba(0,0,0,.34)}
-.fifa-card-record{box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 5px 8px rgba(0,0,0,.10)}
-.players-grid .fifa-card:nth-child(2){animation-delay:.05s}.players-grid .fifa-card:nth-child(3){animation-delay:.10s}.players-grid .fifa-card:nth-child(4){animation-delay:.15s}.players-grid .fifa-card:nth-child(5){animation-delay:.20s}.players-grid .fifa-card:nth-child(6){animation-delay:.25s}.players-grid .fifa-card:nth-child(7){animation-delay:.30s}.players-grid .fifa-card:nth-child(8){animation-delay:.35s}.players-grid .fifa-card:nth-child(9){animation-delay:.40s}
 
-/* Estados vivos del plantel: se alimentan del historial real, no son decorativos. */
-.fifa-card.has-card-spotlight{padding-bottom:43px}
+/* Estados vivos del plantel: se alimentan del historial real{padding-bottom:43px}
 .card-spotlights{position:absolute;z-index:4;left:50%;bottom:17px;display:flex;justify-content:center;flex-wrap:wrap;gap:4px;max-width:88%;transform:translateX(-50%);pointer-events:none}
 .card-spotlight{display:inline-flex;align-items:center;justify-content:center;min-height:19px;padding:3px 7px;border:1px solid rgba(255,255,255,.24);border-radius:999px;font-family:'Bebas Neue',sans-serif;font-size:10px;line-height:1;letter-spacing:.75px;color:#fff;background:rgba(8,14,27,.54);box-shadow:0 4px 10px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.13);white-space:nowrap;animation:badgeFloat 2.8s ease-in-out infinite}
 .card-spotlight.is-hot{color:#fff0bd;border-color:rgba(255,157,66,.62);background:linear-gradient(135deg,rgba(255,95,35,.78),rgba(181,38,16,.56));box-shadow:0 0 17px rgba(255,88,29,.38),inset 0 1px 0 rgba(255,238,197,.36);animation-duration:1.7s}
 .card-spotlight.is-scorer{color:#fff1a5;border-color:rgba(255,211,106,.72);background:linear-gradient(135deg,rgba(168,106,12,.86),rgba(255,202,72,.40));box-shadow:0 0 17px rgba(255,211,106,.34),inset 0 1px 0 rgba(255,248,194,.42);animation-delay:.18s}
 .card-spotlight.is-mvp{color:#fff0af;border-color:rgba(255,223,110,.73);background:linear-gradient(135deg,rgba(113,63,16,.85),rgba(250,204,21,.42));box-shadow:0 0 16px rgba(250,204,21,.32),inset 0 1px 0 rgba(255,248,201,.40);animation-delay:.35s}
-.fifa-card.card-hot::after{box-shadow:inset 0 0 0 1px rgba(255,207,125,.54),inset 0 0 0 4px rgba(255,88,29,.14),inset 0 -24px 32px rgba(102,17,6,.32);animation:fireFrame 2.2s ease-in-out infinite}
-.fifa-card.card-hot .fifa-card-photo{animation:hotPortrait 1.9s ease-in-out infinite}
-.fifa-card.card-hot .fifa-shine{animation:foilGlide 4.8s ease-in-out infinite}
-.fifa-card.card-top-scorer .fifa-card-overall{color:#fff0a5;text-shadow:0 0 12px rgba(255,211,106,.72),0 0 25px rgba(255,148,29,.34);animation:scorerGlow 2.9s ease-in-out infinite}
-.fifa-card.card-top-scorer .fifa-card-record{border-color:rgba(255,211,106,.42);background:rgba(107,67,6,.28)}
-.fifa-card.card-mvp .fifa-card-name{color:#fff0a8;text-shadow:0 0 11px rgba(255,211,106,.74);animation:mvpGlow 3.2s ease-in-out infinite}
 
 .btn-primary,.btn-login{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.30);box-shadow:0 12px 27px rgba(240,192,64,.28),inset 0 1px 0 rgba(255,255,255,.72)}
 .btn-primary::after,.btn-login::after{content:'';position:absolute;inset:-20% -50%;pointer-events:none;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.58) 50%,transparent 60%);transform:translateX(-55%) rotate(8deg);transition:transform .55s ease}
@@ -293,7 +278,6 @@ body::after{
 .modal-overlay.open .modal{animation:modalLift .38s cubic-bezier(.16,1,.3,1) both}
 @media (hover:hover){
   .hub-panel:hover,.hub-fixture:hover,.team-card:hover,.match-card:hover,.admin-section:hover,.goal-team:hover,.stats-filter-card:hover{transform:translateY(-4px);border-color:rgba(112,215,255,.36);box-shadow:0 28px 52px rgba(0,0,0,.34),0 0 28px rgba(112,215,255,.06),inset 0 1px 0 rgba(255,255,255,.14)}
-  .fifa-card:hover{transform:translateY(-10px) scale(1.024) rotateX(2deg);filter:drop-shadow(0 25px 32px rgba(0,0,0,.46)) drop-shadow(0 0 20px rgba(255,211,106,.22))}
 }
 @keyframes auroraDrift{0%{transform:translate3d(-2%,-1%,0) scale(1)}100%{transform:translate3d(3%,2%,0) scale(1.08)}}
 @keyframes topbarSweep{0%,100%{transform:translateX(-3%);opacity:.18}50%{transform:translateX(3%);opacity:.38}}
@@ -334,32 +318,7 @@ html,body{max-width:100%;overflow-x:clip}
   .nav-tabs{margin:7px 0;padding:4px 4px;gap:3px;width:100%;max-width:100%;touch-action:pan-x pan-y}
   .nav-tab{flex:0 0 74px;min-width:74px}
 
-  /* La carta conserva su silueta, pero ahora el contenido ocupa el espacio útil. */
-  .fifa-card{padding:14px 8px 16px;aspect-ratio:.675}
-  .fifa-top{gap:9px;margin-top:0}
-  .fifa-card-photo{width:64px;height:64px}
-  .fifa-card-overall{font-size:44px}
-  .fifa-card-pos{font-size:13px;margin-top:4px;padding-top:4px}
-  .fifa-card-tier{font-size:8px;letter-spacing:1.8px;margin-top:4px}
-  .fifa-divider{width:86%;margin:8px 0 6px}
-  .fifa-card-name{font-size:16px;letter-spacing:1px;line-height:1.08}
-  .fifa-card-stats{width:92%;gap:4px 0;margin-top:8px}
-  .fifa-card-stat{font-size:10px;line-height:1.5;gap:3px}
-  .fifa-card-stat span:first-child{font-size:15px}
-  .fifa-card-stat.best span:first-child{font-size:17px}
-  .fifa-card-record{font-size:10.5px;line-height:1.1;padding:3px 7px;margin:9px auto 0}
-  .fifa-card-portrait{left:7%;width:86%;bottom:9px;height:37%}
-}
-@media (max-width:370px){
-  .fifa-card{padding:13px 7px 15px}
-  .fifa-card-photo{width:58px;height:58px}
-  .fifa-card-overall{font-size:40px}
-  .fifa-card-name{font-size:15px}
-  .fifa-card-stat{font-size:9.5px}
-  .fifa-card-stat span:first-child{font-size:14px}
-  .fifa-card-stat.best span:first-child{font-size:16px}
-  .fifa-card-record{font-size:9.5px}
-  .fifa-card-portrait{height:35%;bottom:8px}
+  /* La carta conserva su silueta{padding:14px 8px 16px;aspect-ratio:.675}
 }
 /* ===== FULBITO / COMMAND DECK =====
    Inspiración: tablero metálico de partido. Se aplica sobre los datos reales del club. */
@@ -395,16 +354,7 @@ html,body{max-width:100%;overflow-x:clip}
 .hub-leader-icon{border:1px solid rgba(172,209,238,.22);background:linear-gradient(145deg,rgba(91,121,150,.37),rgba(5,15,28,.70));box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
 .hub-quick{border:1px solid rgba(168,207,238,.32);border-radius:11px;background:linear-gradient(145deg,rgba(46,72,98,.83),rgba(6,14,25,.94));box-shadow:0 0 0 1px rgba(2,8,15,.82),inset 0 1px 0 rgba(255,255,255,.18)}
 
-/* Cartas coleccionables: doble marco metálico, textura grabada y retrato integrado. */
-.fifa-card{border:1px solid rgba(244,249,255,.44);box-shadow:inset 0 0 0 2px rgba(0,0,0,.62),inset 0 0 0 4px rgba(255,255,255,.16)}
-.fifa-card::before{background:radial-gradient(ellipse 120% 46% at 50% -5%,rgba(255,255,255,.70),transparent 52%),repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 1px,transparent 1px 6px),repeating-linear-gradient(45deg,rgba(0,0,0,.06) 0 1px,transparent 1px 9px),linear-gradient(180deg,transparent 45%,rgba(0,0,0,.30) 100%)}
-.fifa-card::after{inset:5px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.56),inset 0 0 0 3px rgba(0,0,0,.37),inset 0 0 0 5px rgba(255,255,255,.10),inset 0 -24px 34px rgba(0,0,0,.20)}
-.fifa-card.gold{filter:drop-shadow(0 16px 23px rgba(0,0,0,.55)) drop-shadow(0 0 13px rgba(255,210,101,.20))}
-.fifa-card.rare{filter:drop-shadow(0 16px 23px rgba(0,0,0,.55)) drop-shadow(0 0 19px rgba(172,115,255,.50))}
-.fifa-card.rare::after{box-shadow:inset 0 0 0 1px rgba(247,222,255,.76),inset 0 0 0 3px rgba(35,5,72,.55),inset 0 0 0 5px rgba(255,255,255,.14),inset 0 -24px 34px rgba(26,2,60,.33)}
-.fifa-card-name{font-size:clamp(17px,1.3vw,21px);letter-spacing:1.45px;text-shadow:0 1px 0 rgba(255,255,255,.45),0 2px 4px rgba(0,0,0,.20)}
-.fifa-card-portrait{filter:drop-shadow(0 0 14px rgba(99,218,255,.13))}
-.fifa-card.gold .fifa-card-portrait{filter:drop-shadow(0 0 16px rgba(255,206,85,.26))}
+/* Cartas coleccionables: doble marco metálico{border:1px solid rgba(244,249,255,.44);box-shadow:inset 0 0 0 2px rgba(0,0,0,.62),inset 0 0 0 4px rgba(255,255,255,.16)}
 .card-spotlight{border-color:rgba(238,247,255,.35);box-shadow:0 0 0 1px rgba(4,10,18,.52),0 5px 12px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.24)}
 
 @keyframes navPulse{0%,100%{transform:translateY(-1px) scale(1.06)}50%{transform:translateY(-3px) scale(1.13)}}
@@ -419,18 +369,5 @@ html,body{max-width:100%;overflow-x:clip}
 #tab-jugadores .roster-eyebrow{color:#d6f47b;text-shadow:0 0 10px rgba(190,255,102,.25)}
 #tab-jugadores .roster-grid-head h2{color:#f7fbff;text-shadow:0 2px 0 #02070b,0 0 18px rgba(113,211,255,.18)}
 #tab-jugadores .players-grid{grid-template-columns:repeat(auto-fit,minmax(220px,260px));justify-content:center;gap:28px 20px;max-width:1240px;margin:0 auto}
-#tab-jugadores .fifa-card{width:100%;max-width:260px;min-height:0;aspect-ratio:.72;padding:17px 10px 23px;border:2px solid rgba(226,241,255,.56);border-radius:12px;background:linear-gradient(145deg,rgba(255,255,255,.16),transparent 16%),linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.08) 48%,rgba(0,0,0,.30));box-shadow:inset 0 0 0 1px rgba(0,0,0,.78),inset 0 0 0 4px rgba(255,255,255,.12),0 18px 28px rgba(0,0,0,.48),0 0 0 1px rgba(89,194,255,.12);clip-path:polygon(50% 0,82% 5%,100% 14%,100% 84%,50% 100%,0 84%,0 14%,18% 5%);overflow:hidden}
-#tab-jugadores .fifa-card::before{background:radial-gradient(ellipse 130% 45% at 50% -8%,rgba(255,255,255,.80),transparent 51%),linear-gradient(112deg,transparent 0 27%,rgba(255,255,255,.17) 39%,transparent 48%),repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 1px,transparent 1px 7px),linear-gradient(180deg,transparent 45%,rgba(0,0,0,.42) 100%)}
-#tab-jugadores .fifa-card::after{inset:5px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.64),inset 0 0 0 3px rgba(4,10,19,.56),inset 0 0 0 5px rgba(255,255,255,.12),inset 0 -34px 40px rgba(0,0,0,.27)}
-#tab-jugadores .fifa-card-portrait{left:10%;width:80%;bottom:5%;height:43%;opacity:.90;mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 16%,#000 48%,rgba(0,0,0,.86) 86%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 16%,#000 48%,rgba(0,0,0,.86) 86%,transparent 100%);clip-path:polygon(50% 0,88% 8%,100% 28%,94% 100%,6% 100%,0 28%,12% 8%);filter:drop-shadow(0 0 14px rgba(102,208,255,.19))}
-#tab-jugadores .fifa-card-portrait img{object-position:center 18%;transform:translateY(3%) scale(1.17);filter:saturate(1.25) contrast(1.15) drop-shadow(0 10px 14px rgba(0,0,0,.44))}
-#tab-jugadores .fifa-card.gold{border-color:rgba(255,226,139,.84);box-shadow:inset 0 0 0 1px rgba(102,50,0,.68),inset 0 0 0 4px rgba(255,246,184,.24),0 18px 28px rgba(0,0,0,.48),0 0 22px rgba(255,206,76,.16)}
-#tab-jugadores .fifa-card.rare{border-color:rgba(234,211,255,.92);box-shadow:inset 0 0 0 1px rgba(31,8,62,.72),inset 0 0 0 4px rgba(255,255,255,.20),0 18px 28px rgba(0,0,0,.48),0 0 28px rgba(161,96,255,.34)}
-#tab-jugadores .fifa-card-name{font-size:clamp(18px,1.35vw,22px);letter-spacing:1.8px;text-shadow:0 1px 0 rgba(255,255,255,.54),0 2px 5px rgba(0,0,0,.28)}
-#tab-jugadores .fifa-card-stats{width:90%;gap:4px 0;margin-top:10px}
-#tab-jugadores .fifa-card-stat{font-size:clamp(9px,.72vw,11px);line-height:1.48}
-#tab-jugadores .fifa-card-stat span:first-child{font-size:clamp(15px,1.1vw,18px)}
-#tab-jugadores .fifa-card-record{margin-top:10px;font-size:clamp(10px,.78vw,12px);padding:4px 9px;background:rgba(0,0,0,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 5px 8px rgba(0,0,0,.14)}
-#tab-jugadores .fifa-card.has-card-spotlight{padding-bottom:31px}
-@media (max-width:640px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,260px));gap:26px 16px}#tab-jugadores .fifa-card{max-width:260px}}
-@media (max-width:500px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}#tab-jugadores .fifa-card{max-width:none}}
+@media (max-width:640px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,260px));gap:26px 16px}}
+@media (max-width:500px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}}
