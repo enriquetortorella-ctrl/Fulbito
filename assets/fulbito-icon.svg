@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e2f50"/>
+      <stop offset="0.55" stop-color="#0a0e14"/>
+      <stop offset="1" stop-color="#172818"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#ffe18a"/><stop offset="0.5" stop-color="#f0c040"/><stop offset="1" stop-color="#bd7d16"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <rect x="18" y="18" width="476" height="476" rx="96" fill="none" stroke="#f0c040" stroke-opacity=".22" stroke-width="4"/>
+  <path d="M256 72 406 132v113c0 106-64 166-150 203C170 411 106 351 106 245V132z" fill="url(#gold)" stroke="#ffe8a1" stroke-width="8"/>
+  <circle cx="256" cy="230" r="101" fill="#eef4ff" stroke="#263b67" stroke-width="8"/>
+  <path d="m256 168 33 24-13 39h-40l-13-39zm-77 56 31-24 34 24-12 38h-41zm154 0 31 23-13 38h-40l-12-38zm-107 87 31-23 30 23-11 38h-39zm79 0 30-23 31 23-11 38h-39z" fill="#2853b8"/>
+  <path d="M190 266c18 12 32 20 66 20 32 0 49-8 66-20M216 163l-6-33m86 33 6-33M197 334l-19 28m137-28 19 28" fill="none" stroke="#2853b8" stroke-width="10" stroke-linecap="round"/>
+  <text x="256" y="445" fill="#0a0e14" font-family="Arial Black,Arial,sans-serif" font-size="44" font-weight="900" text-anchor="middle">FULBITO</text>
+</svg>

@@ -1,0 +1,3 @@
+# Herramientas y artefactos locales de compilación Android.
+.build-tools/
+android-app/manual-build/
