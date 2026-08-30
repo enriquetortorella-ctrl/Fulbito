@@ -549,6 +549,54 @@ body{
   .roster-hero p{max-width:165px}.roster-metric span{font-size:7px}.roster-metric b{font-size:19px}
   .fifa-card{padding:16px 8px 25px}.fifa-top{gap:7px}.fifa-card-photo{width:55px;height:55px}.fifa-card-overall{font-size:34px}.fifa-card-name{font-size:13px}.fifa-card-stats{width:94%}.fifa-card-record{font-size:8px;padding:2px 5px}
 }
+
+/* ===== CARTAS RESPONSIVAS: MÁS PRESENCIA, MENOS ESPACIO VACÍO ===== */
+@media (max-width:760px){
+  #tab-jugadores .players-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:20px 16px;
+    align-items:stretch;
+  }
+  #tab-jugadores .fifa-card{
+    max-width:none;
+    min-height:0;
+    aspect-ratio:.79;
+    padding:22px 14px 26px;
+    justify-content:space-evenly;
+  }
+  #tab-jugadores .fifa-top{margin-top:0;gap:12px}
+  #tab-jugadores .fifa-card-photo{width:72px;height:72px}
+  #tab-jugadores .fifa-card-overall{font-size:46px}
+  #tab-jugadores .fifa-card-pos{font-size:13px}
+  #tab-jugadores .fifa-card-tier{font-size:7.5px}
+  #tab-jugadores .fifa-divider{margin:2px 0;width:86%}
+  #tab-jugadores .fifa-card-name{font-size:16px;letter-spacing:.95px}
+  #tab-jugadores .fifa-card-stats{width:91%;margin-top:0}
+  #tab-jugadores .fifa-card-stat{font-size:9px;gap:3px}
+  #tab-jugadores .fifa-card-stat span:first-child{font-size:14px}
+  #tab-jugadores .fifa-card-stat.best span:first-child{font-size:15px}
+  #tab-jugadores .fifa-card-record{margin:0 auto;font-size:9.5px;padding:3px 8px}
+}
+@media (max-width:480px){
+  #tab-jugadores .players-grid{
+    grid-template-columns:1fr;
+    max-width:390px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  #tab-jugadores .fifa-card{
+    max-width:390px;
+    aspect-ratio:.76;
+    padding:25px 19px 30px;
+  }
+  #tab-jugadores .fifa-card-photo{width:80px;height:80px}
+  #tab-jugadores .fifa-card-overall{font-size:52px}
+  #tab-jugadores .fifa-card-name{font-size:18px}
+  #tab-jugadores .fifa-card-stat{font-size:10px}
+  #tab-jugadores .fifa-card-stat span:first-child{font-size:16px}
+  #tab-jugadores .fifa-card-stat.best span:first-child{font-size:17px}
+  #tab-jugadores .fifa-card-record{font-size:10.5px;padding:4px 10px}
+}
 @media (prefers-reduced-motion: reduce){
   *{transition:none!important;animation:none!important}
 }
