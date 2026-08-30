@@ -544,6 +544,157 @@ body{
 @media (prefers-reduced-motion: reduce){
   *{transition:none!important;animation:none!important}
 }
+
+/* ===== GLASSMORPHISM · FULBITO AURORA =====
+   Rebranding puramente visual: conserva la estructura y todos los flujos. */
+:root{
+  --glass:rgba(18,28,46,.58);
+  --glass-strong:rgba(13,21,36,.78);
+  --glass-soft:rgba(255,255,255,.045);
+  --glass-border:rgba(208,226,255,.16);
+  --glass-highlight:rgba(255,255,255,.10);
+  --glass-shadow:0 18px 46px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.05);
+}
+body{
+  background:
+    radial-gradient(ellipse 72% 42% at 7% -6%,rgba(41,98,255,.20),transparent 68%),
+    radial-gradient(ellipse 56% 46% at 96% 8%,rgba(182,242,61,.13),transparent 66%),
+    radial-gradient(ellipse 62% 46% at 52% 108%,rgba(240,192,64,.16),transparent 70%),
+    radial-gradient(ellipse 42% 34% at 14% 84%,rgba(139,92,246,.13),transparent 70%),
+    linear-gradient(135deg,#060912 0%,#0b1322 48%,#070b13 100%);
+  background-attachment:fixed;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.38;
+  background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.78),transparent 82%);
+}
+
+.screen{position:relative}
+#screen-app{max-width:1640px}
+#screen-login,#screen-club{
+  background:radial-gradient(ellipse 64% 40% at 50% -5%,rgba(70,119,255,.14),transparent 70%),transparent;
+}
+.club-intro-crest,.brand-crest{
+  box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 30px rgba(182,242,61,.24),0 14px 30px rgba(0,0,0,.26);
+}
+.club-box,.login-box,.register-form,.modal{
+  background:linear-gradient(135deg,rgba(30,44,68,.67),rgba(10,16,29,.76));
+  border-color:var(--glass-border);
+  box-shadow:var(--glass-shadow);
+  backdrop-filter:blur(24px) saturate(128%);
+  -webkit-backdrop-filter:blur(24px) saturate(128%);
+}
+.club-box::before,.login-box::before,.modal::before{
+  content:'';display:block;height:1px;margin:-22px 0 20px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);opacity:.62;
+}
+.login-box::before{margin:-32px 0 30px}.modal::before{margin:-24px 0 20px}
+.club-card,.roster-toolbar,.hub-meta-chip,.hub-mini-btn,.fixture-team,
+.fixture-player,.fixture-player-metric,.hub-quick,.match-team,.goal-leader,
+.stat-chip,.pater-score,.chip,.roster-visible-count{
+  background:rgba(255,255,255,.045);
+  border-color:rgba(220,232,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.club-card:hover,.hub-quick:hover,.fixture-player:hover,.hub-mini-btn:hover{
+  background:rgba(255,255,255,.085);
+  border-color:rgba(240,192,64,.50);
+  box-shadow:0 10px 22px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.club-card-name,.club-card-meta{display:block}
+
+.topbar{
+  margin:0 -12px;padding:14px 16px;
+  background:linear-gradient(90deg,rgba(7,14,27,.82),rgba(20,31,51,.55),rgba(7,14,27,.82));
+  border:1px solid rgba(214,231,255,.11);border-top:0;border-radius:0 0 18px 18px;
+  box-shadow:0 10px 28px rgba(0,0,0,.18),inset 0 -1px 0 rgba(255,255,255,.03);
+  backdrop-filter:blur(25px) saturate(145%);
+  -webkit-backdrop-filter:blur(25px) saturate(145%);
+}
+.brand-crest{filter:drop-shadow(0 0 12px rgba(182,242,61,.25))}
+.topbar-logo{letter-spacing:1.45px;text-shadow:0 1px 0 rgba(255,255,255,.14),0 0 24px rgba(255,255,255,.11)}
+.topbar-avatar,.topbar-avatar-placeholder{box-shadow:0 0 0 3px rgba(240,192,64,.12),0 7px 16px rgba(0,0,0,.32)}
+.btn-club-switch,.btn-icon,.btn-logout{
+  background:rgba(255,255,255,.045);border:1px solid rgba(220,232,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+.btn-club-switch:hover,.btn-icon:hover{background:rgba(255,255,255,.095);border-color:rgba(240,192,64,.48)}
+.btn-logout:hover{border-color:rgba(239,68,68,.42)}
+.nav-tabs{
+  margin:9px -12px 9px;padding:5px 6px;gap:4px;
+  background:rgba(8,15,27,.58);border:1px solid rgba(214,231,255,.11);border-radius:15px;
+  box-shadow:0 10px 25px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.04);
+  backdrop-filter:blur(21px) saturate(135%);-webkit-backdrop-filter:blur(21px) saturate(135%);
+}
+.nav-tab{position:relative;border:1px solid transparent;border-bottom:1px solid transparent;border-radius:10px;padding:9px 8px;color:#93a4bb}
+.nav-tab:hover{background:rgba(255,255,255,.055);color:var(--text)}
+.nav-tab.active{color:#e7ffab;border-color:rgba(182,242,61,.30);background:linear-gradient(135deg,rgba(182,242,61,.17),rgba(255,255,255,.035));text-shadow:0 0 16px rgba(182,242,61,.38)}
+
+.hub-hero,.roster-hero{
+  border-color:rgba(216,236,255,.18);
+  background:linear-gradient(135deg,rgba(39,60,91,.56),rgba(15,28,47,.67) 50%,rgba(37,38,63,.57));
+  box-shadow:0 22px 52px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.10);
+  backdrop-filter:blur(26px) saturate(135%);-webkit-backdrop-filter:blur(26px) saturate(135%);
+}
+.hub-hero::before,.roster-hero::before{
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(118deg,rgba(255,255,255,.12),transparent 19% 72%,rgba(182,242,61,.08));
+  mask-image:linear-gradient(120deg,#000,transparent 52%);
+}
+.hub-hero::after{opacity:.11;filter:drop-shadow(0 0 25px rgba(240,192,64,.4)) grayscale(1)}
+.hub-attendance,.hub-panel,.hub-fixture,.team-card,.score-board,
+.attend-stat,.attend-player,.rate-player,.field-btn,.match-card,.rank-row,
+.admin-section,.goal-team,.stats-filter-card,.player-hero{
+  background:linear-gradient(145deg,rgba(31,46,71,.56),rgba(11,19,34,.70));
+  border-color:var(--glass-border);
+  box-shadow:var(--glass-shadow);
+  backdrop-filter:blur(20px) saturate(125%);
+  -webkit-backdrop-filter:blur(20px) saturate(125%);
+}
+.hub-panel,.hub-fixture,.team-card,.goal-team,.match-card,.admin-section{overflow:hidden}
+.hub-panel-head,.fixture-head{border-bottom-color:rgba(220,232,255,.10)}
+.hub-attendance{background:linear-gradient(145deg,rgba(8,20,35,.42),rgba(21,31,52,.63))}
+.hub-choice,.attend-btn,.goal-btn,.pos-btn,.sub-toggle-btn{
+  background:rgba(255,255,255,.055);border-color:rgba(220,232,255,.15);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045);
+}
+.hub-choice:hover,.attend-btn:hover,.goal-btn:hover,.pos-btn:hover,.sub-toggle-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.28)}
+.hub-choice.going.active,.field-btn.selected,.sub-toggle-btn.active,.pos-btn.selected{box-shadow:0 9px 22px rgba(182,242,61,.10),inset 0 1px 0 rgba(255,255,255,.10)}
+.team-header.team-a{background:linear-gradient(100deg,rgba(37,99,235,.34),rgba(37,99,235,.07))}
+.team-header.team-b{background:linear-gradient(100deg,rgba(220,38,38,.31),rgba(220,38,38,.06))}
+.team-header.team-c{background:linear-gradient(100deg,rgba(147,51,234,.33),rgba(147,51,234,.06))}
+.goal-row{border-bottom-color:rgba(220,232,255,.075)}
+.goal-row.scored{background:linear-gradient(90deg,rgba(240,192,64,.14),rgba(255,255,255,.022))}
+
+.form-group input,.form-group select,.club-join input,.club-create input,
+.goles-select,.match-date-input,.stats-filter-select,.roster-search,.roster-controls select{
+  background:rgba(5,13,26,.51);border-color:rgba(220,232,255,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 7px 18px rgba(0,0,0,.10);
+}
+.form-group input:focus,.form-group select:focus,.club-join input:focus,.club-create input:focus,
+.goles-select:focus,.match-date-input:focus,.stats-filter-select:focus,.roster-search:focus-within{
+  border-color:rgba(182,242,61,.72);box-shadow:0 0 0 4px rgba(182,242,61,.10),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.btn-primary,.btn-login{
+  background:linear-gradient(135deg,#fff0ad 0%,#ffd35e 42%,#e7a91f 100%);
+  box-shadow:0 10px 24px rgba(240,192,64,.25),inset 0 1px 0 rgba(255,255,255,.62);
+}
+.btn-green{background:linear-gradient(135deg,#79f6a8,#22c55e 58%,#15934a);box-shadow:0 10px 22px rgba(34,197,94,.18),inset 0 1px 0 rgba(255,255,255,.35)}
+.btn-ghost,.btn-register{background:rgba(255,255,255,.035);border-color:rgba(220,232,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.btn-ghost:hover,.btn-register:hover{background:rgba(255,255,255,.085);border-color:rgba(240,192,64,.50)}
+.goal-btn.plus{background:linear-gradient(135deg,rgba(34,197,94,.17),rgba(255,255,255,.035));box-shadow:0 7px 16px rgba(34,197,94,.10)}
+.goal-btn.minus{background:linear-gradient(135deg,rgba(239,68,68,.13),rgba(255,255,255,.035))}
+.score-board{border-color:rgba(240,192,64,.28);box-shadow:0 18px 36px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.08)}
+.toast{background:rgba(16,29,49,.84);border-color:rgba(220,232,255,.20);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+
+@media (max-width:640px){
+  .topbar{margin:0 -12px;padding:11px 12px;border-radius:0 0 14px 14px}
+  .nav-tabs{margin:7px -6px 7px;padding:4px;gap:2px;border-radius:12px}
+  .nav-tab{border-radius:8px}
+  .hub-hero,.roster-hero{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  .hub-attendance,.hub-panel,.hub-fixture,.team-card,.score-board,.attend-stat,.attend-player,.rate-player,.field-btn,.match-card,.rank-row,.admin-section,.goal-team,.stats-filter-card,.player-hero{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
