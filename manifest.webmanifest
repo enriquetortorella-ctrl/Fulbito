@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "Fulbito del Sábado",
+  "short_name": "Fulbito",
+  "description": "Tu club, partidos, estadísticas y votaciones en un solo lugar.",
+  "lang": "es-AR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
+  "icons": [
+    {
+      "src": "assets/fulbito-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
