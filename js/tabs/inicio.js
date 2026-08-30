@@ -11,6 +11,69 @@ function hubResultText(m) {
   return `Ganó Equipo ${TEAM_NAMES[ti] || ti + 1}`;
 }
 
+// PODIO — carta destacada por categoría. Reutiliza el tier de la carta FIFA.
+function hubPodiumCard(label, item, value, unit, second, secondUnit, badge) {
+  if (!item) {
+    return `<article class="podium-card is-empty">
+      <div class="podium-label">${label}</div>
+      <div class="podium-portrait is-placeholder">⚽</div>
+      <div class="podium-name">Sin datos</div>
+      <div class="podium-figures"><div><b>—</b><span>${unit}</span></div></div>
+    </article>`;
+  }
+  const p = item.p;
+  const tier = getCardTier(item.ovr || 60);
+  const photo = safePhotoUrl(p.photo);
+  const portrait = photo
+    ? `<div class="podium-portrait"><img src="${escapeHtml(photo)}" alt="${escapeHtml(p.name)}"></div>`
+    : `<div class="podium-portrait is-placeholder" aria-hidden="true">⚽</div>`;
+  const secondHTML = second !== undefined && second !== null
+    ? `<div><b>${second}</b><span>${secondUnit}</span></div>` : '';
+  return `<article class="podium-card tier-${tier.cls}${badge ? ' is-hero' : ''}" onclick="openPlayerProfile('${p.id}')">
+    <div class="podium-label">${label}</div>
+    ${portrait}
+    <div class="podium-name">${escapeHtml(p.name)}</div>
+    <div class="podium-figures"><div><b>${value}</b><span>${unit}</span></div>${secondHTML}</div>
+    ${badge ? `<div class="podium-badge">${badge}</div>` : ''}
+  </article>`;
+}
+
+// Tabla de goleadores del club (top 5)
+function hubScorersHTML(rows) {
+  const top = rows.filter(x => x.rec.goals > 0)
+    .sort((a,b) => b.rec.goals - a.rec.goals || a.p.name.localeCompare(b.p.name))
+    .slice(0, 5);
+  if (!top.length) return `<div class="hub-empty-result">Todavía no hay goles cargados. Anotalos desde la planilla y el ranking se arma solo.</div>`;
+  return `<div class="scoreboard-table">
+    <div class="scoreboard-head"><span>Jugador</span><span>PJ</span><span>Goles</span><span>G/PJ</span></div>
+    ${top.map((x,i) => `<div class="scoreboard-row" onclick="openPlayerProfile('${x.p.id}')">
+      <span class="scoreboard-player"><i class="scoreboard-pos">${i+1}</i>${escapeHtml(x.p.name)}</span>
+      <span>${x.rec.goalPj || 0}</span>
+      <span class="scoreboard-goals">${x.rec.goals}</span>
+      <span>${x.rec.goalPj ? (x.rec.goals / x.rec.goalPj).toFixed(1) : '—'}</span>
+    </div>`).join('')}
+  </div>`;
+}
+
+// Última actividad — goles de los partidos más recientes
+function hubActivityHTML(played) {
+  const events = [];
+  for (const m of played) {
+    if (!hasGoalsTracking(m)) continue;
+    for (const s of matchScorers(m)) {
+      events.push({ name: s.name, goals: s.goals, date: hubDateISO(m), id: m.id });
+      if (events.length >= 8) break;
+    }
+    if (events.length >= 8) break;
+  }
+  if (!events.length) return `<div class="hub-empty-result">Sin actividad reciente.</div>`;
+  return `<div class="activity-feed">${events.map(e => `<div class="activity-row">
+    <span class="activity-dot"></span>
+    <div class="activity-copy"><b>${escapeHtml(e.name)}</b><span>${e.goals} ${e.goals === 1 ? 'gol' : 'goles'}</span></div>
+    <span class="activity-date">${e.date ? e.date.slice(5).split('-').reverse().join('/') : ''}</span>
+  </div>`).join('')}</div>`;
+}
+
 function hubLeaderRow(icon, label, item, value, meta) {
   const name = item?.p?.name || 'A definir';
   return `<div class="hub-leader">
@@ -136,8 +199,21 @@ function renderHub() {
       <aside class="hub-attendance"><div class="hub-attendance-top"><div><div class="hub-panel-label">TU DISPONIBILIDAD</div><div class="hub-attendance-state ${attendance ? `is-${attendance}` : ''}">${attendanceState}</div><div class="hub-attendance-copy">${attendanceCopy}</div></div><div style="font-size:22px">${attendance === 'going' ? '✅' : attendance === 'notgoing' ? '❌' : '⚽'}</div></div><div class="hub-choice-row"><button class="hub-choice going${attendance === 'going' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','going')">✅ VOY</button><button class="hub-choice notgoing${attendance === 'notgoing' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','notgoing')">❌ NO VOY</button></div><div class="hub-attendance-meter"><div class="going"><b>${going}</b><span>Van</span></div><div class="no"><b>${notgoing}</b><span>No van</span></div><div><b>${pending}</b><span>Faltan</span></div></div></aside>
     </section>
     ${fixtureHTML}
-    <section class="hub-grid"><div class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">ARCHIVO DEL CLUB</div><div class="hub-panel-title">ÚLTIMO PARTIDO</div></div><span class="chip">${played.length} jugado${played.length === 1 ? '' : 's'}</span></div>${lastMatchHTML}</div>
-      <aside class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div><div class="hub-leaders">${hubLeaderRow('⚽', 'GOLEADOR', byGoals, byGoals ? `${byGoals.rec.goals} G` : fallbackValue, byGoals ? `${byGoals.rec.goalPj || 0} PJ registrados` : 'sin goles')} ${hubLeaderRow('📈', 'MEJOR PROMEDIO', byAverage, byAverage ? `${(byAverage.rec.goals / byAverage.rec.goalPj).toFixed(2)}` : fallbackValue, byAverage ? 'desde registro de goles' : `mínimo ${hubMinGpp} PJ registrados`)} ${hubLeaderRow('🗓️', 'MÁS PRESENTE', byGames, byGames ? `${byGames.rec.pj} PJ` : fallbackValue, byGames ? `${byGames.rec.w}V · ${byGames.rec.d}E · ${byGames.rec.l}D` : 'sin historial')} ${hubLeaderRow('🛡️', 'OVR DEL CLUB', byOverall, byOverall ? byOverall.ovr : fallbackValue, byOverall ? (POS_LABELS[getEffectivePosition(byOverall.p)] || getEffectivePosition(byOverall.p)) : 'plantel')}</div></aside>
+    <section class="hub-panel hub-lastmatch-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">ARCHIVO DEL CLUB</div><div class="hub-panel-title">ÚLTIMO PARTIDO</div></div><span class="chip">${played.length} jugado${played.length === 1 ? '' : 's'}</span></div>${lastMatchHTML}</section>
+
+    <section class="podium-section">
+      <div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div>
+      <div class="podium-rail" id="podium-rail">
+        ${hubPodiumCard('OVR DEL CLUB', byOverall, byOverall ? byOverall.ovr : '—', 'OVR', byOverall ? (POS_LABELS[getEffectivePosition(byOverall.p)] || getEffectivePosition(byOverall.p)) : null, 'Puesto')}
+        ${hubPodiumCard('MEJOR PROMEDIO', byAverage, byAverage ? (byAverage.rec.goals / byAverage.rec.goalPj).toFixed(2) : '—', 'G/PJ', byAverage ? byAverage.rec.goalPj : null, 'PJ reg.')}
+        ${hubPodiumCard('GOLEADOR', byGoals, byGoals ? byGoals.rec.goals : '—', 'Goles', byGoals && byGoals.rec.goalPj ? (byGoals.rec.goals / byGoals.rec.goalPj).toFixed(2) : null, 'G/PJ', 'Goleador de Oro')}
+        ${hubPodiumCard('MÁS PRESENTE', byGames, byGames ? byGames.rec.pj : '—', 'PJ', byGames ? `${byGames.rec.w}V` : null, 'Ganados')}
+      </div>
+    </section>
+
+    <section class="hub-grid">
+      <div class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">TABLA DEL CLUB</div><div class="hub-panel-title">GOLES</div></div><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubScorersHTML(rows)}</div>
+      <aside class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">MOVIMIENTO</div><div class="hub-panel-title">ÚLTIMA ACTIVIDAD</div></div></div>${hubActivityHTML(played)}</aside>
     </section>
     <section class="hub-quick-grid"><button class="hub-quick" onclick="switchTab('asistencia')"><div class="hub-quick-icon">📣</div><div><b>Confirmar asistencia</b><span>Quién está para el sábado</span></div></button><button class="hub-quick" onclick="switchTab('jugadores')"><div class="hub-quick-icon">👥</div><div><b>Explorar plantel</b><span>${state.players.length} cartas del club</span></div></button>${quickThird}</section>
   </div>`;
