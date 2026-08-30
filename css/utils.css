@@ -1,0 +1,18 @@
+/* ===== UTILS ===== */
+.gap-8{gap:8px}
+.flex{display:flex}
+.flex-col{flex-direction:column}
+.items-center{align-items:center}
+.mt-8{margin-top:8px}
+.mt-16{margin-top:16px}
+.w-full{width:100%}
+.text-muted{color:var(--muted);font-size:13px}
+.text-center{text-align:center}
+.hidden{display:none!important}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c2430;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 20px;font-size:14px;font-weight:500;z-index:300;opacity:0;box-shadow:var(--shadow-pop);transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+.spinner{border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;width:20px;height:20px;animation:spin .6s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:52px 16px;color:var(--muted)}
+.empty-state-icon{font-size:46px;margin-bottom:14px;opacity:.6}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)}

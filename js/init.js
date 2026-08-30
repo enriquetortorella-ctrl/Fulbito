@@ -1,0 +1,203 @@
+// INIT
+// ============================================================
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+}
+
+function safePlainText(value, maxLength = 80) {
+  return String(value ?? '').replace(/[<>&"'`\u0000-\u001F\u007F]/g, '').slice(0, maxLength);
+}
+
+function safePhotoUrl(value) {
+  const src = String(value || '');
+  return /^(data:image\/(png|jpeg|webp);base64,|https:\/\/)/i.test(src) ? src : '';
+}
+
+function showClubError(message, target = 'club-error') {
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.display = message ? 'block' : 'none';
+}
+
+function renderClubChooser() {
+  const list = document.getElementById('club-list');
+  if (!list) return;
+  const originalClub = state.clubs.find(club => club.id === LEGACY_CLUB_ID);
+  if (!originalClub) {
+    list.innerHTML = '<div class="club-empty">Ingresá el código de tu grupo o creá el primer club.</div>';
+    return;
+  }
+  list.innerHTML = `
+    <button class="club-card" type="button" data-club-id="${escapeHtml(originalClub.id)}">
+      <span class="club-card-crest">FC</span>
+      <span class="club-card-copy"><span class="club-card-name">${escapeHtml(originalClub.name)}</span><span class="club-card-meta">Club original</span></span>
+      <span class="club-card-arrow">›</span>
+    </button>`;
+  list.querySelectorAll('[data-club-id]').forEach(button => {
+    button.addEventListener('click', () => selectClub(button.dataset.clubId));
+  });
+}
+
+async function refreshClubChooser() {
+  const list = document.getElementById('club-list');
+  if (list) list.innerHTML = '<div class="club-empty">⏳ Cargando clubes...</div>';
+  state.clubs = await loadClubs();
+  renderClubChooser();
+}
+
+function showClubLanding() {
+  document.getElementById('club-chooser-box').classList.remove('hidden');
+  document.getElementById('club-create-box').classList.add('hidden');
+  showClubError('');
+  showClubError('', 'club-create-error');
+  showScreen('screen-club');
+  renderClubChooser();
+}
+
+async function showClubChooser() {
+  SESSION.del();
+  state.currentUser = null;
+  state.currentClub = null;
+  state.players = [];
+  state.supportMode = false;
+  state.supportHome = null;
+  matches = [];
+  stopSync();
+  showClubLanding();
+  await refreshClubChooser();
+}
+
+function showCreateClubForm() {
+  document.getElementById('club-chooser-box').classList.add('hidden');
+  document.getElementById('club-create-box').classList.remove('hidden');
+  document.getElementById('club-create-form').classList.remove('hidden');
+  document.getElementById('club-create-success').classList.add('hidden');
+  document.getElementById('club-create-name').value = '';
+  showClubError('', 'club-create-error');
+}
+
+async function createClub() {
+  const name = document.getElementById('club-create-name').value.trim();
+  if (name.length < 3) {
+    showClubError('Elegí un nombre de al menos 3 caracteres.', 'club-create-error');
+    return;
+  }
+  let data;
+  try {
+    data = await callRpc('fulbito_create_club', { p_name: name });
+  } catch (error) {
+    console.error('createClub:', error);
+    showClubError(`No se pudo crear el club: ${error.message}`, 'club-create-error');
+    return;
+  }
+  const club = { id: data.id, name: data.name, inviteCode: data.invite_code };
+  state.clubs.push(club);
+  window.__newClubInviteCode = club.inviteCode;
+  document.getElementById('club-create-form').classList.add('hidden');
+  const success = document.getElementById('club-create-success');
+  success.innerHTML = `
+    <p class="club-create-note">¡Listo! Compartí este código con tu grupo para que entren al espacio correcto.</p>
+    <div class="club-code-reveal">${escapeHtml(club.inviteCode)}</div>
+    <button class="btn-login" onclick="selectClub('${club.id}')">CONTINUAR Y CREAR MI CUENTA</button>
+    <div class="login-divider"></div>
+    <button class="btn-register" onclick="showClubChooser()">Volver a mis clubes</button>`;
+  success.classList.remove('hidden');
+}
+
+async function joinClubByCode() {
+  const input = document.getElementById('club-invite-input');
+  const code = input.value.trim().toUpperCase();
+  if (!code) {
+    showClubError('Ingresá el código que te compartieron.');
+    return;
+  }
+  let data;
+  try {
+    data = await callRpc('fulbito_lookup_club', { p_invite_code: code });
+  } catch (error) {
+    console.error('joinClubByCode:', error);
+    showClubError('No pudimos validar ese código. Intentá nuevamente.');
+    return;
+  }
+  const club = data ? { id: data.id, name: data.name, inviteCode: code } : null;
+  if (!club) {
+    showClubError('No encontramos un club con ese código. Revisalo e intentá de nuevo.');
+    return;
+  }
+  input.value = '';
+  showClubError('');
+  await selectClub(club.id);
+}
+
+function updateLoginClubContext() {
+  const context = document.getElementById('login-club-context');
+  if (!context || !state.currentClub) return;
+  const code = window.__newClubInviteCode && state.currentClub.inviteCode === window.__newClubInviteCode
+    ? ` · Código ${state.currentClub.inviteCode}` : '';
+  context.textContent = `🏟️ ${state.currentClub.name}${code}`;
+  context.classList.remove('hidden');
+}
+
+async function selectClub(clubId, { restoreSession = false } = {}) {
+  const club = state.clubs.find(item => item.id === clubId);
+  if (!club) {
+    showClubError('No pudimos abrir ese club. Actualizá e intentá de nuevo.');
+    return;
+  }
+  state.currentClub = club;
+  state.supportMode = false;
+  state.supportHome = null;
+  state.players = [];
+  matches = [];
+  updateLoginClubContext();
+
+  const saved = SESSION.get();
+  const savedClubId = saved?.clubId || (saved ? LEGACY_CLUB_ID : null);
+  if (restoreSession && saved && savedClubId === club.id) {
+    let player = null;
+    try { player = await callRpc('fulbito_get_my_player', { p_club_id: club.id }); } catch (_) { player = null; }
+    if (player) {
+      const mapped = mapPlayers([player])[0];
+      state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, isPlatformAdmin: !!player.is_platform_admin, clubId: club.id };
+      state.players = await loadPlayers(club.id);
+      SESSION.set({ ...state.currentUser, clubName: club.name });
+      showApp();
+      return;
+    }
+    SESSION.del();
+  }
+  showScreen('screen-login');
+  showLoginForm();
+  document.getElementById('login-user').focus();
+}
+
+async function init() {
+  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  showScreen('screen-club');
+  try { await getSB(); } catch (error) { showClubError(`No se pudo iniciar una sesión segura: ${error.message}`); }
+  await refreshClubChooser();
+  const sess = SESSION.get();
+  const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
+  if (sess && clubId !== LEGACY_CLUB_ID && sess.clubName && !state.clubs.some(club => club.id === clubId)) {
+    state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club' });
+  }
+  if (sess && state.clubs.some(club => club.id === clubId)) {
+    await selectClub(clubId, { restoreSession: true });
+    return;
+  }
+  if (sess) SESSION.del();
+  showClubLanding();
+}
+
+async function refreshPlayers() {
+  showToast('⏳ Actualizando...');
+  state.players = await loadPlayers();
+  matches = await loadMatches();
+  renderHub();
+  renderPlayers();
+  renderAttendance();
+  showToast(`✅ ${state.players.length} jugadores cargados`);
+}
+
+// ============================================================

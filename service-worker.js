@@ -3,12 +3,47 @@
   Nunca intercepta solicitudes a Supabase: resultados, usuarios y sesiones
   siguen obteniéndose en línea y no se conservan en la caché del dispositivo.
 */
-const SHELL_CACHE = 'fulbito-shell-v1';
+const SHELL_CACHE = 'fulbito-shell-v2';
 const SHELL_FILES = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './assets/fulbito-icon.svg'
+  './assets/fulbito-icon.svg',
+  './css/admin.css',
+  './css/asistencia.css',
+  './css/base.css',
+  './css/calificar.css',
+  './css/equipos.css',
+  './css/goles.css',
+  './css/inicio.css',
+  './css/jugadores.css',
+  './css/partidos.css',
+  './css/responsive.css',
+  './css/stats-matchcentre.css',
+  './css/stats.css',
+  './css/theme-aurora.css',
+  './css/utils.css',
+  './js/auth.js',
+  './js/boot.js',
+  './js/config.js',
+  './js/init.js',
+  './js/navigation.js',
+  './js/ratings-normalize.js',
+  './js/render.js',
+  './js/state.js',
+  './js/stats-core.js',
+  './js/storage.js',
+  './js/support.js',
+  './js/sync.js',
+  './js/tabs/admin.js',
+  './js/tabs/asistencia.js',
+  './js/tabs/calificar.js',
+  './js/tabs/equipos.js',
+  './js/tabs/goles.js',
+  './js/tabs/inicio.js',
+  './js/tabs/jugadores.js',
+  './js/tabs/partidos.js',
+  './js/tabs/stats.js'
 ];
 
 self.addEventListener('install', (event) => {

@@ -1,0 +1,37 @@
+/* ===== RESPONSIVE: NUNCA CORTAR EL PLANTEL ===== */
+@media (max-width:920px){
+  #screen-app{padding-left:16px;padding-right:16px}
+  .hub-hero{padding:22px}.hub-attendance{width:43%;min-width:255px}.hub-grid{grid-template-columns:1fr}.hub-quick-grid{grid-template-columns:repeat(3,1fr)}
+  .players-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:22px 16px}
+  .roster-toolbar{align-items:flex-start;flex-direction:column}
+  .roster-controls{width:100%}
+  .roster-search{flex:1}
+}
+@media (max-width:640px){
+  #screen-app{padding:0 12px 30px}
+  #screen-club{padding:16px}.club-box{padding:17px;border-radius:16px}.club-list{grid-template-columns:1fr}.club-intro{margin-bottom:18px}.club-intro h1{font-size:48px}.club-intro p{font-size:12px}.club-join{grid-template-columns:1fr}.club-join .btn{justify-content:center}
+  .topbar{padding:11px 0}.topbar-user #topbar-username{display:none}
+  .brand-crest{width:31px;height:36px}.topbar-logo{font-size:23px}.brand-caption{font-size:7px}
+  .nav-tabs{top:59px;margin-bottom:4px}.nav-tab{flex:0 0 74px;min-width:74px;font-size:9px;padding:9px 5px}.nav-tab-icon{font-size:16px}
+  .hub-shell{gap:12px}.hub-hero{min-height:0;display:block;padding:20px 17px;border-radius:16px}.hub-hero h1{font-size:39px;max-width:280px}.hub-hero p{font-size:11px;max-width:255px}.hub-hero-actions{margin-top:15px}.hub-hero-actions .btn{font-size:11px;padding:8px 10px}.hub-attendance{width:100%;min-width:0;margin-top:18px;padding:14px}.hub-attendance-state{font-size:22px}.hub-grid{gap:12px}.hub-panel{border-radius:14px}.hub-panel-head{padding:13px 14px 11px}.hub-last-match{padding:16px 13px;gap:8px}.hub-team-name{font-size:19px}.hub-team-sub{font-size:9px}.hub-score-wrap{min-width:78px}.hub-score{font-size:42px}.hub-match-meta{padding:0 13px 13px;gap:5px}.hub-match-actions{margin-left:0;width:100%}.hub-mini-btn{flex:1}.hub-fixture{border-radius:14px}.fixture-head{padding:14px 13px}.fixture-title{font-size:23px}.fixture-head-right{gap:5px}.fixture-date{font-size:15px}.fixture-status{font-size:8px;padding:4px 6px}.fixture-team-grid,.fixture-team-grid.teams-3{grid-template-columns:1fr;padding:9px;gap:8px}.fixture-team-head{padding:9px 10px}.fixture-players{padding:7px}.fixture-footer{padding:0 12px 12px;align-items:flex-end}.fixture-footer .btn{font-size:11px;padding:8px 9px;white-space:nowrap}.fixture-footer-copy{font-size:9.5px}.hub-leader{padding:11px 13px}.hub-quick-grid{grid-template-columns:1fr;gap:7px}.hub-quick{padding:10px 12px}.hub-quick b{font-size:12px}
+  .tab-content{padding-top:12px}.tab-content#tab-jugadores{padding-left:0!important;padding-right:0!important}
+  .roster-hero{min-height:132px;padding:20px 18px;border-radius:16px;align-items:flex-start}.roster-hero::after{right:10px;font-size:135px;bottom:-34px}
+  .roster-hero h1{font-size:42px}.roster-hero p{font-size:11px;margin-top:6px}.roster-kicker{font-size:8px;letter-spacing:1.25px}
+  .roster-hero-actions{position:absolute;right:14px;bottom:13px}.roster-hero-actions .btn{padding:7px 9px;font-size:11px}.roster-hero-actions .btn-ghost span{display:none}
+  .roster-toolbar{gap:11px;padding:11px;border-radius:12px;margin-bottom:20px}.roster-summary{width:100%;justify-content:space-between}.roster-metric{min-width:0;flex:1;padding:0 8px}.roster-metric:first-child{padding-left:0}.roster-metric span{font-size:8px;letter-spacing:.55px}.roster-metric b{font-size:21px}.roster-leader{max-width:none}
+  .roster-controls{gap:7px}.roster-search{min-width:0;height:35px}.roster-controls select{height:35px;max-width:132px;font-size:11px}
+  .roster-grid-head{margin-bottom:12px}.roster-grid-head h2{font-size:25px}.roster-visible-count{font-size:10px;padding:5px 8px}
+  .players-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:18px 12px}
+  .fifa-card{max-width:100%;min-height:0;padding:18px 11px 28px;filter:drop-shadow(0 9px 14px rgba(0,0,0,.45))}
+  .fifa-card:hover{transform:translateY(-4px) scale(1.015)}
+  .fifa-card-photo{width:60px;height:60px}.fifa-card-overall{font-size:38px}.fifa-card-pos{font-size:12px}.fifa-card-tier{font-size:7px;letter-spacing:1.6px}
+  .fifa-divider{margin:8px 0 5px}.fifa-card-name{font-size:14px;letter-spacing:.8px}.fifa-card-stats{width:90%;margin-top:7px}.fifa-card-stat{font-size:8px;gap:2px}.fifa-card-stat span:first-child{font-size:12px}.fifa-card-stat.best span:first-child{font-size:13px}.fifa-card-record{font-size:9px;padding:2px 7px;margin-top:8px}
+}
+@media (max-width:370px){
+  .roster-hero p{max-width:165px}.roster-metric span{font-size:7px}.roster-metric b{font-size:19px}
+  .fifa-card{padding:16px 8px 25px}.fifa-top{gap:7px}.fifa-card-photo{width:55px;height:55px}.fifa-card-overall{font-size:34px}.fifa-card-name{font-size:13px}.fifa-card-stats{width:94%}.fifa-card-record{font-size:8px;padding:2px 5px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important}
+}

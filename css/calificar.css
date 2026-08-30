@@ -1,0 +1,11 @@
+/* ===== RATE ===== */
+.rate-player{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;transition:border-color .2s}
+.rate-player-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer}
+.rate-player-name{font-weight:600;font-size:15px;flex:1}
+.rate-player-voted{font-size:11px;font-weight:700;color:var(--green)}
+.rate-stars-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.rate-stars-label{font-size:12px;color:var(--muted);width:80px;font-weight:600}
+.stars{display:flex;gap:3px}
+.star{font-size:21px;cursor:pointer;opacity:.28;transition:all .15s;user-select:none;color:var(--gold)}
+.star.lit{opacity:1}
+.star:hover{transform:scale(1.25)}

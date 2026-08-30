@@ -1,0 +1,19 @@
+/* ===== ATTENDANCE ===== */
+.attend-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.attend-stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;text-align:center;box-shadow:var(--shadow-card)}
+.attend-stat-num{font-family:'Bebas Neue',sans-serif;font-size:38px;line-height:1}
+.attend-stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-top:2px}
+.attend-stat.going .attend-stat-num{color:var(--green)}
+.attend-stat.notgoing .attend-stat-num{color:var(--red)}
+.attend-stat.pending .attend-stat-num{color:var(--gold)}
+
+.attend-player{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:8px;transition:all .2s}
+.attend-player:hover{border-color:#37435566}
+.attend-player-name{flex:1;font-weight:600;font-size:15px}
+.attend-player-pos{font-size:11px;color:var(--muted)}
+.attend-toggle{display:flex;gap:6px}
+.attend-btn{width:38px;height:38px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--bg3);cursor:pointer;font-size:16px;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.attend-btn:hover{transform:scale(1.08);border-color:#48566b}
+.attend-btn.going-active{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 3px 10px rgba(34,197,94,.3)}
+.attend-btn.notgoing-active{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 3px 10px rgba(239,68,68,.3)}
+.btn-clear-all{margin-top:12px}
