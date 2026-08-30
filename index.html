@@ -3192,6 +3192,8 @@ function getForecastHTML(teams) {
 let golesMatchId = null;
 let _goalSaveTimer = null;
 let _goalSavePending = null;
+let _goalWriteQueue = Promise.resolve();
+let _goalWritesPending = 0;
 
 function openGolesFor(id) {
   golesMatchId = id;
@@ -3215,20 +3217,6 @@ function setSaveState(txt) {
   if (el) el.textContent = txt;
 }
 
-function queueSaveMatch(m) {
-  _goalSavePending = m;
-  setSaveState('✍️ Guardando…');
-  if (_goalSaveTimer) clearTimeout(_goalSaveTimer);
-  _goalSaveTimer = setTimeout(async () => {
-    const target = _goalSavePending;
-    _goalSaveTimer = null;
-    _goalSavePending = null;
-    await upsertMatch(target);
-    setSaveState('✅ Guardado');
-    setTimeout(() => setSaveState(''), 1600);
-  }, 800);
-}
-
 function addGoal(mid, key, delta) {
   const m = matches.find(x => x.id === mid);
   if (!m) return;
@@ -3239,8 +3227,43 @@ function addGoal(mid, key, delta) {
   if (next === 0) delete m.result.goals[key];
   else m.result.goals[key] = next;
   paintGoals(m, key);
-  queueSaveMatch(m);
+  queueGoalWrite(mid, key, delta);
   if (delta > 0 && navigator.vibrate) navigator.vibrate(25);
+}
+
+// Cada toque viaja como una variación atómica al servidor: no se reemplaza el
+// partido entero (operación reservada a admins) y dos celulares no se pisan.
+function queueGoalWrite(mid, key, delta) {
+  _goalWritesPending++;
+  setSaveState('✍️ Guardando…');
+  _goalWriteQueue = _goalWriteQueue
+    .then(async () => {
+      await callRpc('fulbito_record_goal', {
+        p_club_id: state.currentClub.id,
+        p_match_id: mid,
+        p_goal_key: key,
+        p_delta: delta
+      });
+    })
+    .catch(async (error) => {
+      console.error('record goal:', error);
+      // Se vuelve a la versión protegida del servidor para no dejar un marcador
+      // optimista incorrecto cuando falla la conexión o el permiso.
+      matches = await loadMatches();
+      renderGoles();
+      showToast(`❌ ${error.message || 'No se pudo guardar el gol'}`, 3600);
+    })
+    .finally(async () => {
+      _goalWritesPending--;
+      if (_goalWritesPending === 0) {
+        _goalSaveTimer = setTimeout(async () => {
+          matches = await loadMatches();
+          renderGoles();
+          setSaveState('✅ Guardado');
+          setTimeout(() => setSaveState(''), 1600);
+        }, 100);
+      }
+    });
 }
 
 function paintGoals(m, animKey) {
