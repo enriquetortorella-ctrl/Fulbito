@@ -754,9 +754,9 @@ body::after{
   box-shadow:0 18px 38px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.13),inset 0 -1px 0 rgba(112,215,255,.10);
 }
 .topbar::before{
-  content:'';position:absolute;inset:0;pointer-events:none;opacity:.8;
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.28;
   background:linear-gradient(108deg,transparent 10%,rgba(255,255,255,.11) 24%,transparent 32% 67%,rgba(201,255,99,.10) 80%,transparent 91%);
-  transform:translateX(-72%);animation:topbarSweep 8s ease-in-out infinite;
+  transform:translateX(-3%);animation:topbarSweep 11s ease-in-out infinite;
 }
 .topbar>*{position:relative;z-index:1}
 .brand-crest{
@@ -797,7 +797,7 @@ body::after{
   background:linear-gradient(124deg,rgba(29,76,119,.73),rgba(19,31,67,.72) 44%,rgba(49,31,82,.64));
   box-shadow:0 28px 62px rgba(0,0,0,.31),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(112,215,255,.12);
 }
-.hub-hero::before,.roster-hero::before{opacity:.9;background:linear-gradient(112deg,rgba(255,255,255,.16),transparent 18% 64%,rgba(112,215,255,.08) 75%,rgba(201,255,99,.12));mask-image:none}
+.hub-hero::before,.roster-hero::before{opacity:.78;background:linear-gradient(112deg,rgba(255,255,255,.16),transparent 18% 64%,rgba(112,215,255,.08) 75%,rgba(201,255,99,.12));background-size:180% 100%;animation:heroSheen 12s ease-in-out infinite alternate;mask-image:none}
 .hub-kicker,.roster-kicker{color:var(--aurora-lime);text-shadow:0 0 15px rgba(201,255,99,.32)}
 .hub-live-dot,.roster-kicker span{box-shadow:0 0 0 5px rgba(201,255,99,.10),0 0 18px rgba(201,255,99,.94)}
 .hub-score,.hub-score-single{color:#fff0a8;text-shadow:0 0 12px rgba(255,211,106,.45),0 0 32px rgba(255,211,106,.17)}
@@ -822,6 +822,20 @@ body::after{
 .fifa-card-record{box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 5px 8px rgba(0,0,0,.10)}
 .players-grid .fifa-card:nth-child(2){animation-delay:.05s}.players-grid .fifa-card:nth-child(3){animation-delay:.10s}.players-grid .fifa-card:nth-child(4){animation-delay:.15s}.players-grid .fifa-card:nth-child(5){animation-delay:.20s}.players-grid .fifa-card:nth-child(6){animation-delay:.25s}.players-grid .fifa-card:nth-child(7){animation-delay:.30s}.players-grid .fifa-card:nth-child(8){animation-delay:.35s}.players-grid .fifa-card:nth-child(9){animation-delay:.40s}
 
+/* Estados vivos del plantel: se alimentan del historial real, no son decorativos. */
+.fifa-card.has-card-spotlight{padding-bottom:43px}
+.card-spotlights{position:absolute;z-index:4;left:50%;bottom:17px;display:flex;justify-content:center;flex-wrap:wrap;gap:4px;max-width:88%;transform:translateX(-50%);pointer-events:none}
+.card-spotlight{display:inline-flex;align-items:center;justify-content:center;min-height:19px;padding:3px 7px;border:1px solid rgba(255,255,255,.24);border-radius:999px;font-family:'Bebas Neue',sans-serif;font-size:10px;line-height:1;letter-spacing:.75px;color:#fff;background:rgba(8,14,27,.54);box-shadow:0 4px 10px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.13);white-space:nowrap;animation:badgeFloat 2.8s ease-in-out infinite}
+.card-spotlight.is-hot{color:#fff0bd;border-color:rgba(255,157,66,.62);background:linear-gradient(135deg,rgba(255,95,35,.78),rgba(181,38,16,.56));box-shadow:0 0 17px rgba(255,88,29,.38),inset 0 1px 0 rgba(255,238,197,.36);animation-duration:1.7s}
+.card-spotlight.is-scorer{color:#fff1a5;border-color:rgba(255,211,106,.72);background:linear-gradient(135deg,rgba(168,106,12,.86),rgba(255,202,72,.40));box-shadow:0 0 17px rgba(255,211,106,.34),inset 0 1px 0 rgba(255,248,194,.42);animation-delay:.18s}
+.card-spotlight.is-mvp{color:#fff0af;border-color:rgba(255,223,110,.73);background:linear-gradient(135deg,rgba(113,63,16,.85),rgba(250,204,21,.42));box-shadow:0 0 16px rgba(250,204,21,.32),inset 0 1px 0 rgba(255,248,201,.40);animation-delay:.35s}
+.fifa-card.card-hot::after{box-shadow:inset 0 0 0 1px rgba(255,207,125,.54),inset 0 0 0 4px rgba(255,88,29,.14),inset 0 -24px 32px rgba(102,17,6,.32);animation:fireFrame 2.2s ease-in-out infinite}
+.fifa-card.card-hot .fifa-card-photo{animation:hotPortrait 1.9s ease-in-out infinite}
+.fifa-card.card-hot .fifa-shine{animation:foilGlide 4.8s ease-in-out infinite}
+.fifa-card.card-top-scorer .fifa-card-overall{color:#fff0a5;text-shadow:0 0 12px rgba(255,211,106,.72),0 0 25px rgba(255,148,29,.34);animation:scorerGlow 2.9s ease-in-out infinite}
+.fifa-card.card-top-scorer .fifa-card-record{border-color:rgba(255,211,106,.42);background:rgba(107,67,6,.28)}
+.fifa-card.card-mvp .fifa-card-name{color:#fff0a8;text-shadow:0 0 11px rgba(255,211,106,.74);animation:mvpGlow 3.2s ease-in-out infinite}
+
 .btn-primary,.btn-login{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.30);box-shadow:0 12px 27px rgba(240,192,64,.28),inset 0 1px 0 rgba(255,255,255,.72)}
 .btn-primary::after,.btn-login::after{content:'';position:absolute;inset:-20% -50%;pointer-events:none;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.58) 50%,transparent 60%);transform:translateX(-55%) rotate(8deg);transition:transform .55s ease}
 .btn-primary:hover::after,.btn-login:hover::after{transform:translateX(55%) rotate(8deg)}
@@ -838,20 +852,69 @@ body::after{
   .fifa-card:hover{transform:translateY(-10px) scale(1.024) rotateX(2deg);filter:drop-shadow(0 25px 32px rgba(0,0,0,.46)) drop-shadow(0 0 20px rgba(255,211,106,.22))}
 }
 @keyframes auroraDrift{0%{transform:translate3d(-2%,-1%,0) scale(1)}100%{transform:translate3d(3%,2%,0) scale(1.08)}}
-@keyframes topbarSweep{0%,18%{transform:translateX(-76%)}48%,100%{transform:translateX(76%)}}
+@keyframes topbarSweep{0%,100%{transform:translateX(-3%);opacity:.18}50%{transform:translateX(3%);opacity:.38}}
 @keyframes crestPulse{0%,100%{filter:drop-shadow(0 0 10px rgba(201,255,99,.28))}50%{filter:drop-shadow(0 0 19px rgba(201,255,99,.58))}}
+@keyframes heroSheen{from{background-position:0% 0%}to{background-position:100% 0%}}
 @keyframes heroBoot{from{opacity:0;transform:translateY(-16px);filter:blur(7px)}to{opacity:1;transform:none;filter:none}}
 @keyframes glassRise{from{opacity:0;transform:translateY(20px) scale(.985);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
 @keyframes tabEnter{from{opacity:0;transform:translateY(11px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
 @keyframes cardDeal{from{opacity:0;transform:translateY(22px) scale(.94) rotateX(7deg);filter:blur(5px)}to{opacity:1;transform:translateZ(0);filter:drop-shadow(0 15px 22px rgba(0,0,0,.52)) drop-shadow(0 0 11px rgba(112,215,255,.07))}}
+@keyframes badgeFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2px) scale(1.035)}}
+@keyframes fireFrame{0%,100%{box-shadow:inset 0 0 0 1px rgba(255,207,125,.50),inset 0 0 0 4px rgba(255,88,29,.12),inset 0 -24px 32px rgba(102,17,6,.29)}50%{box-shadow:inset 0 0 0 1px rgba(255,237,175,.82),inset 0 0 0 5px rgba(255,88,29,.26),inset 0 -28px 38px rgba(153,29,7,.46)}}
+@keyframes hotPortrait{0%,100%{transform:translateY(0) scale(1);box-shadow:0 0 0 3px rgba(255,238,185,.40),0 0 0 5px rgba(255,97,29,.16),0 10px 19px rgba(0,0,0,.34)}50%{transform:translateY(-2px) scale(1.035);box-shadow:0 0 0 3px rgba(255,246,206,.67),0 0 0 6px rgba(255,97,29,.30),0 0 21px rgba(255,91,25,.58)}}
+@keyframes foilGlide{0%,18%{transform:translateX(-135%)}50%,100%{transform:translateX(135%)}}
+@keyframes scorerGlow{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes mvpGlow{0%,100%{opacity:1}50%{opacity:.72}}
 @keyframes overlayIn{from{opacity:0}to{opacity:1}}
 @keyframes modalLift{from{opacity:0;transform:translateY(22px) scale(.96);filter:blur(7px)}to{opacity:1;transform:none;filter:none}}
 @media (max-width:640px){
   .topbar::before{animation-duration:10s}.nav-tab:hover{transform:none}
   .hub-panel:hover,.hub-fixture:hover,.team-card:hover,.match-card:hover,.admin-section:hover,.goal-team:hover,.stats-filter-card:hover{transform:none}
 }
+
+/* MÓVIL · Cartas legibles y navegación que se desplaza por sí misma. */
+html,body{max-width:100%;overflow-x:clip}
+#screen-app{width:100%;min-width:0;overflow-x:clip}
+.nav-tabs{
+  overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{scroll-snap-align:start}
+@media (max-width:640px){
+  .nav-tabs{margin:7px 0;padding:4px 4px;gap:3px;width:100%;max-width:100%;touch-action:pan-x pan-y}
+  .nav-tab{flex:0 0 74px;min-width:74px}
+
+  /* La carta conserva su silueta, pero ahora el contenido ocupa el espacio útil. */
+  .fifa-card{padding:14px 8px 16px;aspect-ratio:.675}
+  .fifa-top{gap:9px;margin-top:0}
+  .fifa-card-photo{width:64px;height:64px}
+  .fifa-card-overall{font-size:44px}
+  .fifa-card-pos{font-size:13px;margin-top:4px;padding-top:4px}
+  .fifa-card-tier{font-size:8px;letter-spacing:1.8px;margin-top:4px}
+  .fifa-divider{width:86%;margin:8px 0 6px}
+  .fifa-card-name{font-size:16px;letter-spacing:1px;line-height:1.08}
+  .fifa-card-stats{width:92%;gap:4px 0;margin-top:8px}
+  .fifa-card-stat{font-size:10px;line-height:1.5;gap:3px}
+  .fifa-card-stat span:first-child{font-size:15px}
+  .fifa-card-stat.best span:first-child{font-size:17px}
+  .fifa-card-record{font-size:10.5px;line-height:1.1;padding:3px 7px;margin:9px auto 0}
+}
+@media (max-width:370px){
+  .fifa-card{padding:13px 7px 15px}
+  .fifa-card-photo{width:58px;height:58px}
+  .fifa-card-overall{font-size:40px}
+  .fifa-card-name{font-size:15px}
+  .fifa-card-stat{font-size:9.5px}
+  .fifa-card-stat span:first-child{font-size:14px}
+  .fifa-card-stat.best span:first-child{font-size:16px}
+  .fifa-card-record{font-size:9.5px}
+}
 @media (prefers-reduced-motion:reduce){
-  body::after,.brand-crest,.topbar::before,.fifa-card,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
+  body::after,.brand-crest,.topbar::before,.hub-hero::before,.roster-hero::before,.fifa-card,.fifa-card.card-hot::after,.fifa-card.card-hot .fifa-card-photo,.fifa-card.card-hot .fifa-shine,.fifa-card.card-top-scorer .fifa-card-overall,.fifa-card.card-mvp .fifa-card-name,.card-spotlight,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
   .nav-tab,.btn-primary::after,.btn-login::after,.hub-panel,.hub-fixture,.team-card,.match-card,.admin-section,.goal-team,.stats-filter-card,.fifa-card{transition:none!important}
 }
 </style>
@@ -2466,7 +2529,8 @@ function renderPlayers() {
     grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⌕</div><div>No encontramos a "${rosterQuery}"</div><div style="font-size:12px;margin-top:7px">Probá con otro nombre, usuario o posición.</div></div>`;
     return;
   }
-  grid.innerHTML = visible.map(x => renderFifaCard(x.p)).join('');
+  const highlights = getCardHighlights(entries);
+  grid.innerHTML = visible.map(x => renderFifaCard(x.p, highlights)).join('');
   // La autocalificación ("versión propia") ya no se muestra en el plantel:
   // se ve dentro del perfil de cada jugador, comparada contra el voto del grupo.
 }
@@ -2510,7 +2574,31 @@ function cardStatsHTML(stats) {
   ).join('');
 }
 
-function renderFifaCard(p) {
+function getCardHighlights(entries) {
+  const rankedByGoals = entries.filter(x => x.rec.goals > 0);
+  const maxGoals = rankedByGoals.length ? Math.max(...rankedByGoals.map(x => x.rec.goals)) : 0;
+  const topScorerIds = new Set(rankedByGoals.filter(x => x.rec.goals === maxGoals).map(x => x.p.id));
+  const latestMvpMatch = matches
+    .filter(m => isPlayed(m) && m.result?.mvp)
+    .slice()
+    .sort((a,b) => `${b.match_date||''}|${b.created_at||''}`.localeCompare(`${a.match_date||''}|${a.created_at||''}`))[0];
+  return {
+    topScorerIds,
+    latestMvpId: latestMvpMatch?.result?.mvp || null,
+    forms: new Map(entries.map(x => [x.p.id, getPlayerForm(x.p.id)]))
+  };
+}
+
+function cardSpotlightsHTML(p, highlights) {
+  const form = highlights.forms.get(p.id);
+  const badges = [];
+  if (form?.type === 'V' && form.streak >= 2) badges.push(`<span class="card-spotlight is-hot">🔥 ${form.streak}V</span>`);
+  if (highlights.topScorerIds.has(p.id)) badges.push('<span class="card-spotlight is-scorer">⚽ GOLEADOR</span>');
+  if (highlights.latestMvpId === p.id) badges.push('<span class="card-spotlight is-mvp">⭐ ÚLTIMO MVP</span>');
+  return badges.length ? `<div class="card-spotlights">${badges.join('')}</div>` : '';
+}
+
+function renderFifaCard(p, highlights) {
   const ovr = getOverall(p) || 60;
   const tier = getCardTier(ovr);
   const pos = getEffectivePosition(p);
@@ -2525,8 +2613,14 @@ function renderFifaCard(p) {
   const recHTML = rec.pj > 0
     ? `<div class="fifa-card-record">${rec.w}V · ${rec.d}E · ${rec.l}D${extras}</div>`
     : '';
+  const form = highlights.forms.get(p.id);
+  const isHot = form?.type === 'V' && form.streak >= 2;
+  const isTopScorer = highlights.topScorerIds.has(p.id);
+  const isLatestMvp = highlights.latestMvpId === p.id;
+  const spotlights = cardSpotlightsHTML(p, highlights);
+  const cardClasses = [tier.cls, isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
 
-  return `<div class="fifa-card ${tier.cls}" onclick="openPlayerProfile('${p.id}')">
+  return `<div class="fifa-card ${cardClasses}" onclick="openPlayerProfile('${p.id}')">
     <span class="fifa-shine"></span>
     <div class="fifa-top">
       <div class="fifa-left">
@@ -2540,6 +2634,7 @@ function renderFifaCard(p) {
     <div class="fifa-card-name">${escapeHtml(p.username.toUpperCase())}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
     ${recHTML}
+    ${spotlights}
   </div>`;
 }
 
