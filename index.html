@@ -998,6 +998,21 @@ html,body{max-width:100%;overflow-x:clip}
 #tab-jugadores .fifa-card.has-card-spotlight{padding-bottom:31px}
 @media (max-width:640px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,260px));gap:26px 16px}#tab-jugadores .fifa-card{max-width:260px}}
 @media (max-width:500px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}#tab-jugadores .fifa-card{max-width:none}}
+
+/* ===== STATS / GOLEADORES · MATCH CENTRE ===== */
+.scorers-module{position:relative;overflow:hidden;border:1px solid rgba(116,214,255,.34)!important;background:radial-gradient(ellipse 78% 45% at 50% 0,rgba(72,190,255,.14),transparent 67%),linear-gradient(145deg,rgba(21,34,52,.94),rgba(4,12,23,.98) 74%)!important;box-shadow:0 0 0 2px rgba(2,8,15,.84),0 22px 38px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.20)!important}
+.scorers-module::before{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(116deg,transparent 0 57px,rgba(112,217,255,.04) 58px 59px,transparent 60px 116px);mask-image:linear-gradient(to bottom,rgba(0,0,0,.75),transparent 65%)}
+.scorers-module-head,.scorers-featured,.scorers-list-head,.scorers-list,.scorers-note,.scorers-extras{position:relative;z-index:1}
+.scorers-module-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0 13px;border-bottom:1px solid rgba(171,215,244,.16)}
+.scorers-heading{display:flex;align-items:center;gap:10px;min-width:0}.scorers-icon{display:grid;place-items:center;width:39px;height:39px;border-radius:11px;font-size:24px;background:linear-gradient(145deg,rgba(255,213,111,.34),rgba(82,46,6,.30));border:1px solid rgba(255,218,116,.55);box-shadow:0 0 16px rgba(255,201,73,.16),inset 0 1px 0 rgba(255,255,255,.34)}
+.scorers-kicker{font-size:9px;letter-spacing:1.35px;color:#d8f47d;font-weight:800;white-space:nowrap}.scorers-module h3{margin:2px 0 0;font-family:'Bebas Neue',sans-serif;font-size:31px;line-height:.92;letter-spacing:1px;color:#f5f9ff;text-shadow:0 2px 0 #02070b,0 0 18px rgba(114,211,255,.20)}
+.scorers-head-total{display:flex;align-items:baseline;gap:5px;text-align:right}.scorers-head-total b{font-family:'Bebas Neue',sans-serif;font-size:42px;line-height:.8;color:#fff0a8;text-shadow:0 0 15px rgba(255,207,84,.58)}.scorers-head-total span{font-size:8px;line-height:1.15;letter-spacing:.8px;color:var(--muted);font-weight:800}
+.scorers-featured{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:13px 0 15px}.scorer-feature{min-width:0;padding:12px 13px 11px;border:1px solid rgba(176,213,239,.30);border-radius:12px;background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(2,9,18,.36));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 17px rgba(0,0,0,.22);animation:scorerReveal .45s ease both}.scorer-feature-gold{border-color:rgba(255,211,99,.62);background:linear-gradient(145deg,rgba(112,79,13,.50),rgba(17,26,35,.74));box-shadow:inset 0 1px 0 rgba(255,250,205,.26),0 0 20px rgba(255,196,71,.10)}.scorer-feature-ice{border-color:rgba(141,219,255,.52);background:linear-gradient(145deg,rgba(26,76,108,.42),rgba(8,20,34,.78))}.scorer-feature:nth-child(2){animation-delay:.08s}
+.scorer-feature-ribbon{font-size:8.5px;letter-spacing:1.1px;font-weight:900;color:#ffeaa0;margin-bottom:9px}.scorer-feature-ice .scorer-feature-ribbon{color:#a6e8ff}.scorer-feature-main{display:flex;align-items:center;gap:9px;min-width:0}.scorer-avatar{width:43px;height:43px;flex:0 0 43px;object-fit:cover;object-position:center 15%;border-radius:10px;border:1px solid rgba(255,240,175,.52);box-shadow:0 0 0 2px rgba(0,0,0,.30),0 5px 12px rgba(0,0,0,.30);background:linear-gradient(145deg,#5f758b,#152435)}.scorer-feature-avatar{width:52px;height:52px;flex-basis:52px;border-radius:12px;border-color:rgba(255,227,130,.78);box-shadow:0 0 0 2px rgba(255,206,81,.16),0 0 18px rgba(255,200,72,.20),0 7px 14px rgba(0,0,0,.36)}.scorer-feature-ice .scorer-feature-avatar{border-color:rgba(162,231,255,.74);box-shadow:0 0 0 2px rgba(84,207,255,.16),0 0 18px rgba(84,207,255,.17),0 7px 14px rgba(0,0,0,.36)}.scorer-avatar-ph{display:grid;place-items:center;font-size:21px}.scorer-feature-copy{min-width:0;flex:1}.scorer-feature-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-size:18px;letter-spacing:.3px;color:#fff}.scorer-feature-copy span{display:block;margin-top:2px;font-size:9px;color:rgba(232,241,250,.66);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.scorer-feature-number{text-align:right;flex:0 0 auto}.scorer-feature-number b{display:block;font-family:'Bebas Neue',sans-serif;font-size:37px;line-height:.78;color:#fff0a5;text-shadow:0 0 12px rgba(255,215,104,.52)}.scorer-feature-ice .scorer-feature-number b{color:#b5efff;text-shadow:0 0 12px rgba(93,211,255,.48)}.scorer-feature-number small{display:block;margin-top:4px;font-size:8px;letter-spacing:1px;color:rgba(255,255,255,.65)}
+.scorer-feature-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:11px;padding-top:8px;border-top:1px solid rgba(255,255,255,.14)}.scorer-feature-stats span{font-size:8px;color:rgba(232,241,250,.61);text-align:center;white-space:nowrap}.scorer-feature-stats b{display:block;margin-bottom:2px;font-family:'Bebas Neue',sans-serif;font-size:17px;line-height:.85;color:#fff}.scorer-feature-gold .scorer-feature-stats b{color:#ffefa6}.scorer-feature-ice .scorer-feature-stats b{color:#b7ecff}
+.scorers-list-head{display:grid;grid-template-columns:minmax(0,1fr) 52px 58px 112px;gap:7px;padding:0 10px 7px;font-size:8px;letter-spacing:.8px;color:rgba(194,219,238,.64);font-weight:800}.scorers-list-head span:not(:first-child){text-align:right}.scorers-list{border-top:1px solid rgba(181,216,239,.14)}.scorer-list-row{display:grid;grid-template-columns:minmax(0,1fr) 52px 58px 112px;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(181,216,239,.10);cursor:pointer;transition:background .18s,transform .18s}.scorer-list-row:hover{background:rgba(106,211,255,.08);transform:translateX(3px)}.scorer-list-player{display:flex;align-items:center;gap:7px;min-width:0}.scorer-rank{width:21px;flex:0 0 21px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:12px;color:rgba(205,229,242,.60)}.scorer-list-row:first-child .scorer-rank{font-size:17px;color:#ffe99a}.scorer-list-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:800;color:#f2f7fb}.scorer-list-name small{display:block;margin-top:1px;font-size:8px;font-weight:500;color:rgba(203,222,236,.54)}.scorer-list-goals,.scorer-list-gpp{text-align:right}.scorer-list-goals b,.scorer-list-gpp b{display:block;font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:.83;color:#fff0a8}.scorer-list-gpp b{color:#a8e8ff;font-size:18px}.scorer-list-goals span,.scorer-list-gpp span{font-size:8px;color:rgba(207,226,240,.54)}.scorer-list-share{display:flex;align-items:center;gap:6px}.scorer-list-track{height:7px;flex:1;overflow:hidden;border-radius:999px;background:rgba(5,14,25,.74);box-shadow:inset 0 1px 2px rgba(0,0,0,.42)}.scorer-list-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#158bc4,#73e6ff);box-shadow:0 0 9px rgba(97,218,255,.42);transform-origin:left;animation:statBarGrow .55s ease both}.scorer-list-share>span{width:28px;text-align:right;font-size:9px;color:#bceeff}.scorers-note{margin:13px 0 0!important;font-size:10px!important;line-height:1.45!important;color:rgba(206,224,236,.62)!important}.scorers-extras{margin-top:9px;padding:8px 10px;border-left:2px solid rgba(255,210,90,.60);background:rgba(255,198,70,.06);font-size:10.5px;color:rgba(225,236,244,.72);line-height:1.8}.scorers-extras b{color:#fff0a5}
+@keyframes scorerReveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (max-width:640px){.scorers-module-head{padding-bottom:11px}.scorers-kicker{font-size:8px}.scorers-module h3{font-size:28px}.scorers-head-total b{font-size:35px}.scorers-featured{grid-template-columns:1fr;gap:8px}.scorer-feature{padding:10px 11px}.scorers-list-head,.scorer-list-row{grid-template-columns:minmax(0,1fr) 38px 48px 82px;gap:5px;padding-left:6px;padding-right:6px}.scorer-avatar{width:37px;height:37px;flex-basis:37px}.scorer-list-name{font-size:11px}.scorer-list-name small{font-size:7.5px}.scorer-list-goals b{font-size:18px}.scorer-list-gpp b{font-size:16px}.scorer-list-share>span{width:23px;font-size:8px}.scorers-list-head{font-size:7px}}
 @media (prefers-reduced-motion:reduce){
   body::after,.brand-crest,.topbar::before,.hub-hero::before,.roster-hero::before,.fifa-card,.fifa-card-portrait img,.fifa-card-portrait::after,.fifa-card.card-hot::after,.fifa-card.card-hot .fifa-card-photo,.fifa-card.card-hot .fifa-shine,.fifa-card.card-top-scorer .fifa-card-overall,.fifa-card.card-mvp .fifa-card-name,.card-spotlight,.nav-tab.active .nav-tab-icon,.tab-content.active,.tab-content.active .hub-grid,.tab-content.active .hub-quick-grid,.modal-overlay.open,.modal-overlay.open .modal,#screen-login.active .login-logo,#screen-club.active .club-intro,#screen-login.active .login-box,#screen-club.active .club-box{animation:none!important}
   .nav-tab,.btn-primary::after,.btn-login::after,.hub-panel,.hub-fixture,.team-card,.match-card,.admin-section,.goal-team,.stats-filter-card,.fifa-card{transition:none!important}
@@ -4678,16 +4693,42 @@ function goleadoresHTML(ms, players) {
   if (bestMatch) extras.push(`🔥 Partido más goleado: ${matchScoreStr(bestMatch)} el ${formatMatchDate(bestMatch)}`);
   if (sinAutor) extras.push(`⚪ Goles sin autor asignado: ${sinAutor}`);
 
-  return `<div class="admin-section">
-    <h3>⚽ Goleadores</h3>
-    <div class="goal-leaders">
-      <div class="goal-leader"><span class="goal-leader-label">🥇 Máximo goleador</span><span class="goal-leader-name">${maxGoleador.p.name}</span><span class="goal-leader-value">${maxGoleador.goals} goles</span></div>
-      <div class="goal-leader"><span class="goal-leader-label">🚀 Más efectivo</span><span class="goal-leader-name">${efectivo ? efectivo.p.name : 'A definir'}</span><span class="goal-leader-value">${efectivo ? `${goalsPerGame(efectivo).toFixed(2)} G/PJ` : `mín. ${minGpp} PJ reg.`}</span></div>
+  const scorerAvatar = (p, cls='') => {
+    const url = safePhotoUrl(p.photo);
+    return url
+      ? `<img class="scorer-avatar ${cls}" src="${escapeHtml(url)}" alt="${escapeHtml(p.name)}">`
+      : `<div class="scorer-avatar scorer-avatar-ph ${cls}" aria-hidden="true">👤</div>`;
+  };
+  const maxGpp = goalsPerGame(maxGoleador);
+  const effective = efectivo || maxGoleador;
+
+  return `<section class="admin-section scorers-module">
+    <div class="scorers-module-head">
+      <div class="scorers-heading"><div class="scorers-icon">🥇</div><div><div class="scorers-kicker">RANKING OFENSIVO · ${trackedGoals.length} PJ REGISTRADOS</div><h3>GOLEADORES</h3></div></div>
+      <div class="scorers-head-total"><b>${goles}</b><span>GOLES<br>REGISTRADOS</span></div>
     </div>
-    <p class="sec-note">Datos desde que se registra la planilla de goles${trackingStart ? ` (${trackingStart})` : ''}: ${trackedGoals.length} PJ registrados. El promedio exige al menos ${minGpp} PJ registrados, para que sea comparable. Los partidos históricos sin planilla no afectan este promedio.</p>
-    ${filas}
-    <div style="font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.8">${extras.join('<br>')}</div>
-  </div>`;
+    <div class="scorers-featured">
+      <article class="scorer-feature scorer-feature-gold">
+        <div class="scorer-feature-ribbon">🥇 BOTÍN DE ORO</div>
+        <div class="scorer-feature-main">${scorerAvatar(maxGoleador.p,'scorer-feature-avatar')}<div class="scorer-feature-copy"><strong>${maxGoleador.p.name}</strong><span>Máximo goleador del club</span></div><div class="scorer-feature-number"><b>${maxGoleador.goals}</b><small>GOLES</small></div></div>
+        <div class="scorer-feature-stats"><span><b>${maxGpp.toFixed(2)}</b> G/PJ</span><span><b>${maxGoleador.goalPj}</b> PJ REG.</span><span><b>${Math.round(maxGoleador.goals / Math.max(1,goles) * 100)}%</b> DEL TOTAL</span></div>
+      </article>
+      <article class="scorer-feature scorer-feature-ice">
+        <div class="scorer-feature-ribbon">🚀 MEJOR PROMEDIO</div>
+        <div class="scorer-feature-main">${scorerAvatar(effective,'scorer-feature-avatar')}<div class="scorer-feature-copy"><strong>${efectivo ? efectivo.p.name : 'A definir'}</strong><span>${efectivo ? `mínimo ${minGpp} PJ con registro` : `necesita ${minGpp} PJ registrados`}</span></div><div class="scorer-feature-number"><b>${efectivo ? goalsPerGame(efectivo).toFixed(2) : '—'}</b><small>G/PJ</small></div></div>
+        <div class="scorer-feature-stats"><span><b>${efectivo ? efectivo.goals : '—'}</b> GOLES</span><span><b>${efectivo ? efectivo.goalPj : '—'}</b> PJ REG.</span><span><b>${efectivo ? Math.round(goalsPerGame(efectivo)*10)/10 : '—'}</b> MEDIA</span></div>
+      </article>
+    </div>
+    <div class="scorers-list-head"><span>JUGADOR</span><span>GOLES</span><span>G/PJ</span><span>PARTICIPACIÓN</span></div>
+    <div class="scorers-list">${conGoles.slice(0,10).map((x,i) => `<div class="scorer-list-row" onclick="openPlayerProfile('${x.p.id}')">
+      <div class="scorer-list-player"><span class="scorer-rank">${i===0?'🥇':String(i+1).padStart(2,'0')}</span>${scorerAvatar(x.p)}<span class="scorer-list-name">${x.p.name}<small>${x.goalPj} PJ con planilla</small></span></div>
+      <div class="scorer-list-goals"><b>${x.goals}</b><span>G</span></div>
+      <div class="scorer-list-gpp"><b>${goalsPerGame(x).toFixed(2)}</b><span>G/PJ</span></div>
+      <div class="scorer-list-share"><div class="scorer-list-track"><i style="width:${Math.round(x.goals/max*100)}%"></i></div><span>${Math.round(x.goals / Math.max(1,goles) * 100)}%</span></div>
+    </div>`).join('')}</div>
+    <p class="sec-note scorers-note">Datos desde que se registra la planilla de goles${trackingStart ? ` (${trackingStart})` : ''}. El promedio exige al menos ${minGpp} PJ registrados; los partidos históricos sin planilla no afectan esta métrica.</p>
+    ${extras.length ? `<div class="scorers-extras">${extras.join('<br>')}</div>` : ''}
+  </section>`;
 }
 
 // --- 3. Datos del ciclo (récords) ---
