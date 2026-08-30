@@ -3,7 +3,7 @@
   Nunca intercepta solicitudes a Supabase: resultados, usuarios y sesiones
   siguen obteniéndose en línea y no se conservan en la caché del dispositivo.
 */
-const SHELL_CACHE = 'fulbito-shell-v2';
+const SHELL_CACHE = 'fulbito-shell-v3';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -85,6 +85,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // CSS y JS propios: red primero. Así un cambio publicado se ve en el acto
+  // sin tener que subir la versión del cache. El cache queda de respaldo offline.
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(SHELL_CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Iconos, fuentes y demás estáticos: cache primero, que casi nunca cambian.
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request).then((response) => {
       if (response.ok) {
