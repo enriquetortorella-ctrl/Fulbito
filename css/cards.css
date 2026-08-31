@@ -53,7 +53,7 @@
 .fifa-left{display:block;text-align:left}
 .fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:17cqw;line-height:.85;color:#1c1305}
 .fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:6.4cqw;letter-spacing:.06em;color:#1c1305;margin-top:1.6cqw;padding-top:1.6cqw;border-top:1px solid rgba(0,0,0,.3);display:inline-block;min-width:34px}
-.fifa-card-tier{font-size:3.3cqw;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#3a2a0c;margin-top:1.2cqw;opacity:.85}
+.fifa-card-tier{font-size:4.3cqw;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#3a2a0c;margin-top:1.2cqw;opacity:.85}
 
 /* --- Fila 2, derecha: la foto, enmarcada, dentro de su celda --- */
 .fifa-card-portrait{
@@ -75,7 +75,7 @@
 /* --- Nombre y stats: ancho completo, cada uno en su fila --- */
 .fifa-divider{grid-column:1/-1;grid-row:3;height:1px;margin:0 13%;background:rgba(0,0,0,.28);align-self:start}
 .fifa-card-name{
-  grid-column:1/-1;grid-row:3;align-self:end;
+  grid-column:1/-1;grid-row:3;align-self:center;
   font-family:'Bebas Neue',sans-serif;font-size:8cqw;
   letter-spacing:.07em;line-height:1;color:#1c1305;text-align:center;
   padding:0 11%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -83,7 +83,7 @@
 .fifa-card-stats{
   grid-column:1/-1;grid-row:4;position:relative;
   display:grid;grid-template-columns:1fr 1fr;gap:1px 0;
-  width:auto;margin:0;padding:2% 12% 0;align-content:start;
+  width:auto;margin:0;padding:0 12%;align-content:center;
 }
 .fifa-card-stats::before{content:'';position:absolute;left:50%;top:1px;bottom:1px;width:1px;background:rgba(0,0,0,.24)}
 .fifa-card-stat{
@@ -244,4 +244,27 @@
 .frame-key i[data-frame="hot"]{background-image:url('../assets/cards/hot.webp')}
 .frame-legend-note{padding:0 15px 13px;font-size:11px;color:var(--muted);line-height:1.45}
 /* la etiqueta del marco puede ser larga: que no rompa la columna */
-.fifa-card-tier{white-space:nowrap;letter-spacing:.09em}
+/* tope duro: una etiqueta larga se recorta, nunca invade la foto */
+.fifa-card .fifa-card-tier{white-space:nowrap;letter-spacing:.05em;font-size:4.3cqw;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.fifa-card .fifa-left{max-width:100%;overflow:hidden}
+
+/* ===== ANULACIÓN DE GEOMETRÍA HEREDADA ==============================
+   jugadores.css fija width, max-width, position, inset y márgenes sobre
+   estos elementos. CSS solo pisa las propiedades que uno declara, así que
+   las que no nombraba seguían vivas (por eso el nombre quedaba centrado
+   en 46%: heredaba max-width:92%). Este bloque las neutraliza de raíz.
+   ==================================================================== */
+.fifa-card .fifa-top,.fifa-card .fifa-left,.fifa-card .fifa-divider,
+.fifa-card .fifa-card-name,.fifa-card .fifa-card-stats,
+.fifa-card .fifa-card-record,.fifa-card .fifa-card-medals,.fifa-card .fifa-meta{
+  max-width:none;min-width:0;position:relative;
+  left:auto;right:auto;top:auto;bottom:auto;inset:auto;float:none;
+}
+.fifa-card .fifa-card-name{width:auto;justify-self:stretch}
+.fifa-card .fifa-divider{width:auto}
+.fifa-card .fifa-top{width:auto;margin:0}
+.fifa-card .fifa-card-stats{width:auto;margin:0}
+.fifa-card .fifa-shine,.fifa-card .fifa-card-photo{display:none}
+.fifa-card .fifa-card-portrait.is-placeholder{padding:0}
+.fifa-card .fifa-card-portrait img{transform:none}
