@@ -169,12 +169,11 @@ function renderFifaCard(p, highlights) {
         <div class="fifa-card-pos">${pos}</div>
         <div class="fifa-card-tier">${tier.label}</div>
       </div>
+      <div class="fifa-meta">${recHTML}${medalsHTML}</div>
     </div>
     <div class="fifa-divider"></div>
     <div class="fifa-card-name">${escapeHtml(p.username.toUpperCase())}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
-    ${recHTML}
-    ${medalsHTML}
     ${spotlights}
   </div>`;
 }
