@@ -190,8 +190,14 @@ async function init() {
   await refreshClubChooser();
   const sess = SESSION.get();
   const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
-  if (sess && sess.clubName && !state.clubs.some(club => club.id === clubId)) {
-    state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest), inviteCode: safePlainText(sess.clubInviteCode, 24) || null });
+  if (sess && sess.clubName) {
+    const sessionClub = { id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest), inviteCode: safePlainText(sess.clubInviteCode, 24) || null };
+    const existingClub = state.clubs.find(club => club.id === clubId);
+    if (existingClub) {
+      if (sessionClub.inviteCode) existingClub.inviteCode = sessionClub.inviteCode;
+    } else {
+      state.clubs.push(sessionClub);
+    }
   }
   if (sess && state.clubs.some(club => club.id === clubId)) {
     await selectClub(clubId, { restoreSession: true });

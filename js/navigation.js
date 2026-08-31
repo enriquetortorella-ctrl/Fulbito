@@ -39,7 +39,9 @@ function showApp() {
   // hecho por otro admin aparezca incluso antes del siguiente auto-sync.
   loadClubBrand().then(freshClub => {
     if (!freshClub || !state.currentClub || freshClub.id !== state.currentClub.id) return;
-    if (freshClub.name === state.currentClub.name && freshClub.crest === state.currentClub.crest) return;
+    const sameIdentity = freshClub.name === state.currentClub.name && freshClub.crest === state.currentClub.crest;
+    const sameInviteCode = !state.currentUser?.isAdmin || freshClub.inviteCode === state.currentClub.inviteCode;
+    if (sameIdentity && sameInviteCode) return;
     state.currentClub = { ...state.currentClub, ...freshClub };
     SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
     renderClubIdentity();

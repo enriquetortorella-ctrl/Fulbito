@@ -11,7 +11,12 @@ async function startSync() {
     if (!freshPlayers.length && state.players.length) return;
     state.players = freshPlayers;
     matches = freshMatches;
-    if (freshClub && (freshClub.name !== state.currentClub.name || freshClub.crest !== state.currentClub.crest)) {
+    const clubChanged = freshClub && (
+      freshClub.name !== state.currentClub.name ||
+      freshClub.crest !== state.currentClub.crest ||
+      (state.currentUser?.isAdmin && freshClub.inviteCode !== state.currentClub.inviteCode)
+    );
+    if (clubChanged) {
       state.currentClub = { ...state.currentClub, ...freshClub };
       SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
       renderClubIdentity();
