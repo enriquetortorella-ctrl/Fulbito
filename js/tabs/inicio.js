@@ -212,7 +212,7 @@ function renderHub() {
       </section>
 
       <aside class="hub-live-podium">
-        <div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div>
+        <div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('stats')">Stats ↗</button></div>
         <div class="hub-live-cards">
           ${hubLiveCard('MÁXIMO GOLEADOR', podium.scorer, podium.scorer ? podium.scorer.rec.goals : '—', 'GOLES', 'is-scorer', podium.highlights)}
           ${hubLiveCard('ÚLTIMO MVP', podium.latestMvp, podium.latestMvp ? '★' : '—', podium.latestMvp ? 'FIGURA' : 'SIN DATOS', 'is-mvp', podium.highlights)}
