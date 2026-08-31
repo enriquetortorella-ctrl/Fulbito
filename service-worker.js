@@ -3,7 +3,7 @@
   Nunca intercepta solicitudes a Supabase: resultados, usuarios y sesiones
   siguen obteniéndose en línea y no se conservan en la caché del dispositivo.
 */
-const SHELL_CACHE = 'fulbito-shell-v7';
+const SHELL_CACHE = 'fulbito-shell-v8';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -96,8 +96,11 @@ self.addEventListener('fetch', (event) => {
   // CSS y JS propios: red primero. Así un cambio publicado se ve en el acto
   // sin tener que subir la versión del cache. El cache queda de respaldo offline.
   if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    // cache:'no-store' salta la caché HTTP del navegador. Sin esto, fetch()
+    // podía devolver una copia vieja de Safari sin llegar nunca al servidor,
+    // y el celular se quedaba con el JS anterior aunque el SW fuera nuevo.
     event.respondWith(
-      fetch(request)
+      fetch(request.url, { cache: 'no-store', credentials: 'same-origin' })
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
