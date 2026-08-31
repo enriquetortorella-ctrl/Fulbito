@@ -159,6 +159,12 @@ function renderFifaCard(p, highlights) {
   const isLatestMvp = highlights.latestMvpId === p.id;
   const spotlights = cardSpotlightsHTML(p, highlights);
   const cardClasses = [tier.cls, isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
+  // La etiqueta bajo la posición explica el marco. Mismo orden de prioridad
+  // que los fondos en cards.css: racha < goleador < MVP.
+  const frameLabel = isLatestMvp ? 'ÚLTIMO MVP'
+    : isTopScorer ? 'GOLEADOR'
+    : isHot ? `EN RACHA · ${form.streak}V`
+    : tier.label;
 
   return `<div class="fifa-card ${cardClasses}" onclick="openPlayerProfile('${p.id}')">
     <span class="fifa-shine"></span>
@@ -167,7 +173,7 @@ function renderFifaCard(p, highlights) {
       <div class="fifa-left">
         <div class="fifa-card-overall">${ovr}</div>
         <div class="fifa-card-pos">${pos}</div>
-        <div class="fifa-card-tier">${tier.label}</div>
+        <div class="fifa-card-tier">${frameLabel}</div>
       </div>
       <div class="fifa-meta">${recHTML}${medalsHTML}</div>
     </div>
