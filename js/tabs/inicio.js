@@ -38,20 +38,24 @@ function hubPodiumCard(label, item, value, unit, second, secondUnit, badge) {
   </article>`;
 }
 
-// Tabla de goleadores del club (top 5)
-function hubScorersHTML(rows) {
+// Ranking de goleadores del club. G/PJ mantiene el denominador de partidos
+// con planilla de goles registrada, no el historial completo.
+function hubScorersHTML(rows, latest) {
   const top = rows.filter(x => x.rec.goals > 0)
     .sort((a,b) => b.rec.goals - a.rec.goals || a.p.name.localeCompare(b.p.name))
     .slice(0, 5);
   if (!top.length) return `<div class="hub-empty-result">Todavía no hay goles cargados. Anotalos desde la planilla y el ranking se arma solo.</div>`;
-  return `<div class="scoreboard-table">
-    <div class="scoreboard-head"><span>Jugador</span><span>PJ</span><span>Goles</span><span>G/PJ</span></div>
-    ${top.map((x,i) => `<div class="scoreboard-row" onclick="openPlayerProfile('${x.p.id}')">
-      <span class="scoreboard-player"><i class="scoreboard-pos">${i+1}</i>${escapeHtml(x.p.name)}</span>
-      <span>${x.rec.goalPj || 0}</span>
-      <span class="scoreboard-goals">${x.rec.goals}</span>
-      <span>${x.rec.goalPj ? (x.rec.goals / x.rec.goalPj).toFixed(1) : '—'}</span>
-    </div>`).join('')}
+  const maxGoals = Math.max(...top.map(x => x.rec.goals), 1);
+  const score = latest && matchHasGoals(latest) ? matchScoreStr(latest) : '—';
+  const aName = latest?.teams?.[0] ? `Equipo ${TEAM_NAMES[0] || 1}` : 'Temporada';
+  const bName = latest?.teams?.[1] ? `Equipo ${TEAM_NAMES[1] || 2}` : 'Fulbito';
+  return `<div class="hub-bars-matchline"><span>🔵 ${aName}</span><b>${score}</b><span>${bName} 🔴</span></div>
+  <div class="hub-scorer-bars">
+    ${top.map((x,i) => `<button class="hub-scorer-bar" onclick="openPlayerProfile('${x.p.id}')">
+      <span class="hub-scorer-rank">${i + 1}</span><span class="hub-scorer-name">${escapeHtml(x.p.name)}</span>
+      <span class="hub-scorer-track"><i style="width:${Math.max(14, Math.round(x.rec.goals / maxGoals * 100))}%"></i></span>
+      <b>${x.rec.goals}</b><small>${x.rec.goalPj || 0} PJ · ${x.rec.goalPj ? (x.rec.goals / x.rec.goalPj).toFixed(2) : '—'} G/PJ</small>
+    </button>`).join('')}
   </div>`;
 }
 
@@ -197,10 +201,12 @@ function renderHub() {
     ${fixtureHTML}
     <section class="hub-command-grid">
       <section class="hub-panel hub-matchcentre">
-        <div class="hub-panel-head"><div><div class="hub-panel-kicker">ARCHIVO DEL CLUB</div><div class="hub-panel-title">ÚLTIMO PARTIDO</div></div><span class="chip">${played.length} jugado${played.length === 1 ? '' : 's'}</span></div>
-        ${lastMatchHTML}
+        <div class="hub-score-stage">
+          <div class="hub-score-stage-top"><div><div class="hub-panel-kicker">ARCHIVO DEL CLUB</div><div class="hub-panel-title">PLANILLA DE GOLES</div></div><div class="hub-match-picker"><span>PARTIDOS</span><button class="hub-mini-btn" onclick="switchTab('partidos')">ÚLTIMO PARTIDO⌄</button></div></div>
+          ${lastMatchHTML}
+        </div>
         <div class="hub-matchcentre-lower">
-          <section class="hub-matchcentre-scorers"><div class="hub-subhead"><span>⚽</span><b>GOLEADORES</b><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubScorersHTML(rows)}</section>
+          <section class="hub-matchcentre-scorers"><div class="hub-subhead"><span>⚽</span><b>GOLEADORES</b><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubScorersHTML(rows, latest)}</section>
           <aside class="hub-matchcentre-activity"><div class="hub-subhead"><span>◉</span><b>ÚLTIMA ACTIVIDAD</b></div>${hubActivityHTML(played)}</aside>
         </div>
       </section>
