@@ -15,7 +15,7 @@ async function openPlatformAdmin() {
       <div style="display:grid;gap:9px;max-height:50vh;overflow:auto;padding-right:3px">
         ${state.platformClubs.map(club => `<button class="club-card" type="button" onclick="enterSupportClub('${safePlainText(club.id, 90)}')" style="width:100%;text-align:left">
           <span class="club-card-crest">${escapeHtml((club.name || 'FC').slice(0,2).toUpperCase())}</span>
-          <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">${Number(club.players_count)||0} jugadores · ${Number(club.admins_count)||0} admin${Number(club.admins_count)===1?'':'s'}</span></span>
+          <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">${Number(club.players_count)||0} jugadores · ${Number(club.admins_count)||0} admin${Number(club.admins_count)===1?'':'s'} · código ${escapeHtml(club.invite_code || '—')}</span></span>
           <span class="club-card-arrow">›</span>
         </button>`).join('') || '<div class="empty-state">No hay clubes para mostrar.</div>'}
       </div>`;
@@ -31,7 +31,12 @@ async function enterSupportClub(clubId) {
   if (!state.supportMode) {
     state.supportHome = { club: { ...state.currentClub }, user: { ...state.currentUser } };
   }
-  state.currentClub = { id: club.id, name: safePlainText(club.name, 50) || 'Club', inviteCode: null };
+  state.currentClub = {
+    id: club.id,
+    name: safePlainText(club.name, 50) || 'Club',
+    crest: safeClubCrestUrl(club.crest),
+    inviteCode: safePlainText(club.invite_code, 24) || null
+  };
   state.currentUser = { ...state.currentUser, name: 'Soporte maestro', isAdmin: true, supportMode: true, clubId: club.id };
   state.supportMode = true;
   state.builtTeams = null;

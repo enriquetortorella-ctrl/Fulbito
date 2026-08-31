@@ -13,6 +13,24 @@ alter table public.fulbito_players
   add column if not exists auth_user_id uuid references auth.users(id) on delete set null,
   add column if not exists _reset_requested boolean not null default false;
 
+-- Existe un único acceso maestro para toda la plataforma. Se vincula al ID
+-- estable del jugador histórico TITI, no al nombre ni a una sesión temporal.
+create table if not exists public.fulbito_platform_master (
+  singleton boolean primary key default true check (singleton),
+  player_id text not null references public.fulbito_players(id) on delete restrict,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.fulbito_platform_master (singleton, player_id)
+select true, p.id
+  from public.fulbito_players p
+ where p.club_id = 'club-fulbito-sabado'
+   and lower(p.username) = 'titi'
+limit 1
+on conflict (singleton) do update
+  set player_id = excluded.player_id,
+      updated_at = now();
+
 create unique index if not exists fulbito_players_auth_club_key
   on public.fulbito_players (auth_user_id, club_id)
   where auth_user_id is not null;
@@ -45,11 +63,27 @@ drop policy if exists "public" on public.votes;
 revoke all on table public.fulbito_clubs from public, anon, authenticated;
 revoke all on table public.fulbito_players from public, anon, authenticated;
 revoke all on table public.fulbito_matches from public, anon, authenticated;
+revoke all on table public.fulbito_platform_master from public, anon, authenticated;
 revoke all on table public.attendance from public, anon, authenticated;
 revoke all on table public.players from public, anon, authenticated;
 revoke all on table public.votes from public, anon, authenticated;
 
 -- Utilidades privadas: las funciones RPC son la única puerta de acceso.
+create or replace function public.fulbito_is_platform_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select auth.uid() is not null and exists (
+    select 1
+      from public.fulbito_platform_master pm
+      join public.fulbito_players p on p.id = pm.player_id
+     where p.auth_user_id = auth.uid()
+  );
+$$;
+
 create or replace function public.fulbito_valid_photo(p_photo text)
 returns boolean
 language sql
@@ -83,6 +117,7 @@ as $$
     'attendance', p_player.attendance,
     'ratings', coalesce(p_player.ratings, '{}'::jsonb),
     '_reset_requested', case when p_include_reset then p_player._reset_requested else false end,
+    'is_platform_admin', public.fulbito_is_platform_admin(),
     'club_id', p_player.club_id
   );
 $$;
@@ -94,11 +129,14 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select auth.uid() is not null and exists (
-    select 1
-      from public.fulbito_players p
-     where p.club_id = p_club_id
-       and p.auth_user_id = auth.uid()
+  select auth.uid() is not null and (
+    public.fulbito_is_platform_admin()
+    or exists (
+      select 1
+        from public.fulbito_players p
+       where p.club_id = p_club_id
+         and p.auth_user_id = auth.uid()
+    )
   );
 $$;
 
@@ -157,7 +195,7 @@ begin
     raise exception 'No tenés acceso a este club' using errcode = '42501';
   end if;
 
-  v_include_reset := public.fulbito_is_admin(p_club_id);
+  v_include_reset := public.fulbito_is_admin(p_club_id) or public.fulbito_is_platform_admin();
   return coalesce((
     select jsonb_agg(public.fulbito_player_payload(p, v_include_reset) order by lower(p.username))
       from public.fulbito_players p
@@ -230,6 +268,30 @@ as $$
     'crest', c.crest
   ) order by lower(c.name)), '[]'::jsonb)
   from public.fulbito_clubs c;
+$$;
+
+create or replace function public.fulbito_platform_list_clubs()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if not public.fulbito_is_platform_admin() then
+    raise exception 'Solo el administrador maestro puede ver todos los clubes' using errcode = '42501';
+  end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', c.id,
+      'name', c.name,
+      'crest', c.crest,
+      'invite_code', c.invite_code,
+      'players_count', (select count(*) from public.fulbito_players p where p.club_id = c.id),
+      'admins_count', (select count(*) from public.fulbito_players p where p.club_id = c.id and p.is_admin)
+    ) order by lower(c.name))
+    from public.fulbito_clubs c
+  ), '[]'::jsonb);
+end;
 $$;
 
 create or replace function public.fulbito_create_club(p_name text)
@@ -490,13 +552,14 @@ set search_path = public, pg_temp
 as $$
 declare
   v_actor public.fulbito_players%rowtype;
+  v_is_platform boolean := public.fulbito_is_platform_admin();
 begin
   select * into v_actor from public.fulbito_players
    where club_id = p_club_id and auth_user_id = auth.uid();
-  if not found then
+  if not found and not v_is_platform then
     raise exception 'No tenés acceso a este club' using errcode = '42501';
   end if;
-  if v_actor.id <> p_player_id and not v_actor.is_admin then
+  if not v_is_platform and v_actor.id <> p_player_id and not v_actor.is_admin then
     raise exception 'Solo podés modificar tu asistencia' using errcode = '42501';
   end if;
   if p_attendance is not null and p_attendance not in ('going', 'notgoing') then
@@ -518,7 +581,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if not public.fulbito_is_admin(p_club_id) then
+  if not public.fulbito_is_admin(p_club_id) and not public.fulbito_is_platform_admin() then
     raise exception 'Solo un administrador puede borrar la asistencia' using errcode = '42501';
   end if;
   update public.fulbito_players set attendance = null where club_id = p_club_id;
@@ -815,11 +878,21 @@ declare
   v_id text := p_match ->> 'id';
   v_date date;
   v_player_id text;
+  v_is_platform boolean := public.fulbito_is_platform_admin();
 begin
   select * into v_actor from public.fulbito_players
    where club_id = p_club_id and auth_user_id = auth.uid() and is_admin;
-  if not found then
+  if not found and not v_is_platform then
     raise exception 'Solo un administrador puede guardar partidos' using errcode = '42501';
+  end if;
+  if v_is_platform and v_actor.id is null then
+    select * into v_actor from public.fulbito_players
+     where club_id = p_club_id and is_admin
+     order by lower(username)
+     limit 1;
+    if not found then
+      raise exception 'El club no tiene un administrador para registrar el partido' using errcode = '22023';
+    end if;
   end if;
   if p_match is null or jsonb_typeof(p_match) <> 'object' or v_id !~ '^m[a-zA-Z0-9-]{4,80}$'
      or jsonb_typeof(p_match -> 'teams') <> 'array' or jsonb_array_length(p_match -> 'teams') not between 2 and 3
@@ -868,7 +941,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if not public.fulbito_is_admin(p_club_id) then
+  if not public.fulbito_is_admin(p_club_id) and not public.fulbito_is_platform_admin() then
     raise exception 'Solo un administrador puede eliminar partidos' using errcode = '42501';
   end if;
   delete from public.fulbito_matches where id = p_match_id and club_id = p_club_id;
@@ -882,6 +955,7 @@ $$;
 -- la app puede ejecutar las RPC, y cada una valida su club y su rol.
 revoke all on function public.fulbito_valid_photo(text) from public;
 revoke all on function public.fulbito_player_payload(public.fulbito_players, boolean) from public;
+revoke all on function public.fulbito_is_platform_admin() from public;
 revoke all on function public.fulbito_is_member(text) from public;
 revoke all on function public.fulbito_is_admin(text) from public;
 revoke all on function public.fulbito_get_my_player(text) from public;
@@ -889,6 +963,7 @@ revoke all on function public.fulbito_get_players(text) from public;
 revoke all on function public.fulbito_get_matches(text) from public;
 revoke all on function public.fulbito_lookup_club(text) from public;
 revoke all on function public.fulbito_list_clubs() from public;
+revoke all on function public.fulbito_platform_list_clubs() from public;
 revoke all on function public.fulbito_create_club(text) from public;
 revoke all on function public.fulbito_register_player(text, text, text, text, text, text, text) from public;
 revoke all on function public.fulbito_login_player(text, text, text) from public;
@@ -907,10 +982,12 @@ revoke all on function public.fulbito_upsert_match(text, jsonb) from public;
 revoke all on function public.fulbito_delete_match(text, text) from public;
 
 grant execute on function public.fulbito_get_my_player(text) to authenticated;
+grant execute on function public.fulbito_is_platform_admin() to authenticated;
 grant execute on function public.fulbito_get_players(text) to authenticated;
 grant execute on function public.fulbito_get_matches(text) to authenticated;
 grant execute on function public.fulbito_lookup_club(text) to authenticated;
 grant execute on function public.fulbito_list_clubs() to authenticated;
+grant execute on function public.fulbito_platform_list_clubs() to authenticated;
 grant execute on function public.fulbito_create_club(text) to authenticated;
 grant execute on function public.fulbito_register_player(text, text, text, text, text, text, text) to authenticated;
 grant execute on function public.fulbito_login_player(text, text, text) to authenticated;

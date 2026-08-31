@@ -25,7 +25,7 @@ function renderAdmin() {
     const isSupport = !!state.currentUser?.supportMode;
     const inviteCode = safePlainText(state.currentClub.inviteCode, 24);
     const invite = isSupport ? `
-      <div class="club-brand-note is-support">🛡️ Modo soporte maestro · código de invitación oculto</div>` : `
+      <div class="club-brand-invite"><div><b>🛡️ Código de invitación</b><span>Vista de administrador maestro · solo lectura.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Sin código')}</code></div></div>` : `
       <div class="club-brand-invite"><div><b>Código de invitación</b><span>Compartilo para que entren al grupo.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Cargando…')}</code><button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()" ${inviteCode ? '' : 'disabled'}>📋 Copiar</button><button class="btn btn-ghost btn-sm" onclick="toggleClubInviteEditor()" ${inviteCode ? '' : 'disabled'}>✏ Cambiar</button></div></div>
       ${clubInviteEditorOpen ? `<div class="club-invite-editor"><div><label for="club-invite-code-input">Nuevo código</label><input id="club-invite-code-input" maxlength="16" value="${escapeHtml(inviteCode)}" placeholder="EJ: MARMOL-26" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,16)"><small>De 4 a 16 caracteres: letras, números o guion. El anterior dejará de funcionar.</small></div><div class="club-invite-editor-actions"><button class="btn btn-primary btn-sm" onclick="saveClubInviteCode()">Guardar código</button><button class="btn btn-ghost btn-sm" onclick="toggleClubInviteEditor(false)">Cancelar</button></div></div>` : ''}`;
     clubInfo.innerHTML = `
