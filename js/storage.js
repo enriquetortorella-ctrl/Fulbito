@@ -87,9 +87,16 @@ const KNOWN_CLUBS = {
 };
 
 async function loadClubs() {
-  // Solo se muestran clubes que esta persona ya abrió en este dispositivo.
-  // Los demás siguen protegidos: se descubren una única vez con su código.
-  return KNOWN_CLUBS.get();
+  const known = KNOWN_CLUBS.get();
+  try {
+    const data = await callRpc('fulbito_list_clubs');
+    if (!Array.isArray(data)) throw new Error('Respuesta inválida');
+    const remote = data.map(club => mapClubBrand(club)).filter(club => club.id);
+    return remote.length ? remote : known;
+  } catch (error) {
+    console.error('loadClubs:', error);
+    return known;
+  }
 }
 
 async function loadPlayers(clubId = state.currentClub?.id) {

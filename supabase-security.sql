@@ -218,6 +218,20 @@ begin
 end;
 $$;
 
+create or replace function public.fulbito_list_clubs()
+returns jsonb
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', c.id,
+    'name', c.name,
+    'crest', c.crest
+  ) order by lower(c.name)), '[]'::jsonb)
+  from public.fulbito_clubs c;
+$$;
+
 create or replace function public.fulbito_create_club(p_name text)
 returns jsonb
 language plpgsql
@@ -811,6 +825,7 @@ revoke all on function public.fulbito_get_my_player(text) from public;
 revoke all on function public.fulbito_get_players(text) from public;
 revoke all on function public.fulbito_get_matches(text) from public;
 revoke all on function public.fulbito_lookup_club(text) from public;
+revoke all on function public.fulbito_list_clubs() from public;
 revoke all on function public.fulbito_create_club(text) from public;
 revoke all on function public.fulbito_register_player(text, text, text, text, text, text, text) from public;
 revoke all on function public.fulbito_login_player(text, text, text) from public;
@@ -831,6 +846,7 @@ grant execute on function public.fulbito_get_my_player(text) to authenticated;
 grant execute on function public.fulbito_get_players(text) to authenticated;
 grant execute on function public.fulbito_get_matches(text) to authenticated;
 grant execute on function public.fulbito_lookup_club(text) to authenticated;
+grant execute on function public.fulbito_list_clubs() to authenticated;
 grant execute on function public.fulbito_create_club(text) to authenticated;
 grant execute on function public.fulbito_register_player(text, text, text, text, text, text, text) to authenticated;
 grant execute on function public.fulbito_login_player(text, text, text) to authenticated;

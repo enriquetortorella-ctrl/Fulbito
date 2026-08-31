@@ -11,6 +11,12 @@ function showLoginForm() {
   updateLoginClubContext();
 }
 function showRegisterForm() {
+  if (!state.currentClub?.inviteCode) {
+    const errEl = document.getElementById('login-error');
+    errEl.innerHTML = 'Para crear una cuenta necesitás el código del administrador. <a href="#" onclick="showClubChooser();return false" style="color:var(--gold)">Ingresar código</a>';
+    errEl.style.display = 'block';
+    return;
+  }
   document.getElementById('login-form-box').classList.add('hidden');
   document.getElementById('register-form-box').classList.remove('hidden');
   document.getElementById('forgot-form-box').classList.add('hidden');

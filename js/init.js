@@ -24,14 +24,16 @@ function renderClubChooser() {
   const list = document.getElementById('club-list');
   if (!list) return;
   if (!state.clubs.length) {
-    list.innerHTML = '<div class="club-empty">🔐 Todavía no hay clubes guardados en este dispositivo. Ingresá el código que te compartió un administrador.</div>';
+    list.innerHTML = '<div class="club-empty">Todavía no hay clubes disponibles. Intentá actualizar en unos segundos.</div>';
     return;
   }
+  const knownIds = new Set(KNOWN_CLUBS.get().map(club => club.id));
   list.innerHTML = state.clubs.map(club => {
     const crest = safeClubCrestUrl(club.crest);
+    const isKnown = knownIds.has(club.id);
     return `<button class="club-card" type="button" data-club-id="${escapeHtml(club.id)}">
       <span class="club-card-crest ${crest ? 'has-custom-crest' : ''}">${crest ? `<img src="${escapeHtml(crest)}" alt="">` : escapeHtml(clubInitials(club.name))}</span>
-      <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">Guardado en este dispositivo</span></span>
+      <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">${isKnown ? 'Ingresaste antes' : 'Acceso con usuario'}</span></span>
       <span class="club-card-arrow">›</span>
     </button>`;
   }).join('');
