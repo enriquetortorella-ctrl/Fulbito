@@ -64,6 +64,57 @@ function trackClubBrandName(name) {
   updateClubBrandPreview(crest, clubBrandDraftName || state.currentClub?.name || 'FC');
 }
 
+function removeNeutralBackgroundConnectedToEdge(context, width, height) {
+  const imageData = context.getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+  const total = width * height;
+  const visited = new Uint8Array(total);
+  const queue = new Int32Array(total);
+  let head = 0;
+  let tail = 0;
+
+  // El tablero blanco/gris de imágenes descargadas suele ser gris neutro y
+  // está conectado al borde. Solo quitamos esa región exterior: los blancos
+  // que forman parte del escudo quedan aislados por su propio contorno.
+  const isNeutralLightPixel = (index) => {
+    const offset = index * 4;
+    const red = pixels[offset];
+    const green = pixels[offset + 1];
+    const blue = pixels[offset + 2];
+    const alpha = pixels[offset + 3];
+    const maximum = Math.max(red, green, blue);
+    const minimum = Math.min(red, green, blue);
+    return alpha > 0 && maximum - minimum <= 22 && (red + green + blue) / 3 >= 158;
+  };
+  const enqueue = (index) => {
+    if (!visited[index] && isNeutralLightPixel(index)) {
+      visited[index] = 1;
+      queue[tail++] = index;
+    }
+  };
+
+  for (let x = 0; x < width; x++) {
+    enqueue(x);
+    enqueue((height - 1) * width + x);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    enqueue(y * width);
+    enqueue(y * width + width - 1);
+  }
+
+  while (head < tail) {
+    const index = queue[head++];
+    pixels[index * 4 + 3] = 0;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    if (x > 0) enqueue(index - 1);
+    if (x < width - 1) enqueue(index + 1);
+    if (y > 0) enqueue(index - width);
+    if (y < height - 1) enqueue(index + width);
+  }
+  context.putImageData(imageData, 0, 0);
+}
+
 async function optimizeClubCrest(file) {
   if (!file || !/^image\/(png|jpeg|webp)$/i.test(file.type)) {
     throw new Error('Elegí una imagen PNG, JPG o WEBP.');
@@ -93,6 +144,7 @@ async function optimizeClubCrest(file) {
       const drawHeight = image.naturalHeight * scale;
       context.clearRect(0, 0, currentSide, currentSide);
       context.drawImage(image, (currentSide - drawWidth) / 2, (currentSide - drawHeight) / 2, drawWidth, drawHeight);
+      removeNeutralBackgroundConnectedToEdge(context, currentSide, currentSide);
       encoded = canvas.toDataURL('image/webp', .84);
       currentSide = Math.floor(currentSide * .82);
     } while (encoded.length > 240000 && currentSide >= 96);
