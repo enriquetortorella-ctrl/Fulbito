@@ -7,10 +7,15 @@ async function startSync() {
   stopSync();
   const sync = async () => {
     if (!state.currentClub?.id || _goalSaveTimer) return;
-    const [freshPlayers, freshMatches] = await Promise.all([loadPlayers(), loadMatches()]);
+    const [freshPlayers, freshMatches, freshClub] = await Promise.all([loadPlayers(), loadMatches(), loadClubBrand()]);
     if (!freshPlayers.length && state.players.length) return;
     state.players = freshPlayers;
     matches = freshMatches;
+    if (freshClub && (freshClub.name !== state.currentClub.name || freshClub.crest !== state.currentClub.crest)) {
+      state.currentClub = { ...state.currentClub, ...freshClub };
+      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null });
+      renderClubIdentity();
+    }
     const tabName = getActiveTabName();
     if (tabName==='inicio') renderHub();
     if (tabName==='jugadores') renderPlayers();

@@ -1,7 +1,47 @@
 // STORAGE — Supabase compartido
 // ============================================================
 const LEGACY_CLUB_ID = 'club-fulbito-sabado';
-const LEGACY_CLUB = { id: LEGACY_CLUB_ID, name: 'Fulbito del Sábado' };
+const LEGACY_CLUB = { id: LEGACY_CLUB_ID, name: 'Fulbito del Sábado', crest: null };
+
+function safeClubCrestUrl(value) {
+  const src = String(value || '');
+  return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=\r\n]+$/i.test(src) && src.length <= 260000 ? src : '';
+}
+
+function clubInitials(name) {
+  const words = safePlainText(name, 50).trim().split(/\s+/).filter(Boolean);
+  return (words.slice(0, 2).map(word => word[0]).join('') || 'FC').toUpperCase();
+}
+
+function mapClubBrand(data, fallback = {}) {
+  return {
+    ...fallback,
+    id: String(data?.id || fallback.id || ''),
+    name: safePlainText(data?.name || fallback.name || 'Mi club', 50) || 'Mi club',
+    crest: safeClubCrestUrl(data?.crest || fallback.crest)
+  };
+}
+
+async function loadClubBrand(clubId = state.currentClub?.id) {
+  if (!clubId) return null;
+  try {
+    const data = await callRpc('fulbito_get_club_brand', { p_club_id: clubId });
+    return data ? mapClubBrand(data, state.currentClub || { id: clubId }) : null;
+  } catch (error) {
+    console.error('loadClubBrand:', error);
+    return null;
+  }
+}
+
+async function saveClubBrand(name, crest) {
+  if (!state.currentClub?.id) throw new Error('No hay club seleccionado');
+  const data = await callRpc('fulbito_update_club_brand', {
+    p_club_id: state.currentClub.id,
+    p_name: name,
+    p_crest: crest || null
+  });
+  return mapClubBrand(data, state.currentClub);
+}
 
 async function loadClubs() {
   // Los demás clubes no se enumeran: se ingresa con código de invitación.

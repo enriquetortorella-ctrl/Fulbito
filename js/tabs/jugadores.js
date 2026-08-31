@@ -450,7 +450,7 @@ async function saveEditProfile() {
     Object.assign(me, saved);
     state.currentUser.name = saved.name;
     state.currentUser.username = saved.username;
-    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name });
+    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null });
     closeModal('modal-edit-profile');
     showApp();
     showToast('✅ Perfil actualizado');

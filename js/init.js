@@ -91,7 +91,7 @@ async function createClub() {
     showClubError(`No se pudo crear el club: ${error.message}`, 'club-create-error');
     return;
   }
-  const club = { id: data.id, name: data.name, inviteCode: data.invite_code };
+  const club = { id: data.id, name: data.name, crest: safeClubCrestUrl(data.crest), inviteCode: data.invite_code };
   state.clubs.push(club);
   window.__newClubInviteCode = club.inviteCode;
   document.getElementById('club-create-form').classList.add('hidden');
@@ -120,7 +120,7 @@ async function joinClubByCode() {
     showClubError('No pudimos validar ese código. Intentá nuevamente.');
     return;
   }
-  const club = data ? { id: data.id, name: data.name, inviteCode: code } : null;
+  const club = data ? { id: data.id, name: data.name, crest: safeClubCrestUrl(data.crest), inviteCode: code } : null;
   if (!club) {
     showClubError('No encontramos un club con ese código. Revisalo e intentá de nuevo.');
     return;
@@ -161,7 +161,7 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
       const mapped = mapPlayers([player])[0];
       state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, isPlatformAdmin: !!player.is_platform_admin, clubId: club.id };
       state.players = await loadPlayers(club.id);
-      SESSION.set({ ...state.currentUser, clubName: club.name });
+      SESSION.set({ ...state.currentUser, clubName: club.name, clubCrest: club.crest || null });
       showApp();
       return;
     }
@@ -180,7 +180,7 @@ async function init() {
   const sess = SESSION.get();
   const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
   if (sess && clubId !== LEGACY_CLUB_ID && sess.clubName && !state.clubs.some(club => club.id === clubId)) {
-    state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club' });
+    state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest) });
   }
   if (sess && state.clubs.some(club => club.id === clubId)) {
     await selectClub(clubId, { restoreSession: true });

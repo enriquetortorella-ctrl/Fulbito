@@ -59,6 +59,8 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 
 `inicio-podium.js` concentra las reglas del podio (MVP más reciente, goleador y racha sin repetir jugadores). `inicio.js` conserva el armado general de la pantalla.
 
+`supabase-club-branding.sql` agrega la identidad compartida de cada club: nombre y escudo. Debe ejecutarse después de las migraciones de seguridad; sus RPC sólo permiten que administradores (o soporte maestro) modifiquen su propio club.
+
 **Cierre:** `sync.js` (auto-sync + atajos de teclado) y `boot.js` (arranque final).
 
 ---

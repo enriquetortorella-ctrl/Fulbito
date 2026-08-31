@@ -13,7 +13,7 @@ function showApp() {
   startSync();
   const isSupport = !!state.currentUser.supportMode;
   document.getElementById('topbar-username').textContent = isSupport ? 'Soporte maestro' : state.currentUser.name;
-  document.getElementById('club-caption').textContent = state.currentClub.name.toUpperCase();
+  renderClubIdentity();
   const switcher = document.getElementById('topbar-club-switch');
   switcher.textContent = isSupport ? '← Mi club' : `🏟️ ${state.currentClub.name}`;
   switcher.title = isSupport ? 'Volver a mi club' : 'Cambiar club';
@@ -35,6 +35,16 @@ function showApp() {
   } else {
     document.getElementById('admin-tab').style.display='none';
   }
+  // La identidad se consulta en el servidor al abrir el club para que un cambio
+  // hecho por otro admin aparezca incluso antes del siguiente auto-sync.
+  loadClubBrand().then(freshClub => {
+    if (!freshClub || !state.currentClub || freshClub.id !== state.currentClub.id) return;
+    if (freshClub.name === state.currentClub.name && freshClub.crest === state.currentClub.crest) return;
+    state.currentClub = { ...state.currentClub, ...freshClub };
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null });
+    renderClubIdentity();
+    renderHub();
+  });
   loadMatches().then(m => {
     matches = m;
     renderPlayers();
@@ -47,6 +57,19 @@ function showApp() {
     if (tab === 'goles') renderGoles();
   });
   renderAll();
+}
+
+function renderClubIdentity() {
+  if (!state.currentClub) return;
+  const crest = document.getElementById('brand-crest');
+  const caption = document.getElementById('club-caption');
+  const imageUrl = safeClubCrestUrl(state.currentClub.crest);
+  if (caption) caption.textContent = state.currentClub.name.toUpperCase();
+  if (!crest) return;
+  crest.classList.toggle('has-custom-crest', !!imageUrl);
+  crest.innerHTML = imageUrl
+    ? `<img src="${escapeHtml(imageUrl)}" alt="Escudo de ${escapeHtml(state.currentClub.name)}">`
+    : escapeHtml(clubInitials(state.currentClub.name));
 }
 
 function getActiveTabName() {
