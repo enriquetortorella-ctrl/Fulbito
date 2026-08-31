@@ -60,23 +60,19 @@ function hubMatchScorersHTML(latest) {
   return `<div class="hub-team-goal-sheets">${sheets.join('')}</div>`;
 }
 
-// Última actividad — goles de los partidos más recientes
-function hubActivityHTML(played) {
-  const events = [];
-  for (const m of played) {
-    if (!hasGoalsTracking(m)) continue;
-    for (const s of matchScorers(m)) {
-      events.push({ name: s.name, goals: s.goals, date: hubDateISO(m), id: m.id });
-      if (events.length >= 8) break;
-    }
-    if (events.length >= 8) break;
-  }
-  if (!events.length) return `<div class="hub-empty-result">Sin actividad reciente.</div>`;
-  return `<div class="activity-feed">${events.map(e => `<div class="activity-row">
-    <span class="activity-dot"></span>
-    <div class="activity-copy"><b>${escapeHtml(e.name)}</b><span>${e.goals} ${e.goals === 1 ? 'gol' : 'goles'}</span></div>
-    <span class="activity-date">${e.date ? e.date.slice(5).split('-').reverse().join('/') : ''}</span>
-  </div>`).join('')}</div>`;
+// Resumen del mismo partido: complementa la planilla sin duplicar sus goles.
+function hubMatchSummaryHTML(latest) {
+  if (!latest) return `<div class="hub-empty-result">Cuando haya un partido cerrado, acá aparecerá su resumen.</div>`;
+  const scorers = matchScorers(latest);
+  const mvp = latest.result?.mvp ? matchPlayerName(latest, latest.result.mvp) : 'Sin MVP cargado';
+  const topScorer = scorers[0] ? `${scorers[0].name} · ${scorers[0].goals}` : 'Sin goles cargados';
+  const result = hubResultText(latest);
+  return `<div class="hub-match-summary">
+    <div class="hub-summary-result"><span>RESULTADO</span><b>${escapeHtml(result.toUpperCase())}</b><small>📅 ${formatMatchDate(latest)}</small></div>
+    <div class="hub-summary-row"><i>⭐</i><div><span>MVP DEL PARTIDO</span><b>${escapeHtml(mvp)}</b></div></div>
+    <div class="hub-summary-row"><i>⚽</i><div><span>MÁXIMO ANOTADOR</span><b>${escapeHtml(topScorer)}</b></div></div>
+    <div class="hub-summary-row"><i>✅</i><div><span>PLANILLA</span><b>${hasGoalsTracking(latest) ? 'Goles registrados' : 'Sin registro de goles'}</b></div></div>
+  </div>`;
 }
 
 function hubLeaderRow(icon, label, item, value, meta) {
@@ -208,7 +204,7 @@ function renderHub() {
         </div>
         <div class="hub-matchcentre-lower">
           <section class="hub-matchcentre-scorers"><div class="hub-subhead"><span>⚽</span><b>GOLEADORES DEL PARTIDO</b><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubMatchScorersHTML(latest)}</section>
-          <aside class="hub-matchcentre-activity"><div class="hub-subhead"><span>◉</span><b>ÚLTIMA ACTIVIDAD</b></div>${hubActivityHTML(played)}</aside>
+          <aside class="hub-matchcentre-activity"><div class="hub-subhead"><span>✦</span><b>RESUMEN DEL PARTIDO</b></div>${hubMatchSummaryHTML(latest)}</aside>
         </div>
       </section>
 
