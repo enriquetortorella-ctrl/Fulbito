@@ -1,0 +1,22 @@
+/* ===== INICIO / MATCH CENTRE =========================================
+   Centro de partido: el resultado es la pieza principal; ranking y actividad
+   quedan agrupados abajo como consola de seguimiento. */
+.hub-command-grid{gap:18px;grid-template-columns:minmax(0,1.7fr) minmax(360px,.86fr)}
+.hub-matchcentre{position:relative;border-color:rgba(130,205,255,.52);background:radial-gradient(ellipse 70% 38% at 50% 45%,rgba(72,201,255,.14),transparent 72%),linear-gradient(145deg,rgba(30,47,64,.97),rgba(5,13,24,.99) 70%)}
+.hub-matchcentre::before{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(116deg,transparent 0 55px,rgba(128,220,255,.035) 56px 57px,transparent 58px 112px);mask-image:linear-gradient(to bottom,rgba(0,0,0,.72),transparent 62%)}
+.hub-matchcentre>*{position:relative;z-index:1}
+.hub-matchcentre .hub-panel-head{min-height:57px;padding:13px 17px;border-bottom-color:rgba(183,219,245,.22);background:linear-gradient(90deg,rgba(255,255,255,.10),rgba(255,255,255,0) 63%)}
+.hub-matchcentre .hub-last-match{min-height:137px;padding:19px 20px 13px;background:radial-gradient(ellipse 42% 88% at 50% 40%,rgba(53,201,255,.17),transparent 69%),linear-gradient(90deg,rgba(4,12,21,.14),transparent 33% 67%,rgba(4,12,21,.14))}
+.hub-matchcentre .hub-last-match::after{bottom:8px;opacity:.9}
+.hub-matchcentre .hub-score{font-size:clamp(64px,7.1vw,102px);letter-spacing:2px;color:#fff0ae;text-shadow:0 3px 0 #4d3100,0 0 13px rgba(255,207,92,.92),0 0 34px rgba(88,205,255,.45),0 0 56px rgba(255,123,36,.18)}
+.hub-matchcentre .hub-result{color:#d8f47d;text-shadow:0 0 11px rgba(196,255,103,.35)}
+.hub-matchcentre .hub-team-name{font-size:24px;color:#f4f8fb;text-shadow:0 2px 0 #02070c}.hub-matchcentre .hub-team-sub{color:#a9bdcf}
+.hub-matchcentre-lower{border-top-color:rgba(183,219,245,.21)}
+.hub-subhead{min-height:42px;padding:9px 13px;border-bottom-color:rgba(183,219,245,.18);background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,0))}
+.hub-subhead b{font-size:20px}.hub-matchcentre .scoreboard-row:hover{background:linear-gradient(90deg,rgba(67,205,255,.12),transparent)}
+.hub-matchcentre .activity-row:hover{background:linear-gradient(90deg,rgba(201,255,99,.08),transparent)}
+.hub-quick{border-color:rgba(181,214,240,.40);border-radius:12px;background:linear-gradient(145deg,rgba(53,77,101,.88),rgba(6,14,25,.96));box-shadow:0 0 0 1px rgba(2,8,15,.76),inset 0 1px 0 rgba(255,255,255,.22),0 12px 22px rgba(0,0,0,.24)}
+.hub-quick:hover{border-color:rgba(255,214,99,.72);background:linear-gradient(145deg,rgba(92,75,42,.86),rgba(10,17,27,.97))}
+
+@media (max-width:920px){.hub-command-grid{grid-template-columns:1fr}.hub-matchcentre .hub-score{font-size:72px}}
+@media (max-width:640px){.hub-command-grid{gap:12px}.hub-matchcentre .hub-last-match{min-height:108px;padding:15px 13px 10px}.hub-matchcentre .hub-score{font-size:49px}.hub-matchcentre .hub-team-name{font-size:19px}}

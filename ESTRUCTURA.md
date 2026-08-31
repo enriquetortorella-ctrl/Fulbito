@@ -10,7 +10,7 @@ la topbar, las nav-tabs, los contenedores vacíos de cada pestaña y los `<scrip
 
 ---
 
-## CSS — `css/` (14 archivos)
+## CSS — `css/` (16 archivos)
 
 El orden de los `<link>` reproduce la cascada original. `theme-aurora.css` pisa
 reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
@@ -19,6 +19,8 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 |---|---|
 | `base.css` | Variables, screen system, login, selector de clubes, topbar, nav-tabs, botones |
 | `inicio.css` | **Matchday Central** — hero, asistencia, resultado, fixture y acciones rápidas |
+| `inicio-hero.css` | Portada de Inicio — estadio, mensaje central y disponibilidad |
+| `inicio-matchcentre.css` | Centro de partido — marcador, archivo, actividad y acciones |
 | `inicio-podium.css` | Podio del Inicio — tres cartas, escalas y responsive del panel |
 | `jugadores.css` | Plantel, cartas del club, club house, modal de detalle |
 | `asistencia.css` | Pestaña Asistencia |

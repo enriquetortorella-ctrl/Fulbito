@@ -1,0 +1,27 @@
+/* ===== INICIO / HERO · CLUB CENTRAL ==================================
+   Portada de partido: metal oscuro, luz de estadio y disponibilidad personal. */
+.hub-hero{
+  min-height:202px;isolation:isolate;
+  border-color:rgba(185,219,244,.62);
+  background:
+    radial-gradient(circle at 5% 8%,rgba(94,215,255,.20),transparent 22%),
+    radial-gradient(circle at 83% 86%,rgba(255,210,95,.13),transparent 30%),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.032) 0 1px,transparent 1px 5px),
+    linear-gradient(115deg,rgba(8,17,29,.98),rgba(37,49,59,.93) 54%,rgba(7,14,24,.98));
+  box-shadow:0 0 0 2px rgba(2,8,15,.90),0 26px 46px rgba(0,0,0,.40),inset 0 1px 0 rgba(255,255,255,.34),inset 0 -2px 0 rgba(0,0,0,.58);
+}
+.hub-hero::before{z-index:-1;opacity:.78;background:linear-gradient(100deg,rgba(105,220,255,.25),transparent 22% 63%,rgba(255,216,107,.15));background-size:190% 100%}
+.hub-hero::after{content:'FDS';right:18px;bottom:-29px;font-size:112px;letter-spacing:-3px;opacity:.055;filter:none}
+.hub-kicker{color:#d8f47d;text-shadow:0 0 11px rgba(196,255,103,.34)}
+.hub-hero h1{font-size:clamp(42px,4.7vw,67px);letter-spacing:.4px;text-shadow:0 3px 0 #02070c,0 0 22px rgba(126,217,255,.19)}
+.hub-hero h1 strong{color:#ffe08a;text-shadow:0 0 18px rgba(255,208,88,.32)}
+.hub-hero p{max-width:405px;color:#bdcad7}
+.hub-hero-actions .btn{border-radius:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 16px rgba(0,0,0,.22)}
+.hub-attendance{border-color:rgba(194,224,242,.58);border-radius:11px;background:linear-gradient(145deg,rgba(73,88,99,.96),rgba(13,25,36,.98) 58%,rgba(52,68,76,.95));box-shadow:0 0 0 2px rgba(4,10,16,.76),0 18px 31px rgba(0,0,0,.40),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -2px 0 rgba(0,0,0,.50)}
+.hub-attendance::before{content:'';position:absolute;inset:7px;border:1px solid rgba(255,255,255,.14);border-radius:7px;pointer-events:none}
+.hub-attendance-state{color:#d8f47d;font-size:28px;text-shadow:0 0 14px rgba(194,255,100,.24)}
+.hub-choice{border-radius:7px;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(0,0,0,.14));box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+
+@media (max-width:640px){
+  .hub-hero{min-height:0}.hub-hero h1{font-size:42px}.hub-hero::after{font-size:78px}
+}
