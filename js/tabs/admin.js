@@ -196,6 +196,7 @@ async function saveClubIdentity() {
     state.currentClub = { ...state.currentClub, ...freshClub };
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
+    KNOWN_CLUBS.remember(state.currentClub);
     SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
     clubBrandDraftCrest = undefined;
     clubBrandDraftName = '';

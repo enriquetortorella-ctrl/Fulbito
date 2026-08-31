@@ -53,10 +53,43 @@ async function updateClubInviteCode(inviteCode) {
   return mapClubBrand(data, state.currentClub);
 }
 
+const KNOWN_CLUBS = {
+  key: 'fulbito_known_clubs',
+  get() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(this.key) || '[]');
+      if (!Array.isArray(stored)) return [];
+      const unique = new Set();
+      return stored.filter(club => {
+        const id = safePlainText(club?.id, 90);
+        if (!id || unique.has(id)) return false;
+        unique.add(id);
+        return true;
+      }).slice(0, 8).map(club => ({
+        id: safePlainText(club.id, 90),
+        name: safePlainText(club.name, 50) || 'Mi club',
+        crest: safeClubCrestUrl(club.crest),
+        inviteCode: null
+      }));
+    } catch (_) { return []; }
+  },
+  remember(club) {
+    const id = safePlainText(club?.id, 90);
+    if (!id) return;
+    const entry = {
+      id,
+      name: safePlainText(club.name, 50) || 'Mi club',
+      crest: safeClubCrestUrl(club.crest)
+    };
+    const next = [entry, ...this.get().filter(item => item.id !== id)].slice(0, 8);
+    try { localStorage.setItem(this.key, JSON.stringify(next)); } catch (_) {}
+  }
+};
+
 async function loadClubs() {
-  // Los demás clubes no se enumeran: se ingresa con código de invitación.
-  const knownClubs = state.clubs.filter(club => club.id !== LEGACY_CLUB_ID);
-  return [LEGACY_CLUB, ...knownClubs];
+  // Solo se muestran clubes que esta persona ya abrió en este dispositivo.
+  // Los demás siguen protegidos: se descubren una única vez con su código.
+  return KNOWN_CLUBS.get();
 }
 
 async function loadPlayers(clubId = state.currentClub?.id) {

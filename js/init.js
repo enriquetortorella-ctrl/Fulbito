@@ -23,7 +23,21 @@ function showClubError(message, target = 'club-error') {
 function renderClubChooser() {
   const list = document.getElementById('club-list');
   if (!list) return;
-  list.innerHTML = '<div class="club-empty">🔐 Los clubes no son públicos. Ingresá el código que te compartió un administrador.</div>';
+  if (!state.clubs.length) {
+    list.innerHTML = '<div class="club-empty">🔐 Todavía no hay clubes guardados en este dispositivo. Ingresá el código que te compartió un administrador.</div>';
+    return;
+  }
+  list.innerHTML = state.clubs.map(club => {
+    const crest = safeClubCrestUrl(club.crest);
+    return `<button class="club-card" type="button" data-club-id="${escapeHtml(club.id)}">
+      <span class="club-card-crest ${crest ? 'has-custom-crest' : ''}">${crest ? `<img src="${escapeHtml(crest)}" alt="">` : escapeHtml(clubInitials(club.name))}</span>
+      <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">Guardado en este dispositivo</span></span>
+      <span class="club-card-arrow">›</span>
+    </button>`;
+  }).join('');
+  list.querySelectorAll('[data-club-id]').forEach(button => {
+    button.addEventListener('click', () => selectClub(button.dataset.clubId));
+  });
 }
 
 async function refreshClubChooser() {
@@ -80,6 +94,7 @@ async function createClub() {
   }
   const club = { id: data.id, name: data.name, crest: safeClubCrestUrl(data.crest), inviteCode: data.invite_code };
   state.clubs.push(club);
+  KNOWN_CLUBS.remember(club);
   window.__newClubInviteCode = club.inviteCode;
   document.getElementById('club-create-form').classList.add('hidden');
   const success = document.getElementById('club-create-success');
@@ -117,6 +132,7 @@ async function joinClubByCode() {
   const knownClub = state.clubs.find(item => item.id === club.id);
   if (knownClub) Object.assign(knownClub, club);
   else state.clubs.push(club);
+  KNOWN_CLUBS.remember(club);
   await selectClub(club.id);
 }
 
@@ -136,6 +152,7 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
     return;
   }
   state.currentClub = club;
+  KNOWN_CLUBS.remember(club);
   state.supportMode = false;
   state.supportHome = null;
   state.players = [];
@@ -169,7 +186,7 @@ async function init() {
   await refreshClubChooser();
   const sess = SESSION.get();
   const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
-  if (sess && clubId !== LEGACY_CLUB_ID && sess.clubName && !state.clubs.some(club => club.id === clubId)) {
+  if (sess && sess.clubName && !state.clubs.some(club => club.id === clubId)) {
     state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest), inviteCode: safePlainText(sess.clubInviteCode, 24) || null });
   }
   if (sess && state.clubs.some(club => club.id === clubId)) {
