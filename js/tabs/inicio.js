@@ -1,7 +1,7 @@
 // MATCHDAY CENTRAL — portada operativa del club
 // ============================================================
 function hubTeamPlayers(m, index) {
-  return ((((m.teams || [])[index] || {}).players) || []).slice(0, 3).map(p => p.name).join(' · ') || 'Plantel por confirmar';
+  return ((((m.teams || [])[index] || {}).players) || []).map(p => p.name).join(' · ') || 'Plantel por confirmar';
 }
 
 function hubResultText(m) {
@@ -38,23 +38,21 @@ function hubPodiumCard(label, item, value, unit, second, secondUnit, badge) {
   </article>`;
 }
 
-// Ranking de goleadores del club. G/PJ mantiene el denominador de partidos
-// con planilla de goles registrada, no el historial completo.
-function hubScorersHTML(rows, latest) {
-  const top = rows.filter(x => x.rec.goals > 0)
-    .sort((a,b) => b.rec.goals - a.rec.goals || a.p.name.localeCompare(b.p.name))
-    .slice(0, 5);
-  if (!top.length) return `<div class="hub-empty-result">Todavía no hay goles cargados. Anotalos desde la planilla y el ranking se arma solo.</div>`;
-  const maxGoals = Math.max(...top.map(x => x.rec.goals), 1);
-  const score = latest && matchHasGoals(latest) ? matchScoreStr(latest) : '—';
-  const aName = latest?.teams?.[0] ? `Equipo ${TEAM_NAMES[0] || 1}` : 'Temporada';
-  const bName = latest?.teams?.[1] ? `Equipo ${TEAM_NAMES[1] || 2}` : 'Fulbito';
+// Goleadores del partido que encabeza la planilla. El ranking acumulado vive
+// en Goles/Stats; acá cada número pertenece exclusivamente a este encuentro.
+function hubMatchScorersHTML(latest) {
+  const scorers = latest ? matchScorers(latest) : [];
+  if (!scorers.length) return `<div class="hub-empty-result">Este partido no tiene goles registrados todavía.</div>`;
+  const maxGoals = Math.max(...scorers.map(x => x.goals), 1);
+  const score = matchHasGoals(latest) ? matchScoreStr(latest) : '—';
+  const aName = latest?.teams?.[0] ? `Equipo ${TEAM_NAMES[0] || 1}` : 'Partido';
+  const bName = latest?.teams?.[1] ? `Equipo ${TEAM_NAMES[1] || 2}` : 'Cerrado';
   return `<div class="hub-bars-matchline"><span>🔵 ${aName}</span><b>${score}</b><span>${bName} 🔴</span></div>
   <div class="hub-scorer-bars">
-    ${top.map((x,i) => `<button class="hub-scorer-bar" onclick="openPlayerProfile('${x.p.id}')">
-      <span class="hub-scorer-rank">${i + 1}</span><span class="hub-scorer-name">${escapeHtml(x.p.name)}</span>
-      <span class="hub-scorer-track"><i style="width:${Math.max(14, Math.round(x.rec.goals / maxGoals * 100))}%"></i></span>
-      <b>${x.rec.goals}</b><small>${x.rec.goalPj || 0} PJ · ${x.rec.goalPj ? (x.rec.goals / x.rec.goalPj).toFixed(2) : '—'} G/PJ</small>
+    ${scorers.map((scorer,i) => `<button class="hub-scorer-bar" onclick="openPlayerProfile('${scorer.id}')">
+      <span class="hub-scorer-rank">${i + 1}</span><span class="hub-scorer-name">${escapeHtml(scorer.name)}</span>
+      <span class="hub-scorer-track"><i style="width:${Math.max(14, Math.round(scorer.goals / maxGoals * 100))}%"></i></span>
+      <b>${scorer.goals}</b><small>${scorer.goals === 1 ? 'GOL DEL PARTIDO' : 'GOLES DEL PARTIDO'}</small>
     </button>`).join('')}
   </div>`;
 }
@@ -206,7 +204,7 @@ function renderHub() {
           ${lastMatchHTML}
         </div>
         <div class="hub-matchcentre-lower">
-          <section class="hub-matchcentre-scorers"><div class="hub-subhead"><span>⚽</span><b>GOLEADORES</b><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubScorersHTML(rows, latest)}</section>
+          <section class="hub-matchcentre-scorers"><div class="hub-subhead"><span>⚽</span><b>GOLEADORES DEL PARTIDO</b><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubMatchScorersHTML(latest)}</section>
           <aside class="hub-matchcentre-activity"><div class="hub-subhead"><span>◉</span><b>ÚLTIMA ACTIVIDAD</b></div>${hubActivityHTML(played)}</aside>
         </div>
       </section>
