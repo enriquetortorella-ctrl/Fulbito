@@ -46,6 +46,7 @@ update public.fulbito_players
 alter table public.fulbito_clubs enable row level security;
 alter table public.fulbito_players enable row level security;
 alter table public.fulbito_matches enable row level security;
+alter table public.fulbito_platform_master enable row level security;
 
 drop policy if exists "public_all_clubs" on public.fulbito_clubs;
 drop policy if exists "public_all" on public.fulbito_players;
