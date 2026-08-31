@@ -83,19 +83,6 @@ function hubLeaderRow(icon, label, item, value, meta) {
   </div>`;
 }
 
-// Podio del inicio: usa exactamente las cartas reales del plantel.
-// Así conserva foto, OVR, racha, MVP y goleador sin duplicar reglas visuales.
-function hubLiveCard(label, item, value, unit, tone, highlights) {
-  if (!item?.p || typeof renderFifaCard !== 'function') {
-    return hubPodiumCard(label, item, value, unit);
-  }
-  return `<article class="hub-live-card ${tone}">
-    <div class="hub-live-card-label">${label}</div>
-    <div class="hub-live-card-frame">${renderFifaCard(item.p, highlights)}</div>
-    <div class="hub-live-card-metric"><b>${value}</b><span>${unit}</span></div>
-  </article>`;
-}
-
 function hubDateISO(m) {
   return m?.match_date || (m?.created_at || '').slice(0,10);
 }
@@ -178,28 +165,8 @@ function renderHub() {
   const latest = played[0] || null;
   const openMatch = hubOpenMatch();
   const rows = state.players.map(p => ({ p, rec: getPlayerRecord(p.id), ovr: getOverall(p) || 60 }));
-  const cardHighlights = typeof getCardHighlights === 'function'
-    ? getCardHighlights(rows)
-    : { topScorerIds: new Set(), latestMvpId: null, forms: new Map() };
+  const podium = getHubPodium(rows, played);
   const greeting = (me?.name || 'equipo').split(' ')[0];
-
-  // El podio del inicio no repite jugadores: la figura central es el MVP
-  // más reciente; a los costados quedan el goleador y la mejor racha histórica.
-  const latestMvpMatch = played.find(m => m.result?.mvp) || null;
-  const latestMvp = latestMvpMatch
-    ? rows.find(x => x.p.id === latestMvpMatch.result.mvp) || null
-    : rows.slice().filter(x => x.rec.mvps > 0).sort((a,b) => b.rec.mvps - a.rec.mvps || b.ovr - a.ovr)[0] || null;
-  const podiumUsed = new Set(latestMvp?.p?.id ? [latestMvp.p.id] : []);
-  const podiumScorer = rows.slice()
-    .filter(x => x.rec.goals > 0 && !podiumUsed.has(x.p.id))
-    .sort((a,b) => b.rec.goals - a.rec.goals || b.rec.goalPj - a.rec.goalPj || a.p.name.localeCompare(b.p.name))[0] || null;
-  if (podiumScorer?.p?.id) podiumUsed.add(podiumScorer.p.id);
-  const streakRows = rows.map(x => ({ ...x, streak: getMaxWinStreak(x.p.id) }));
-  const podiumStreak = streakRows
-    .filter(x => x.streak > 0 && !podiumUsed.has(x.p.id))
-    .sort((a,b) => b.streak - a.streak || b.rec.w - a.rec.w || b.rec.mvps - a.rec.mvps)[0]
-    || rows.slice().filter(x => x.rec.mvps > 0 && !podiumUsed.has(x.p.id)).sort((a,b) => b.rec.mvps - a.rec.mvps)[0]
-    || null;
 
   let lastMatchHTML = `<div class="hub-empty-result">Todavía no hay un resultado cerrado. Cuando se juegue el primero, este espacio va a guardar la historia del club.</div>`;
   if (latest) {
@@ -241,9 +208,9 @@ function renderHub() {
       <aside class="hub-live-podium">
         <div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div>
         <div class="hub-live-cards">
-          ${hubLiveCard('MÁXIMO GOLEADOR', podiumScorer, podiumScorer ? podiumScorer.rec.goals : '—', 'GOLES', 'is-scorer', cardHighlights)}
-          ${hubLiveCard('ÚLTIMO MVP', latestMvp, latestMvp ? '★' : '—', latestMvp ? 'FIGURA' : 'SIN DATOS', 'is-mvp', cardHighlights)}
-          ${hubLiveCard(podiumStreak?.streak ? 'MEJOR RACHA' : 'MÁS MVP', podiumStreak, podiumStreak ? (podiumStreak.streak || podiumStreak.rec.mvps) : '—', podiumStreak?.streak ? 'VICTORIAS' : 'MVP', 'is-streak', cardHighlights)}
+          ${hubLiveCard('MÁXIMO GOLEADOR', podium.scorer, podium.scorer ? podium.scorer.rec.goals : '—', 'GOLES', 'is-scorer', podium.highlights)}
+          ${hubLiveCard('ÚLTIMO MVP', podium.latestMvp, podium.latestMvp ? '★' : '—', podium.latestMvp ? 'FIGURA' : 'SIN DATOS', 'is-mvp', podium.highlights)}
+          ${hubLiveCard(podium.streak?.streak ? 'MEJOR RACHA' : 'MÁS MVP', podium.streak, podium.streak ? (podium.streak.streak || podium.streak.rec.mvps) : '—', podium.streak?.streak ? 'VICTORIAS' : 'MVP', 'is-streak', podium.highlights)}
         </div>
       </aside>
     </section>

@@ -18,7 +18,8 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 | Archivo | Qué contiene |
 |---|---|
 | `base.css` | Variables, screen system, login, selector de clubes, topbar, nav-tabs, botones |
-| `inicio.css` | **Matchday Central** — hero, panel de asistencia, último partido, fixture, quick actions |
+| `inicio.css` | **Matchday Central** — hero, asistencia, resultado, fixture y acciones rápidas |
+| `inicio-podium.css` | Podio del Inicio — tres cartas, escalas y responsive del panel |
 | `jugadores.css` | Plantel, cartas del club, club house, modal de detalle |
 | `asistencia.css` | Pestaña Asistencia |
 | `calificar.css` | Pestaña Calificar |
@@ -51,7 +52,9 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 
 **Pestañas** — `js/tabs/`. Una por pestaña; acá es donde vas a trabajar:
 
-`inicio.js` · `jugadores.js` · `asistencia.js` · `calificar.js` · `equipos.js` · `goles.js` · `partidos.js` · `stats.js` · `admin.js`
+`inicio-podium.js` · `inicio.js` · `jugadores.js` · `asistencia.js` · `calificar.js` · `equipos.js` · `goles.js` · `partidos.js` · `stats.js` · `admin.js`
+
+`inicio-podium.js` concentra las reglas del podio (MVP más reciente, goleador y racha sin repetir jugadores). `inicio.js` conserva el armado general de la pantalla.
 
 **Cierre:** `sync.js` (auto-sync + atajos de teclado) y `boot.js` (arranque final).
 
