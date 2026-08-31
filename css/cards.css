@@ -21,7 +21,8 @@
   display:grid;
   grid-template-columns:44% 56%;
   /* 13% cabecera · 40% foto+datos · nombre · stats · resto para la punta */
-  grid-template-rows:15% 35% 11% 19% 1fr;
+  /* alineado a las líneas que trae dibujadas el escudo: 53%, 62% y 85% */
+  grid-template-rows:15% 38% 9% 20% 1fr;
   align-items:stretch;
   transition:transform .26s cubic-bezier(.16,1,.3,1);
 }
@@ -32,10 +33,11 @@
 .fifa-card.silver,#tab-jugadores .fifa-card.silver{background-image:url('../assets/cards/silver.webp')}
 .fifa-card.bronze,#tab-jugadores .fifa-card.bronze{background-image:url('../assets/cards/bronze.webp')}
 .fifa-card.rare,#tab-jugadores .fifa-card.rare{background-image:url('../assets/cards/icon.webp')}
-/* Los dos rojos ganan al tier */
+/* Prioridad de fondo, de menor a mayor: racha < goleador < MVP.
+   Misma especificidad, así que manda el ORDEN de estas tres líneas. */
+.fifa-card.card-hot,#tab-jugadores .fifa-card.card-hot{background-image:url('../assets/cards/hot.webp')}
 .fifa-card.card-top-scorer,#tab-jugadores .fifa-card.card-top-scorer{background-image:url('../assets/cards/scorer.webp')}
 .fifa-card.card-mvp,#tab-jugadores .fifa-card.card-mvp{background-image:url('../assets/cards/mvp.webp')}
-.fifa-card.card-hot,#tab-jugadores .fifa-card.card-hot{background-image:url('../assets/cards/hot.webp')}
 
 /* El escudo ya trae su propio relieve: fuera las capas viejas */
 .fifa-card::before,#tab-jugadores .fifa-card::before,
@@ -45,7 +47,7 @@
 /* --- Fila 2, izquierda: OVR, tier, posición --- */
 .fifa-top{
   grid-column:1;grid-row:2;display:flex;flex-direction:column;
-  justify-content:center;align-items:flex-start;
+  justify-content:flex-start;align-items:flex-start;padding-top:4%;
   padding:0 0 0 27%;min-width:0;
 }
 .fifa-left{display:block;text-align:left}
@@ -96,7 +98,7 @@
 /* --- Récord y distintivos: fila baja, lejos de la punta --- */
 .fifa-card-record{
   grid-column:1/-1;grid-row:5;align-self:start;
-  margin:1.5cqw 18% 0;padding:1.3cqw 2cqw;border-radius:5px;
+  margin:1cqw 20% 0;padding:1.2cqw 2cqw;border-radius:5px;
   background:rgba(0,0,0,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);
   font-size:3.7cqw;font-weight:700;color:#1c1305;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -106,31 +108,65 @@
 .card-spotlights{display:none}
 .fifa-card.has-card-spotlight{padding-bottom:0}
 
-/* --- Fondos oscuros (medidos: bronce, icon y goleador) --- */
-.fifa-card.bronze .fifa-card-overall,.fifa-card.bronze .fifa-card-pos,
-.fifa-card.bronze .fifa-card-name,.fifa-card.bronze .fifa-card-stat,
-.fifa-card.bronze .fifa-card-record,
-.fifa-card.rare .fifa-card-overall,.fifa-card.rare .fifa-card-pos,
-.fifa-card.rare .fifa-card-name,.fifa-card.rare .fifa-card-stat,
-.fifa-card.rare .fifa-card-record,
-.fifa-card.card-top-scorer .fifa-card-overall,.fifa-card.card-top-scorer .fifa-card-pos,
-.fifa-card.card-top-scorer .fifa-card-name,.fifa-card.card-top-scorer .fifa-card-stat,
-.fifa-card.card-top-scorer .fifa-card-record{color:#f6f1ff;text-shadow:0 1px 3px rgba(0,0,0,.55)}
-.fifa-card.bronze .fifa-card-stat span:first-child,
-.fifa-card.rare .fifa-card-stat span:first-child,
+/* --- Color de texto: sigue EXACTAMENTE el mismo orden de prioridad que
+   los fondos (racha < goleador < MVP), para que texto y escudo nunca
+   se desincronicen. Decidido por luminancia medida de cada escudo. --- */
+.fifa-card.bronze .fifa-card-overall,
+.fifa-card.bronze .fifa-card-pos,
+.fifa-card.bronze .fifa-card-name,
+.fifa-card.bronze .fifa-card-stat,
+.fifa-card.bronze .fifa-card-record{color:#f8f5ff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.fifa-card.bronze .fifa-card-stat span:first-child{color:#fff}
+.fifa-card.bronze .fifa-card-tier{color:rgba(255,255,255,.78)}
+.fifa-card.bronze .fifa-divider,.fifa-card.bronze .fifa-card-stats::before{background:rgba(255,255,255,.34)}
+.fifa-card.bronze .fifa-card-pos{border-top-color:rgba(255,255,255,.34)}
+.fifa-card.bronze .fifa-card-record{background:rgba(0,0,0,.38)}
+
+.fifa-card.rare .fifa-card-overall,
+.fifa-card.rare .fifa-card-pos,
+.fifa-card.rare .fifa-card-name,
+.fifa-card.rare .fifa-card-stat,
+.fifa-card.rare .fifa-card-record{color:#f8f5ff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.fifa-card.rare .fifa-card-stat span:first-child{color:#fff}
+.fifa-card.rare .fifa-card-tier{color:rgba(255,255,255,.78)}
+.fifa-card.rare .fifa-divider,.fifa-card.rare .fifa-card-stats::before{background:rgba(255,255,255,.34)}
+.fifa-card.rare .fifa-card-pos{border-top-color:rgba(255,255,255,.34)}
+.fifa-card.rare .fifa-card-record{background:rgba(0,0,0,.38)}
+
+.fifa-card.card-hot .fifa-card-overall,
+.fifa-card.card-hot .fifa-card-pos,
+.fifa-card.card-hot .fifa-card-name,
+.fifa-card.card-hot .fifa-card-stat,
+.fifa-card.card-hot .fifa-card-record{color:#1c1305;text-shadow:0 1px 0 rgba(255,255,255,.28)}
+.fifa-card.card-hot .fifa-card-stat span:first-child{color:#140d02}
+.fifa-card.card-hot .fifa-card-tier{color:#3a2a0c}
+.fifa-card.card-hot .fifa-divider,.fifa-card.card-hot .fifa-card-stats::before{background:rgba(0,0,0,.3)}
+.fifa-card.card-hot .fifa-card-pos{border-top-color:rgba(0,0,0,.3)}
+.fifa-card.card-hot .fifa-card-record{background:rgba(0,0,0,.16)}
+
+.fifa-card.card-top-scorer .fifa-card-overall,
+.fifa-card.card-top-scorer .fifa-card-pos,
+.fifa-card.card-top-scorer .fifa-card-name,
+.fifa-card.card-top-scorer .fifa-card-stat,
+.fifa-card.card-top-scorer .fifa-card-record{color:#f8f5ff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 .fifa-card.card-top-scorer .fifa-card-stat span:first-child{color:#fff}
-.fifa-card.bronze .fifa-card-tier,.fifa-card.rare .fifa-card-tier,
-.fifa-card.card-top-scorer .fifa-card-tier{color:rgba(255,255,255,.75)}
-.fifa-card.bronze .fifa-divider,.fifa-card.bronze .fifa-card-stats::before,
-.fifa-card.rare .fifa-divider,.fifa-card.rare .fifa-card-stats::before,
-.fifa-card.card-top-scorer .fifa-divider,.fifa-card.card-top-scorer .fifa-card-stats::before{background:rgba(255,255,255,.32)}
-.fifa-card.bronze .fifa-card-pos,.fifa-card.rare .fifa-card-pos,
-.fifa-card.card-top-scorer .fifa-card-pos{border-top-color:rgba(255,255,255,.32)}
-.fifa-card.bronze .fifa-card-record,.fifa-card.rare .fifa-card-record,
-.fifa-card.card-top-scorer .fifa-card-record{background:rgba(0,0,0,.34)}
-.fifa-card-stat.best,.fifa-card.rare .fifa-card-stat.best,
-.fifa-card.card-mvp .fifa-card-stat.best,
-.fifa-card.card-top-scorer .fifa-card-stat.best{background:none}
+.fifa-card.card-top-scorer .fifa-card-tier{color:rgba(255,255,255,.78)}
+.fifa-card.card-top-scorer .fifa-divider,.fifa-card.card-top-scorer .fifa-card-stats::before{background:rgba(255,255,255,.34)}
+.fifa-card.card-top-scorer .fifa-card-pos{border-top-color:rgba(255,255,255,.34)}
+.fifa-card.card-top-scorer .fifa-card-record{background:rgba(0,0,0,.38)}
+
+.fifa-card.card-mvp .fifa-card-overall,
+.fifa-card.card-mvp .fifa-card-pos,
+.fifa-card.card-mvp .fifa-card-name,
+.fifa-card.card-mvp .fifa-card-stat,
+.fifa-card.card-mvp .fifa-card-record{color:#1c1305;text-shadow:0 1px 0 rgba(255,255,255,.28)}
+.fifa-card.card-mvp .fifa-card-stat span:first-child{color:#140d02}
+.fifa-card.card-mvp .fifa-card-tier{color:#3a2a0c}
+.fifa-card.card-mvp .fifa-divider,.fifa-card.card-mvp .fifa-card-stats::before{background:rgba(0,0,0,.3)}
+.fifa-card.card-mvp .fifa-card-pos{border-top-color:rgba(0,0,0,.3)}
+.fifa-card.card-mvp .fifa-card-record{background:rgba(0,0,0,.16)}
+
+.fifa-card-stat.best{background:none}
 
 @media (max-width:640px){
   #tab-jugadores .fifa-card,.fifa-card{max-width:none}
@@ -140,3 +176,33 @@
 @media (prefers-reduced-motion:reduce){
   .fifa-card,.fifa-card:hover,#tab-jugadores .fifa-card:hover{transition:none;transform:none}
 }
+
+/* ===== MEDALLAS — MVPs y goles ======================================
+   Antes iban dentro de la franja de récord y se salían por la punta.
+   Ahora viven en la columna izquierda, debajo del OVR, donde el
+   escudo es ancho. Cada una es un disco con su número.
+   ==================================================================== */
+.fifa-card-medals{
+  grid-column:1;grid-row:2;align-self:end;justify-self:start;
+  display:flex;gap:2cqw;padding:0 0 4% 27%;position:relative;z-index:3;
+}
+.fifa-medal{
+  display:inline-flex;align-items:center;justify-content:center;gap:.8cqw;
+  min-width:11cqw;height:8.6cqw;padding:0 1.6cqw;border-radius:99px;
+  background:rgba(0,0,0,.34);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);
+  line-height:1;
+}
+.fifa-medal i{font-style:normal;font-size:5cqw}
+.fifa-medal b{font-family:'Bebas Neue',sans-serif;font-size:6cqw;color:#fff}
+.fifa-medal.is-mvp{background:rgba(120,84,0,.5)}
+.fifa-medal.is-mvp i{color:#ffd257}
+.fifa-medal.is-goal{background:rgba(0,0,0,.4)}
+/* sobre escudos claros el disco se invierte para no perder contraste */
+.fifa-card.silver .fifa-medal,.fifa-card.gold .fifa-medal,
+.fifa-card.card-hot .fifa-medal,.fifa-card.card-mvp .fifa-medal{
+  background:rgba(255,255,255,.5);box-shadow:inset 0 0 0 1px rgba(0,0,0,.26)}
+.fifa-card.silver .fifa-medal b,.fifa-card.gold .fifa-medal b,
+.fifa-card.card-hot .fifa-medal b,.fifa-card.card-mvp .fifa-medal b{color:#14100a}
+.fifa-card.card-hot .fifa-medal.is-mvp,.fifa-card.card-mvp .fifa-medal.is-mvp,
+.fifa-card.silver .fifa-medal.is-mvp,.fifa-card.gold .fifa-medal.is-mvp{background:rgba(255,205,80,.55)}
+@media (max-width:640px){.fifa-card-medals{padding-left:25%}}
