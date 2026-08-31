@@ -42,15 +42,25 @@ function renderAdmin() {
       ${invite}`;
   }
   const list = document.getElementById('admin-players-list');
-  list.innerHTML = state.players.map(p => `
+  const myId = state.currentUser?.id;
+  const canManageAccounts = state.currentUser?.isAdmin && !state.currentUser?.supportMode;
+  list.innerHTML = state.players.map(p => {
+    const isMe = p.id === myId;
+    const actions = !canManageAccounts ? '' : isMe
+      ? `<span class="admin-player-self">Tu cuenta</span>`
+      : `<div class="admin-player-actions">
+          <button class="btn-icon" title="${p.isAdmin?'Quitar admin':'Hacer admin'}" onclick="toggleAdmin('${p.id}')">${p.isAdmin?'👑':'⬜'}</button>
+          <button class="btn-icon" title="Cambiar contraseña" onclick="adminChangePassword('${p.id}')">🔑</button>
+          <button class="btn-icon" title="Eliminar usuario" onclick="removePlayer('${p.id}')">🗑️</button>
+        </div>`;
+    return `
     <div class="admin-player-row">
       <div style="font-size:20px">${posEmoji(getEffectivePosition(p))}</div>
       <div class="admin-player-name">${p.name} <span style="color:var(--muted);font-size:12px">@${p.username}</span>${p.isAdmin?' 👑':''}${p._resetRequested?' <span style="color:var(--red);font-size:11px">⚠️ pidió reset</span>':''}</div>
-      <button class="btn-icon" title="${p.isAdmin?'Quitar admin':'Hacer admin'}" onclick="toggleAdmin('${p.id}')">${p.isAdmin?'👑':'⬜'}</button>
-      <button class="btn-icon" title="Resetear contraseña a 1234" onclick="adminResetPassword('${p.id}')">🔑</button>
-      <button class="btn-icon" title="Eliminar" onclick="removePlayer('${p.id}')">🗑️</button>
+      ${actions}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function updateClubBrandPreview(crest, name) {
@@ -272,12 +282,15 @@ async function saveClubInviteCode() {
 async function removePlayer(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
-  if (!confirm(`¿Eliminar a ${p.name}?`)) return;
-  state.players = state.players.filter(x=>x.id!==id);
-  await deletePlayer(id);
-  renderAdmin();
-  renderPlayers();
-  showToast('🗑️ Jugador eliminado');
+  if (p.id === state.currentUser?.id) { showToast('⚠️ No podés eliminar tu propia cuenta desde acá.'); return; }
+  if (!confirm(`¿Eliminar a ${p.name} (@${p.username})? Esta acción no se puede deshacer.`)) return;
+  try {
+    await deletePlayer(id);
+    state.players = state.players.filter(x=>x.id!==id);
+    renderAdmin();
+    renderPlayers();
+    showToast('🗑️ Usuario eliminado');
+  } catch (error) { showToast(`❌ ${error.message || 'No se pudo eliminar el usuario.'}`); }
 }
 
 // ============================================================

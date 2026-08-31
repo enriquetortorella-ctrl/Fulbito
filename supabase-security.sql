@@ -640,12 +640,54 @@ language plpgsql
 security definer
 set search_path = public, extensions, pg_temp
 as $$
+declare
+  v_actor public.fulbito_players%rowtype;
 begin
-  if not public.fulbito_is_admin(p_club_id) then
+  select * into v_actor from public.fulbito_players
+   where club_id = p_club_id and auth_user_id = auth.uid();
+  if not found or not v_actor.is_admin then
     raise exception 'Solo un administrador puede resetear contraseñas' using errcode = '42501';
+  end if;
+  if v_actor.id = p_player_id then
+    raise exception 'Usá Mi perfil para cambiar tu propia contraseña' using errcode = '22023';
   end if;
   update public.fulbito_players
      set password = crypt('1234', gen_salt('bf', 10)),
+         auth_user_id = null,
+         _reset_requested = false
+   where id = p_player_id and club_id = p_club_id;
+  if not found then
+    raise exception 'Jugador no encontrado' using errcode = '22023';
+  end if;
+end;
+$$;
+
+create or replace function public.fulbito_admin_set_player_password(
+  p_club_id text,
+  p_player_id text,
+  p_new_password text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_actor public.fulbito_players%rowtype;
+begin
+  select * into v_actor from public.fulbito_players
+   where club_id = p_club_id and auth_user_id = auth.uid();
+  if not found or not v_actor.is_admin then
+    raise exception 'Solo un administrador puede cambiar contraseñas' using errcode = '42501';
+  end if;
+  if v_actor.id = p_player_id then
+    raise exception 'Usá Mi perfil para cambiar tu propia contraseña' using errcode = '22023';
+  end if;
+  if char_length(coalesce(p_new_password, '')) not between 6 and 128 then
+    raise exception 'La contraseña debe tener entre 6 y 128 caracteres' using errcode = '22023';
+  end if;
+  update public.fulbito_players
+     set password = crypt(p_new_password, gen_salt('bf', 10)),
          auth_user_id = null,
          _reset_requested = false
    where id = p_player_id and club_id = p_club_id;
@@ -662,14 +704,20 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
+  v_actor public.fulbito_players%rowtype;
   v_target public.fulbito_players%rowtype;
 begin
-  if not public.fulbito_is_admin(p_club_id) then
+  select * into v_actor from public.fulbito_players
+   where club_id = p_club_id and auth_user_id = auth.uid();
+  if not found or not v_actor.is_admin then
     raise exception 'Solo un administrador puede eliminar jugadores' using errcode = '42501';
   end if;
   select * into v_target from public.fulbito_players where id = p_player_id and club_id = p_club_id for update;
   if not found then
     raise exception 'Jugador no encontrado' using errcode = '22023';
+  end if;
+  if v_actor.id = v_target.id then
+    raise exception 'No podés eliminar tu propia cuenta desde administración' using errcode = '22023';
   end if;
   if v_target.is_admin and not exists (
     select 1 from public.fulbito_players where club_id = p_club_id and is_admin and id <> p_player_id
@@ -852,6 +900,7 @@ revoke all on function public.fulbito_clear_ratings(text) from public;
 revoke all on function public.fulbito_request_reset(text, text) from public;
 revoke all on function public.fulbito_set_admin(text, text, boolean) from public;
 revoke all on function public.fulbito_admin_reset_player(text, text) from public;
+revoke all on function public.fulbito_admin_set_player_password(text, text, text) from public;
 revoke all on function public.fulbito_delete_player(text, text) from public;
 revoke all on function public.fulbito_record_goal(text, text, text, integer) from public;
 revoke all on function public.fulbito_upsert_match(text, jsonb) from public;
@@ -873,6 +922,7 @@ grant execute on function public.fulbito_clear_ratings(text) to authenticated;
 grant execute on function public.fulbito_request_reset(text, text) to authenticated;
 grant execute on function public.fulbito_set_admin(text, text, boolean) to authenticated;
 grant execute on function public.fulbito_admin_reset_player(text, text) to authenticated;
+grant execute on function public.fulbito_admin_set_player_password(text, text, text) to authenticated;
 grant execute on function public.fulbito_delete_player(text, text) to authenticated;
 grant execute on function public.fulbito_record_goal(text, text, text, integer) to authenticated;
 grant execute on function public.fulbito_upsert_match(text, jsonb) to authenticated;

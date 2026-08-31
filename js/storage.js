@@ -158,6 +158,17 @@ async function upsertPlayer(p) {
 async function deletePlayer(id) {
   if (!state.currentClub?.id) return;
   await callRpc('fulbito_delete_player', { p_club_id: state.currentClub.id, p_player_id: id });
+  return true;
+}
+
+async function adminSetPlayerPassword(id, newPassword) {
+  if (!state.currentClub?.id) return;
+  await callRpc('fulbito_admin_set_player_password', {
+    p_club_id: state.currentClub.id,
+    p_player_id: id,
+    p_new_password: newPassword
+  });
+  return true;
 }
 
 // ============================================================

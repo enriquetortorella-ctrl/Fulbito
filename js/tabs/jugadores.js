@@ -503,6 +503,25 @@ async function adminResetPassword(id) {
   } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
+async function adminChangePassword(id) {
+  const p = state.players.find(x=>x.id===id);
+  if (!p) return;
+  if (p.id === state.currentUser?.id) { showToast('⚠️ Tu contraseña se cambia desde Mi perfil.'); return; }
+  const newPassword = prompt(`Nueva contraseña para ${p.name} (@${p.username}).\n\nDebe tener entre 6 y 128 caracteres:`);
+  if (newPassword === null) return;
+  if (newPassword.length < 6 || newPassword.length > 128) {
+    showToast('⚠️ La contraseña debe tener entre 6 y 128 caracteres.');
+    return;
+  }
+  if (!confirm(`¿Cambiar la contraseña de ${p.name}? Deberá iniciar sesión nuevamente con la nueva clave.`)) return;
+  try {
+    await adminSetPlayerPassword(id, newPassword);
+    p._resetRequested = false;
+    renderAdmin();
+    showToast(`🔑 Contraseña actualizada para ${p.username}`);
+  } catch (error) { showToast(`❌ ${error.message || 'No se pudo cambiar la contraseña.'}`); }
+}
+
 function posEmoji(pos) { return {POR:'🧤',DEF:'🛡️',MED:'⚙️',DEL:'⚡'}[pos]||'' }
 
 // ============================================================
