@@ -251,14 +251,16 @@ body::after{
 .roster-toolbar{border-color:rgba(206,231,255,.19);background:linear-gradient(100deg,rgba(40,68,108,.42),rgba(10,20,38,.66));box-shadow:0 18px 35px rgba(0,0,0,.19),inset 0 1px 0 rgba(255,255,255,.09)}
 .roster-metric b{color:#fff4b5;text-shadow:0 0 14px rgba(255,211,106,.22)}
 
-/* Cartas con foil{
+/* Cartas con foil */
+.fifa-card{
   border:1px solid rgba(255,255,255,.17);
   filter:drop-shadow(0 15px 22px rgba(0,0,0,.52)) drop-shadow(0 0 11px rgba(112,215,255,.07));
   transform:translateZ(0);
   animation:cardDeal .62s cubic-bezier(.16,1,.3,1) both;
 }
 
-/* Estados vivos del plantel: se alimentan del historial real{padding-bottom:43px}
+/* Estados vivos del plantel: se alimentan del historial real */
+.fifa-card.has-card-spotlight{padding-bottom:43px}
 .card-spotlights{position:absolute;z-index:4;left:50%;bottom:17px;display:flex;justify-content:center;flex-wrap:wrap;gap:4px;max-width:88%;transform:translateX(-50%);pointer-events:none}
 .card-spotlight{display:inline-flex;align-items:center;justify-content:center;min-height:19px;padding:3px 7px;border:1px solid rgba(255,255,255,.24);border-radius:999px;font-family:'Bebas Neue',sans-serif;font-size:10px;line-height:1;letter-spacing:.75px;color:#fff;background:rgba(8,14,27,.54);box-shadow:0 4px 10px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.13);white-space:nowrap;animation:badgeFloat 2.8s ease-in-out infinite}
 .card-spotlight.is-hot{color:#fff0bd;border-color:rgba(255,157,66,.62);background:linear-gradient(135deg,rgba(255,95,35,.78),rgba(181,38,16,.56));box-shadow:0 0 17px rgba(255,88,29,.38),inset 0 1px 0 rgba(255,238,197,.36);animation-duration:1.7s}
@@ -318,7 +320,8 @@ html,body{max-width:100%;overflow-x:clip}
   .nav-tabs{margin:7px 0;padding:4px 4px;gap:3px;width:100%;max-width:100%;touch-action:pan-x pan-y}
   .nav-tab{flex:0 0 74px;min-width:74px}
 
-  /* La carta conserva su silueta{padding:14px 8px 16px;aspect-ratio:.675}
+  /* La carta conserva su silueta */
+  .fifa-card{padding:14px 8px 16px;aspect-ratio:.675}
 }
 /* ===== FULBITO / COMMAND DECK =====
    Inspiración: tablero metálico de partido. Se aplica sobre los datos reales del club. */
@@ -354,7 +357,8 @@ html,body{max-width:100%;overflow-x:clip}
 .hub-leader-icon{border:1px solid rgba(172,209,238,.22);background:linear-gradient(145deg,rgba(91,121,150,.37),rgba(5,15,28,.70));box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
 .hub-quick{border:1px solid rgba(168,207,238,.32);border-radius:11px;background:linear-gradient(145deg,rgba(46,72,98,.83),rgba(6,14,25,.94));box-shadow:0 0 0 1px rgba(2,8,15,.82),inset 0 1px 0 rgba(255,255,255,.18)}
 
-/* Cartas coleccionables: doble marco metálico{border:1px solid rgba(244,249,255,.44);box-shadow:inset 0 0 0 2px rgba(0,0,0,.62),inset 0 0 0 4px rgba(255,255,255,.16)}
+/* Cartas coleccionables: doble marco metálico */
+.fifa-card{border:1px solid rgba(244,249,255,.44);box-shadow:inset 0 0 0 2px rgba(0,0,0,.62),inset 0 0 0 4px rgba(255,255,255,.16)}
 .card-spotlight{border-color:rgba(238,247,255,.35);box-shadow:0 0 0 1px rgba(4,10,18,.52),0 5px 12px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.24)}
 
 @keyframes navPulse{0%,100%{transform:translateY(-1px) scale(1.06)}50%{transform:translateY(-3px) scale(1.13)}}
