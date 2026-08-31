@@ -3,6 +3,7 @@
 let clubBrandDraftCrest;
 let clubBrandDraftName = '';
 let clubBrandDraftClubId = null;
+let clubInviteEditorOpen = false;
 
 function clubBrandPreviewHTML(crest, name) {
   const imageUrl = safeClubCrestUrl(crest);
@@ -25,7 +26,8 @@ function renderAdmin() {
     const inviteCode = safePlainText(state.currentClub.inviteCode, 24);
     const invite = isSupport ? `
       <div class="club-brand-note is-support">🛡️ Modo soporte maestro · código de invitación oculto</div>` : `
-      <div class="club-brand-invite"><div><b>Código de invitación</b><span>Compartilo para que entren al grupo.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Cargando…')}</code><button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()" ${inviteCode ? '' : 'disabled'}>📋 Copiar</button></div></div>`;
+      <div class="club-brand-invite"><div><b>Código de invitación</b><span>Compartilo para que entren al grupo.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Cargando…')}</code><button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()" ${inviteCode ? '' : 'disabled'}>📋 Copiar</button><button class="btn btn-ghost btn-sm" onclick="toggleClubInviteEditor()" ${inviteCode ? '' : 'disabled'}>✏ Cambiar</button></div></div>
+      ${clubInviteEditorOpen ? `<div class="club-invite-editor"><div><label for="club-invite-code-input">Nuevo código</label><input id="club-invite-code-input" maxlength="16" value="${escapeHtml(inviteCode)}" placeholder="EJ: MARMOL-26" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,16)"><small>De 4 a 16 caracteres: letras, números o guion. El anterior dejará de funcionar.</small></div><div class="club-invite-editor-actions"><button class="btn btn-primary btn-sm" onclick="saveClubInviteCode()">Guardar código</button><button class="btn btn-ghost btn-sm" onclick="toggleClubInviteEditor(false)">Cancelar</button></div></div>` : ''}`;
     clubInfo.innerHTML = `
       <div class="club-brand-editor">
         <div class="club-brand-preview ${safeClubCrestUrl(draftCrest) ? 'has-custom-crest' : ''}" id="club-brand-preview">${clubBrandPreviewHTML(draftCrest, draftName)}</div>
@@ -231,6 +233,38 @@ async function copyClubInviteCode() {
     const copied = document.execCommand('copy');
     fallback.remove();
     showToast(copied ? `✅ Código ${code} copiado` : `Código del club: ${code}`, 4000);
+  }
+}
+
+function toggleClubInviteEditor(force) {
+  if (!state.currentUser?.isAdmin) return;
+  clubInviteEditorOpen = typeof force === 'boolean' ? force : !clubInviteEditorOpen;
+  renderAdmin();
+  if (clubInviteEditorOpen) document.getElementById('club-invite-code-input')?.focus();
+}
+
+async function saveClubInviteCode() {
+  if (!state.currentUser?.isAdmin || !state.currentClub) return;
+  const input = document.getElementById('club-invite-code-input');
+  const nextCode = safePlainText(input?.value, 16).toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  if (!/^[A-Z0-9][A-Z0-9-]{3,15}$/.test(nextCode)) {
+    showToast('⚠️ Usá entre 4 y 16 letras, números o guiones.');
+    return;
+  }
+  const button = document.querySelector('.club-invite-editor-actions .btn-primary');
+  if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
+  try {
+    const freshClub = await updateClubInviteCode(nextCode);
+    state.currentClub = { ...state.currentClub, ...freshClub };
+    const known = state.clubs.find(club => club.id === freshClub.id);
+    if (known) Object.assign(known, freshClub);
+    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubInviteCode: nextCode });
+    clubInviteEditorOpen = false;
+    renderAdmin();
+    showToast('✅ Código actualizado. El anterior ya no permite ingresar.');
+  } catch (error) {
+    showToast(`❌ ${error.message || 'No se pudo cambiar el código.'}`);
+    if (button) { button.disabled = false; button.textContent = 'Guardar código'; }
   }
 }
 

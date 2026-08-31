@@ -44,6 +44,15 @@ async function saveClubBrand(name, crest) {
   return mapClubBrand(data, state.currentClub);
 }
 
+async function updateClubInviteCode(inviteCode) {
+  if (!state.currentClub?.id) throw new Error('No hay club seleccionado');
+  const data = await callRpc('fulbito_update_club_invite_code', {
+    p_club_id: state.currentClub.id,
+    p_invite_code: inviteCode
+  });
+  return mapClubBrand(data, state.currentClub);
+}
+
 async function loadClubs() {
   // Los demás clubes no se enumeran: se ingresa con código de invitación.
   const knownClubs = state.clubs.filter(club => club.id !== LEGACY_CLUB_ID);
