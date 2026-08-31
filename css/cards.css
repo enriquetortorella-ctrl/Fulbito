@@ -38,6 +38,14 @@
 .fifa-card.card-hot,#tab-jugadores .fifa-card.card-hot{background-image:url('../assets/cards/hot.webp')}
 .fifa-card.card-top-scorer,#tab-jugadores .fifa-card.card-top-scorer{background-image:url('../assets/cards/scorer.webp')}
 .fifa-card.card-mvp,#tab-jugadores .fifa-card.card-mvp{background-image:url('../assets/cards/mvp.webp')}
+/* Los tiers no pueden heredar el `background-size:auto` del diseño anterior.
+   Todos los marcos usan la misma escala, tanto en plantel como en el podio. */
+.fifa-card.gold,.fifa-card.silver,.fifa-card.bronze,.fifa-card.rare,
+.fifa-card.card-hot,.fifa-card.card-top-scorer,.fifa-card.card-mvp,
+#tab-jugadores .fifa-card.gold,#tab-jugadores .fifa-card.silver,#tab-jugadores .fifa-card.bronze,#tab-jugadores .fifa-card.rare,
+#tab-jugadores .fifa-card.card-hot,#tab-jugadores .fifa-card.card-top-scorer,#tab-jugadores .fifa-card.card-mvp{
+  background-position:center;background-size:contain;background-repeat:no-repeat;
+}
 
 /* El escudo ya trae su propio relieve: fuera las capas viejas */
 .fifa-card::before,#tab-jugadores .fifa-card::before,
