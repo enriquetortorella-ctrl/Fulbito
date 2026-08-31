@@ -1,7 +1,10 @@
 // MATCHDAY CENTRAL — portada operativa del club
 // ============================================================
 function hubTeamPlayers(m, index) {
-  return ((((m.teams || [])[index] || {}).players) || []).map(p => p.name).join(' · ') || 'Plantel por confirmar';
+  const players = ((((m.teams || [])[index] || {}).players) || []);
+  const names = players.map(p => escapeHtml(p.name)).join(' · ') || 'Plantel por confirmar';
+  const count = players.length;
+  return `<span class="hub-team-roster">${names}</span><span class="hub-team-count">👥 ${count} ${count === 1 ? 'jugador' : 'jugadores'}</span>`;
 }
 
 function hubResultText(m) {
