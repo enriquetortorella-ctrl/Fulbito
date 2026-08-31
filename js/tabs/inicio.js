@@ -41,20 +41,23 @@ function hubPodiumCard(label, item, value, unit, second, secondUnit, badge) {
 // Goleadores del partido que encabeza la planilla. El ranking acumulado vive
 // en Goles/Stats; acá cada número pertenece exclusivamente a este encuentro.
 function hubMatchScorersHTML(latest) {
-  const scorers = latest ? matchScorers(latest) : [];
-  if (!scorers.length) return `<div class="hub-empty-result">Este partido no tiene goles registrados todavía.</div>`;
-  const maxGoals = Math.max(...scorers.map(x => x.goals), 1);
-  const score = matchHasGoals(latest) ? matchScoreStr(latest) : '—';
-  const aName = latest?.teams?.[0] ? `Equipo ${TEAM_NAMES[0] || 1}` : 'Partido';
-  const bName = latest?.teams?.[1] ? `Equipo ${TEAM_NAMES[1] || 2}` : 'Cerrado';
-  return `<div class="hub-bars-matchline"><span>🔵 ${aName}</span><b>${score}</b><span>${bName} 🔴</span></div>
-  <div class="hub-scorer-bars">
-    ${scorers.map((scorer,i) => `<button class="hub-scorer-bar" onclick="openPlayerProfile('${scorer.id}')">
-      <span class="hub-scorer-rank">${i + 1}</span><span class="hub-scorer-name">${escapeHtml(scorer.name)}</span>
-      <span class="hub-scorer-track"><i style="width:${Math.max(14, Math.round(scorer.goals / maxGoals * 100))}%"></i></span>
-      <b>${scorer.goals}</b><small>${scorer.goals === 1 ? 'GOL DEL PARTIDO' : 'GOLES DEL PARTIDO'}</small>
-    </button>`).join('')}
-  </div>`;
+  if (!latest || !matchHasGoals(latest)) return `<div class="hub-empty-result">Este partido no tiene goles registrados todavía.</div>`;
+  const goals = getGoals(latest);
+  const teams = (latest.teams || []).slice(0, 2);
+  const sheets = teams.map((team, index) => {
+    const scorers = (team.players || []).map(player => ({
+      id: player.id,
+      name: player.name,
+      goals: Number(goals[player.id] || 0)
+    })).filter(player => player.goals > 0).sort((a,b) => b.goals - a.goals || a.name.localeCompare(b.name));
+    const accent = index === 0 ? 'team-a' : 'team-b';
+    const label = `EQUIPO ${TEAM_NAMES[index] || index + 1}`;
+    return `<section class="hub-team-goal-sheet ${accent}">
+      <div class="hub-team-goal-head"><span>${index === 0 ? '🔵' : '🔴'} ${label}</span><b>${teamGoals(latest, index)}</b><small>GOLES</small></div>
+      <div class="hub-team-goal-list">${scorers.length ? scorers.map(player => `<button class="hub-team-goal-row" onclick="openPlayerProfile('${player.id}')"><span>${escapeHtml(player.name)}</span><b>${player.goals}</b><i>⚽</i></button>`).join('') : '<div class="hub-team-goal-empty">Sin goleadores cargados</div>'}</div>
+    </section>`;
+  });
+  return `<div class="hub-team-goal-sheets">${sheets.join('')}</div>`;
 }
 
 // Última actividad — goles de los partidos más recientes
