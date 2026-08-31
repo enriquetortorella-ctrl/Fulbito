@@ -156,7 +156,7 @@ function renderHub() {
   const notgoing = state.players.filter(p => p.attendance === 'notgoing').length;
   const pending = Math.max(0, state.players.length - going - notgoing);
   const attendance = me?.attendance || null;
-  const attendanceState = attendance === 'going' ? 'ESTÁS ADENTRO' : attendance === 'notgoing' ? 'ESTA VEZ NO VAS' : '¿JUGÁS ESTE SÁBADO?';
+  const attendanceState = attendance === 'going' ? 'ESTÁS ADENTRO' : attendance === 'notgoing' ? 'ESTA VEZ NO VAS' : '¿JUGÁS EL PRÓXIMO PARTIDO?';
   const attendanceCopy = attendance === 'going'
     ? 'Perfecto. Ya te contamos para armar los equipos.'
     : attendance === 'notgoing'
