@@ -23,20 +23,7 @@ function showClubError(message, target = 'club-error') {
 function renderClubChooser() {
   const list = document.getElementById('club-list');
   if (!list) return;
-  const originalClub = state.clubs.find(club => club.id === LEGACY_CLUB_ID);
-  if (!originalClub) {
-    list.innerHTML = '<div class="club-empty">Ingresá el código de tu grupo o creá el primer club.</div>';
-    return;
-  }
-  list.innerHTML = `
-    <button class="club-card" type="button" data-club-id="${escapeHtml(originalClub.id)}">
-      <span class="club-card-crest">FC</span>
-      <span class="club-card-copy"><span class="club-card-name">${escapeHtml(originalClub.name)}</span><span class="club-card-meta">Club original</span></span>
-      <span class="club-card-arrow">›</span>
-    </button>`;
-  list.querySelectorAll('[data-club-id]').forEach(button => {
-    button.addEventListener('click', () => selectClub(button.dataset.clubId));
-  });
+  list.innerHTML = '<div class="club-empty">🔐 Los clubes no son públicos. Ingresá el código que te compartió un administrador.</div>';
 }
 
 async function refreshClubChooser() {
@@ -127,6 +114,9 @@ async function joinClubByCode() {
   }
   input.value = '';
   showClubError('');
+  const knownClub = state.clubs.find(item => item.id === club.id);
+  if (knownClub) Object.assign(knownClub, club);
+  else state.clubs.push(club);
   await selectClub(club.id);
 }
 

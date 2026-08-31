@@ -317,7 +317,8 @@ async function shareTeams() {
     return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : '—';
   }
 
-  let text = '⚽ FULBITO DEL SÁBADO ⚽\n';
+  const clubName = safePlainText(state.currentClub?.name, 50) || 'FULBITO';
+  let text = `⚽ ${clubName.toLocaleUpperCase('es-AR')} ⚽\n`;
   teams.forEach((t, i) => {
     text += `\n${TEAM_EMOJIS[i]||'⚪'} EQUIPO ${TEAM_NAMES[i]||i+1} (OVR ${teamOvr(t)})\n`;
     t.players.forEach(p => {

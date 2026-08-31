@@ -64,8 +64,14 @@ function renderClubIdentity() {
   if (!state.currentClub) return;
   const crest = document.getElementById('brand-crest');
   const caption = document.getElementById('club-caption');
+  const switcher = document.getElementById('topbar-club-switch');
   const imageUrl = safeClubCrestUrl(state.currentClub.crest);
   if (caption) caption.textContent = state.currentClub.name.toUpperCase();
+  if (switcher) {
+    const isSupport = !!state.currentUser?.supportMode;
+    switcher.textContent = isSupport ? '← Mi club' : `🏟️ ${state.currentClub.name}`;
+    switcher.title = isSupport ? 'Volver a mi club' : `Club: ${state.currentClub.name}`;
+  }
   if (!crest) return;
   crest.classList.toggle('has-custom-crest', !!imageUrl);
   crest.innerHTML = imageUrl

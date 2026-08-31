@@ -52,7 +52,7 @@ async function doRegister() {
 
   if (!name || !user || !pass) { errEl.textContent='Completá nombre, usuario y contraseña'; errEl.style.display='block'; return; }
   if (!regPosPrimary) { errEl.textContent='Elegí tu posición principal'; errEl.style.display='block'; return; }
-  const inviteCode = state.currentClub.inviteCode || (state.currentClub.id === LEGACY_CLUB_ID ? '__LEGACY_PUBLIC__' : '');
+  const inviteCode = safePlainText(state.currentClub.inviteCode, 24);
   if (!inviteCode) { errEl.textContent = 'Volvé a ingresar al club con el código de invitación.'; errEl.style.display = 'block'; return; }
   try {
     const data = await callRpc('fulbito_register_player', {

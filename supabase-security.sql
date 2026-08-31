@@ -208,8 +208,7 @@ begin
 
   select * into v_club
     from public.fulbito_clubs
-   where upper(invite_code) = upper(trim(p_invite_code))
-      or (id = 'club-fulbito-sabado' and p_invite_code = '__LEGACY_PUBLIC__');
+   where upper(invite_code) = upper(trim(p_invite_code));
 
   if not found then
     return null;
@@ -300,8 +299,7 @@ begin
 
   select * into v_club
     from public.fulbito_clubs
-   where upper(invite_code) = upper(trim(p_invite_code))
-      or (id = 'club-fulbito-sabado' and p_invite_code = '__LEGACY_PUBLIC__');
+   where upper(invite_code) = upper(trim(p_invite_code));
   if not found then
     raise exception 'Código de club inválido' using errcode = '42501';
   end if;
