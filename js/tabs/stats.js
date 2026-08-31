@@ -158,14 +158,14 @@ function playerPartnersHTML(ms, player) {
 }
 
 function renderStats() {
-  const el = document.getElementById('partidos-stats');
+  const el = document.getElementById('stats-content');
   const allPlayed = matches.filter(isPlayed);
 
   if (allPlayed.length < 2) {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">🧪</div>
       <div>Se necesitan al menos 2 partidos con resultado.</div>
-      <div style="font-size:12px;margin-top:6px">Acá van a aparecer goleadores, duplas, rivalidades y récords del grupo.</div>
+      <div style="font-size:12px;margin-top:6px">Acá van a aparecer duplas, rivalidades y récords del grupo.</div>
     </div>`;
     return;
   }
@@ -204,7 +204,6 @@ function renderStats() {
     html += playerPartnersHTML(ms, selectedPlayer);
   } else {
     html += panoramaHTML(ms, players);
-    html += goleadoresHTML(ms, players);
     html += factsHTML(ms, players);
     html += paternidadesHTML(ms);
     html += rendimientoHTML(ms, players);

@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="css/theme-aurora.css">
 <link rel="stylesheet" href="css/stats-matchcentre.css">
 <link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/leaderboards.css">
 <link rel="stylesheet" href="css/inicio-hero.css">
 <link rel="stylesheet" href="css/inicio-matchcentre.css">
 <link rel="stylesheet" href="css/inicio-podium.css">
@@ -216,6 +217,9 @@
     <div class="nav-tab" onclick="switchTab('equipos')"><span class="nav-tab-icon">🏆</span>Equipos</div>
     <div class="nav-tab" onclick="switchTab('goles')"><span class="nav-tab-icon">⚽</span>Goles</div>
     <div class="nav-tab" onclick="switchTab('partidos')"><span class="nav-tab-icon">📜</span>Partidos</div>
+    <div class="nav-tab" onclick="switchTab('goleadores')"><span class="nav-tab-icon">🥇</span>Goleadores</div>
+    <div class="nav-tab" onclick="switchTab('posiciones')"><span class="nav-tab-icon">🏅</span>Posiciones</div>
+    <div class="nav-tab" onclick="switchTab('stats')"><span class="nav-tab-icon">📊</span>Stats</div>
     <div class="nav-tab" id="admin-tab" onclick="switchTab('admin')" style="display:none"><span class="nav-tab-icon">⚙️</span>Admin</div>
   </div>
 
@@ -343,14 +347,22 @@
 
   <!-- TAB: PARTIDOS -->
   <div class="tab-content" id="tab-partidos" style="padding:16px">
-    <div class="sub-toggle">
-      <div class="sub-toggle-btn active" id="pv-historial" onclick="switchPartidosView('historial')">📜 HISTORIAL</div>
-      <div class="sub-toggle-btn" id="pv-ranking" onclick="switchPartidosView('ranking')">🏅 RANKING</div>
-      <div class="sub-toggle-btn" id="pv-stats" onclick="switchPartidosView('stats')">🧪 STATS</div>
-    </div>
     <div id="partidos-historial"></div>
-    <div id="partidos-ranking" class="hidden"></div>
-    <div id="partidos-stats" class="hidden"></div>
+  </div>
+
+  <!-- TAB: GOLEADORES -->
+  <div class="tab-content" id="tab-goleadores" style="padding:16px">
+    <div id="goleadores-content"></div>
+  </div>
+
+  <!-- TAB: POSICIONES -->
+  <div class="tab-content" id="tab-posiciones" style="padding:16px">
+    <div id="posiciones-content"></div>
+  </div>
+
+  <!-- TAB: STATS -->
+  <div class="tab-content" id="tab-stats" style="padding:16px">
+    <div id="stats-content"></div>
   </div>
 
   <!-- TAB: ADMIN -->
@@ -442,6 +454,7 @@
 <script src="js/tabs/goles.js"></script>
 <script src="js/tabs/partidos.js"></script>
 <script src="js/tabs/stats.js"></script>
+<script src="js/tabs/goleadores.js"></script>
 <script src="js/tabs/admin.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/boot.js"></script>

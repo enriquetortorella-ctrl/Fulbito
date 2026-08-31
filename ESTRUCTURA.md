@@ -10,7 +10,7 @@ la topbar, las nav-tabs, los contenedores vacíos de cada pestaña y los `<scrip
 
 ---
 
-## CSS — `css/` (16 archivos)
+## CSS — `css/` (17 archivos)
 
 El orden de los `<link>` reproduce la cascada original. `theme-aurora.css` pisa
 reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
@@ -26,7 +26,8 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 | `asistencia.css` | Pestaña Asistencia |
 | `calificar.css` | Pestaña Calificar |
 | `equipos.css` | Armado de equipos |
-| `partidos.css` | Historial + ranking |
+| `partidos.css` | Historial de partidos |
+| `leaderboards.css` | Pestañas Goleadores y Posiciones: podios y tablas |
 | `admin.css` | Panel admin + formulario de registro |
 | `goles.css` | Planilla de goles en vivo |
 | `stats.css` | Stats ampliadas + paternidades |
@@ -35,7 +36,7 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 | `theme-aurora.css` | Glassmorphism, Aurora Stadium, Command Deck, Colección |
 | `stats-matchcentre.css` | Goleadores / Match Centre |
 
-## JS — `js/` (21 archivos)
+## JS — `js/` (22 archivos)
 
 **Núcleo** (carga primero, en este orden):
 
@@ -54,7 +55,7 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 
 **Pestañas** — `js/tabs/`. Una por pestaña; acá es donde vas a trabajar:
 
-`inicio-podium.js` · `inicio.js` · `jugadores.js` · `asistencia.js` · `calificar.js` · `equipos.js` · `goles.js` · `partidos.js` · `stats.js` · `admin.js`
+`inicio-podium.js` · `inicio.js` · `jugadores.js` · `asistencia.js` · `calificar.js` · `equipos.js` · `goles.js` · `partidos.js` · `stats.js` · `goleadores.js` · `admin.js`
 
 `inicio-podium.js` concentra las reglas del podio (MVP más reciente, goleador y racha sin repetir jugadores). `inicio.js` conserva el armado general de la pantalla.
 

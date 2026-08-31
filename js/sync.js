@@ -17,6 +17,9 @@ async function startSync() {
     if (tabName==='asistencia') renderAttendance();
     if (tabName==='admin') renderAdmin();
     if (tabName==='partidos') renderPartidos();
+    if (tabName==='goleadores') renderGoleadoresTab();
+    if (tabName==='posiciones') renderRanking();
+    if (tabName==='stats') renderStats();
     if (tabName==='goles') renderGoles();
     const dot = document.getElementById('conn-dot');
     if (dot) dot.textContent = '🟢';

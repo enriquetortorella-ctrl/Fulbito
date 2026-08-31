@@ -1,6 +1,6 @@
 // SCREENS & TABS
 // ============================================================
-const TAB_ORDER = ['inicio','jugadores','asistencia','calificar','equipos','goles','partidos','admin'];
+const TAB_ORDER = ['inicio','jugadores','asistencia','calificar','equipos','goles','partidos','goleadores','posiciones','stats','admin'];
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -41,6 +41,9 @@ function showApp() {
     renderHub();
     const tab = getActiveTabName();
     if (tab === 'partidos') renderPartidos();
+    if (tab === 'goleadores') renderGoleadoresTab();
+    if (tab === 'posiciones') renderRanking();
+    if (tab === 'stats') renderStats();
     if (tab === 'goles') renderGoles();
   });
   renderAll();
@@ -64,6 +67,9 @@ function switchTab(name) {
   if(name==='equipos') renderTeamsTab();
   if(name==='goles') renderGoles();
   if(name==='partidos') renderPartidos();
+  if(name==='goleadores') renderGoleadoresTab();
+  if(name==='posiciones') renderRanking();
+  if(name==='stats') renderStats();
   if(name==='admin') renderAdmin();
 }
 

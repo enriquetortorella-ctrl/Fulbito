@@ -1,20 +1,7 @@
-// PARTIDOS — historial + ranking
+// PARTIDOS — historial. Posiciones vive en su pestaña propia.
 // ============================================================
-let partidosView = 'historial';
-
-function switchPartidosView(view) {
-  partidosView = view;
-  ['historial','ranking','stats'].forEach(v => {
-    document.getElementById('pv-'+v).classList.toggle('active', view===v);
-    document.getElementById('partidos-'+v).classList.toggle('hidden', view!==v);
-  });
-  renderPartidos();
-}
-
 function renderPartidos() {
-  if (partidosView === 'historial') renderHistorial();
-  else if (partidosView === 'ranking') renderRanking();
-  else renderStats();
+  renderHistorial();
 }
 
 function marginLabel(margin) {
@@ -336,7 +323,7 @@ let rankingYear = 'all';
 function setRankingYear(y) { rankingYear = y; renderRanking(); }
 
 function renderRanking() {
-  const el = document.getElementById('partidos-ranking');
+  const el = document.getElementById('posiciones-content');
 
   const years = [...new Set(
     matches.filter(isPlayed).map(m => (m.match_date||'').slice(0,4)).filter(Boolean)
@@ -345,7 +332,7 @@ function renderRanking() {
 
   let yearFilterHTML = '';
   if (years.length > 1) {
-    yearFilterHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+    yearFilterHTML = `<div class="period-bar leaderboard-periods">
       <button class="btn btn-sm ${rankingYear==='all'?'btn-primary':'btn-ghost'}" onclick="setRankingYear('all')">🏛️ Histórico</button>
       ${years.map(y=>`<button class="btn btn-sm ${rankingYear===y?'btn-primary':'btn-ghost'}" onclick="setRankingYear('${y}')">${y}</button>`).join('')}
     </div>`;
@@ -367,9 +354,18 @@ function renderRanking() {
   }
 
   const medals = ['🥇','🥈','🥉'];
+  const leader = ranked[0];
+  const runner = ranked[1] || null;
+  const highlights = typeof leaderboardHighlights === 'function' ? leaderboardHighlights() : null;
 
-  let html = yearFilterHTML;
-  html += `<div class="rank-header">
+  let html = `${yearFilterHTML}<section class="leaderboard-page positions-page">
+    <header class="leaderboard-page-head"><div><span>TABLA GENERAL</span><h2>POSICIONES</h2><p>Victoria = 3 puntos · Empate = 1 punto</p></div><div class="leaderboard-page-total"><b>${leader.pts}</b><span>Puntos del líder</span></div></header>
+    <div class="leaderboard-podium positions-podium">
+      ${typeof leaderboardCard === 'function' ? leaderboardCard(leader, '1°', 'LÍDER DE LA TABLA', leader.pts, 'PUNTOS', `${leader.w}V · ${leader.d}E · ${leader.l}D · ${leader.pj} PJ`, highlights, 'is-champion') : ''}
+      ${runner && typeof leaderboardCard === 'function' ? leaderboardCard(runner, '2°', 'SEGUNDO PUESTO', runner.pts, 'PUNTOS', `${runner.w}V · ${runner.d}E · ${runner.l}D · ${runner.pj} PJ`, highlights, 'is-runner') : ''}
+    </div>
+    <div class="positions-table-title">Tabla de puntos</div>
+    <div class="rank-header">
     <div style="width:30px;text-align:center">#</div>
     <div style="flex:1">Jugador</div>
     <div class="rank-cells">
@@ -379,7 +375,7 @@ function renderRanking() {
       <div class="rank-cell">D</div>
     </div>
     <div style="width:44px;text-align:center">Pts</div>
-  </div>`;
+    </div>`;
 
   html += ranked.map((r, i) => {
     const posLabel = medals[i] || (i+1);
@@ -409,7 +405,7 @@ function renderRanking() {
     </div>`;
   }).join('');
 
-  html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">Victoria = 3 pts · Empate = 1 pt · ⭐ = veces MVP · ⚽ = goles · Cuadraditos = últimos 5 partidos<br>Los invitados no suman al ranking</div>`;
+  html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">Victoria = 3 pts · Empate = 1 pt · ⭐ = veces MVP · ⚽ = goles · Cuadraditos = últimos 5 partidos<br>Los invitados no suman al ranking</div></section>`;
 
   el.innerHTML = html;
 }
