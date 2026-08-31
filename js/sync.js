@@ -13,7 +13,7 @@ async function startSync() {
     matches = freshMatches;
     if (freshClub && (freshClub.name !== state.currentClub.name || freshClub.crest !== state.currentClub.crest)) {
       state.currentClub = { ...state.currentClub, ...freshClub };
-      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null });
+      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
       renderClubIdentity();
     }
     const tabName = getActiveTabName();

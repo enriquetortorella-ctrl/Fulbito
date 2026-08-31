@@ -1,7 +1,7 @@
 // STORAGE — Supabase compartido
 // ============================================================
 const LEGACY_CLUB_ID = 'club-fulbito-sabado';
-const LEGACY_CLUB = { id: LEGACY_CLUB_ID, name: 'Fulbito del Sábado', crest: null };
+const LEGACY_CLUB = { id: LEGACY_CLUB_ID, name: 'Fulbito del Sábado', crest: null, inviteCode: 'SABADO' };
 
 function safeClubCrestUrl(value) {
   const src = String(value || '');
@@ -18,7 +18,8 @@ function mapClubBrand(data, fallback = {}) {
     ...fallback,
     id: String(data?.id || fallback.id || ''),
     name: safePlainText(data?.name || fallback.name || 'Mi club', 50) || 'Mi club',
-    crest: safeClubCrestUrl(data?.crest || fallback.crest)
+    crest: safeClubCrestUrl(data?.crest || fallback.crest),
+    inviteCode: data?.invite_code ? safePlainText(data.invite_code, 24) : (fallback.inviteCode || null)
   };
 }
 

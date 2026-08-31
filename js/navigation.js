@@ -41,9 +41,10 @@ function showApp() {
     if (!freshClub || !state.currentClub || freshClub.id !== state.currentClub.id) return;
     if (freshClub.name === state.currentClub.name && freshClub.crest === state.currentClub.crest) return;
     state.currentClub = { ...state.currentClub, ...freshClub };
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
     renderClubIdentity();
     renderHub();
+    if (getActiveTabName() === 'admin') renderAdmin();
   });
   loadMatches().then(m => {
     matches = m;

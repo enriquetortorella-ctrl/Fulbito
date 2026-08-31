@@ -36,7 +36,12 @@ begin
   if not found then
     raise exception 'Club no encontrado' using errcode = '22023';
   end if;
-  return jsonb_build_object('id', v_club.id, 'name', v_club.name, 'crest', v_club.crest);
+  return jsonb_build_object(
+    'id', v_club.id,
+    'name', v_club.name,
+    'crest', v_club.crest,
+    'invite_code', case when public.fulbito_is_admin(p_club_id) then v_club.invite_code else null end
+  );
 end;
 $$;
 

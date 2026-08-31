@@ -161,7 +161,7 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
       const mapped = mapPlayers([player])[0];
       state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, isPlatformAdmin: !!player.is_platform_admin, clubId: club.id };
       state.players = await loadPlayers(club.id);
-      SESSION.set({ ...state.currentUser, clubName: club.name, clubCrest: club.crest || null });
+      SESSION.set({ ...state.currentUser, clubName: club.name, clubCrest: club.crest || null, clubInviteCode: mapped.isAdmin ? club.inviteCode || null : null });
       showApp();
       return;
     }
@@ -180,7 +180,7 @@ async function init() {
   const sess = SESSION.get();
   const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
   if (sess && clubId !== LEGACY_CLUB_ID && sess.clubName && !state.clubs.some(club => club.id === clubId)) {
-    state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest) });
+    state.clubs.push({ id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest), inviteCode: safePlainText(sess.clubInviteCode, 24) || null });
   }
   if (sess && state.clubs.some(club => club.id === clubId)) {
     await selectClub(clubId, { restoreSession: true });

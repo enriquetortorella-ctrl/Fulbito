@@ -14,9 +14,10 @@ function renderAdmin() {
   if (clubInfo && state.currentClub) {
     clubBrandDraftCrest = undefined;
     const isSupport = !!state.currentUser?.supportMode;
+    const inviteCode = safePlainText(state.currentClub.inviteCode, 24);
     const invite = isSupport ? `
       <div class="club-brand-note is-support">🛡️ Modo soporte maestro · código de invitación oculto</div>` : `
-      <div class="club-brand-invite"><div><b>Código de invitación</b><span>Compartilo para que entren al grupo.</span></div><button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()">${escapeHtml(state.currentClub.inviteCode || '')}</button></div>`;
+      <div class="club-brand-invite"><div><b>Código de invitación</b><span>Compartilo para que entren al grupo.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Cargando…')}</code><button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()" ${inviteCode ? '' : 'disabled'}>📋 Copiar</button></div></div>`;
     clubInfo.innerHTML = `
       <div class="club-brand-editor">
         <div class="club-brand-preview" id="club-brand-preview">${clubBrandPreviewHTML(state.currentClub.crest, state.currentClub.name)}</div>
@@ -126,7 +127,7 @@ async function saveClubIdentity() {
     state.currentClub = { ...state.currentClub, ...freshClub };
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
     renderClubIdentity();
     renderHub();
     renderAdmin();
@@ -138,13 +139,28 @@ async function saveClubIdentity() {
 }
 
 async function copyClubInviteCode() {
-  const code = state.currentClub?.inviteCode;
-  if (!code) return;
+  let code = state.currentClub?.inviteCode;
+  if (!code) {
+    const freshClub = await loadClubBrand();
+    if (!freshClub?.inviteCode) { showToast('⚠️ No pudimos recuperar el código. Actualizá la pantalla.'); return; }
+    state.currentClub = { ...state.currentClub, ...freshClub };
+    code = freshClub.inviteCode;
+    renderAdmin();
+  }
   try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard API no disponible');
     await navigator.clipboard.writeText(code);
     showToast(`✅ Código ${code} copiado`);
   } catch {
-    showToast(`Código del club: ${code}`, 4000);
+    const fallback = document.createElement('textarea');
+    fallback.value = code;
+    fallback.setAttribute('readonly', '');
+    fallback.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(fallback);
+    fallback.select();
+    const copied = document.execCommand('copy');
+    fallback.remove();
+    showToast(copied ? `✅ Código ${code} copiado` : `Código del club: ${code}`, 4000);
   }
 }
 
