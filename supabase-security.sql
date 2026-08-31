@@ -792,6 +792,54 @@ begin
 end;
 $$;
 
+-- Borrado total reservado exclusivamente al administrador maestro. Protege el
+-- club que sostiene su propio acceso para no dejar a la plataforma sin soporte.
+create or replace function public.fulbito_platform_delete_club(p_club_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_club public.fulbito_clubs%rowtype;
+  v_players_deleted integer := 0;
+  v_matches_deleted integer := 0;
+begin
+  if not public.fulbito_is_platform_admin() then
+    raise exception 'Solo el administrador maestro puede eliminar clubes' using errcode = '42501';
+  end if;
+
+  select * into v_club from public.fulbito_clubs where id = p_club_id;
+  if not found then
+    raise exception 'Club no encontrado' using errcode = '22023';
+  end if;
+
+  if exists (
+    select 1
+      from public.fulbito_platform_master pm
+      join public.fulbito_players p on p.id = pm.player_id
+     where p.club_id = p_club_id
+  ) then
+    raise exception 'No se puede eliminar el club que contiene al administrador maestro' using errcode = '22023';
+  end if;
+
+  delete from public.fulbito_matches where club_id = p_club_id;
+  get diagnostics v_matches_deleted = row_count;
+
+  delete from public.fulbito_players where club_id = p_club_id;
+  get diagnostics v_players_deleted = row_count;
+
+  delete from public.fulbito_clubs where id = p_club_id;
+
+  return jsonb_build_object(
+    'club_id', p_club_id,
+    'club_name', v_club.name,
+    'players_deleted', v_players_deleted,
+    'matches_deleted', v_matches_deleted
+  );
+end;
+$$;
+
 -- Planilla colaborativa: cualquier integrante autenticado puede sumar o restar
 -- un gol de un partido existente. No puede alterar planteles, fecha, ganador,
 -- MVP ni crear/eliminar partidos. El bloqueo de fila vuelve atómico cada toque
@@ -978,6 +1026,7 @@ revoke all on function public.fulbito_set_admin(text, text, boolean) from public
 revoke all on function public.fulbito_admin_reset_player(text, text) from public;
 revoke all on function public.fulbito_admin_set_player_password(text, text, text) from public;
 revoke all on function public.fulbito_delete_player(text, text) from public;
+revoke all on function public.fulbito_platform_delete_club(text) from public;
 revoke all on function public.fulbito_record_goal(text, text, text, integer) from public;
 revoke all on function public.fulbito_upsert_match(text, jsonb) from public;
 revoke all on function public.fulbito_delete_match(text, text) from public;
@@ -1002,6 +1051,7 @@ grant execute on function public.fulbito_set_admin(text, text, boolean) to authe
 grant execute on function public.fulbito_admin_reset_player(text, text) to authenticated;
 grant execute on function public.fulbito_admin_set_player_password(text, text, text) to authenticated;
 grant execute on function public.fulbito_delete_player(text, text) to authenticated;
+grant execute on function public.fulbito_platform_delete_club(text) to authenticated;
 grant execute on function public.fulbito_record_goal(text, text, text, integer) to authenticated;
 grant execute on function public.fulbito_upsert_match(text, jsonb) to authenticated;
 grant execute on function public.fulbito_delete_match(text, text) to authenticated;

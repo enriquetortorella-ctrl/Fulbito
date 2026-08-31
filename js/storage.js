@@ -161,6 +161,10 @@ async function deletePlayer(id) {
   return true;
 }
 
+async function deletePlatformClub(clubId) {
+  return callRpc('fulbito_platform_delete_club', { p_club_id: clubId });
+}
+
 async function adminSetPlayerPassword(id, newPassword) {
   if (!state.currentClub?.id) return;
   await callRpc('fulbito_admin_set_player_password', {

@@ -13,14 +13,38 @@ async function openPlatformAdmin() {
         <b style="color:var(--gold)">Acceso maestro</b> · Elegí un club para asistirlo. Podés administrar plantel, asistencia y partidos; las votaciones quedan bloqueadas para preservar la autoría de cada jugador.
       </div>
       <div style="display:grid;gap:9px;max-height:50vh;overflow:auto;padding-right:3px">
-        ${state.platformClubs.map(club => `<button class="club-card" type="button" onclick="enterSupportClub('${safePlainText(club.id, 90)}')" style="width:100%;text-align:left">
-          <span class="club-card-crest">${escapeHtml((club.name || 'FC').slice(0,2).toUpperCase())}</span>
-          <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">${Number(club.players_count)||0} jugadores · ${Number(club.admins_count)||0} admin${Number(club.admins_count)===1?'':'s'} · código ${escapeHtml(club.invite_code || '—')}</span></span>
-          <span class="club-card-arrow">›</span>
-        </button>`).join('') || '<div class="empty-state">No hay clubes para mostrar.</div>'}
+        ${state.platformClubs.map(club => `<div class="club-card" style="width:100%;display:flex;align-items:center;gap:10px">
+          <button type="button" onclick="enterSupportClub('${safePlainText(club.id, 90)}')" style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer">
+            <span class="club-card-crest">${escapeHtml((club.name || 'FC').slice(0,2).toUpperCase())}</span>
+            <span class="club-card-copy"><span class="club-card-name">${escapeHtml(club.name)}</span><span class="club-card-meta">${Number(club.players_count)||0} jugadores · ${Number(club.admins_count)||0} admin${Number(club.admins_count)===1?'':'s'} · código ${escapeHtml(club.invite_code || '—')}</span></span>
+            <span class="club-card-arrow">›</span>
+          </button>
+          <button class="btn btn-danger btn-sm" type="button" title="Eliminar club completo" onclick="removePlatformClub('${safePlainText(club.id, 90)}')">🗑️</button>
+        </div>`).join('') || '<div class="empty-state">No hay clubes para mostrar.</div>'}
       </div>`;
   } catch (error) {
     root.innerHTML = `<div class="empty-state">No se pudo abrir el centro de soporte: ${escapeHtml(error.message || 'sin acceso')}</div>`;
+  }
+}
+
+async function removePlatformClub(clubId) {
+  if (!state.currentUser?.isPlatformAdmin) return;
+  const club = state.platformClubs.find(item => item.id === clubId);
+  if (!club) { showToast('❌ No encontramos ese club'); return; }
+  const summary = `${Number(club.players_count)||0} jugador${Number(club.players_count)===1?'':'es'} y todos sus partidos serán eliminados.`;
+  if (!await confirmAppAction({
+    title: 'ELIMINAR CLUB COMPLETO',
+    message: `Vas a eliminar “${club.name}”. ${summary}\n\nEsta acción no se puede deshacer.`,
+    confirmText: 'Sí, eliminar club',
+    danger: true
+  })) return;
+  try {
+    await deletePlatformClub(clubId);
+    state.platformClubs = state.platformClubs.filter(item => item.id !== clubId);
+    showToast(`🗑️ Club “${club.name}” eliminado`);
+    await openPlatformAdmin();
+  } catch (error) {
+    showToast(`❌ ${error.message || 'No se pudo eliminar el club.'}`);
   }
 }
 
