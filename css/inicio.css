@@ -119,3 +119,10 @@
 @media (max-width:640px){
   .hub-hero{padding:18px 16px}.hub-hero h1{font-size:39px}.hub-attendance{min-width:0}.hub-command-grid{gap:12px}.hub-matchcentre-lower{grid-template-columns:1fr}.hub-matchcentre-activity{border-left:0;border-top:1px solid rgba(191,219,243,.14)}.hub-live-cards{gap:0;padding:9px 4px 8px}.hub-live-card-frame{width:min(100%,102px)}.hub-live-card.is-scorer .hub-live-card-frame{width:min(100%,119px)}.hub-live-card-label{font-size:6px}.hub-live-card-metric b{font-size:15px}.hub-live-card.is-scorer .hub-live-card-metric b{font-size:18px}
 }
+
+/* Podio compacto: tres cartas siempre completas dentro de su módulo. */
+.hub-live-cards{grid-template-columns:minmax(0,.88fr) minmax(0,1.24fr) minmax(0,.88fr);gap:0;overflow:hidden}
+.hub-live-card{width:100%;overflow:hidden}.hub-live-card-frame{width:min(92%,104px);max-width:104px}.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame{width:min(94%,124px);max-width:124px}
+.hub-live-card.is-mvp{z-index:2}.hub-live-card.is-mvp .hub-live-card-label{color:#fff0a4;text-shadow:0 0 9px rgba(255,210,83,.42)}.hub-live-card.is-mvp .hub-live-card-metric b{font-size:23px;color:#ffe89a}.hub-live-card.is-streak .hub-live-card-metric b{color:#d9f47f}
+@media (max-width:920px){.hub-live-card-frame{width:min(92%,118px);max-width:118px}.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame{width:min(94%,139px);max-width:139px}}
+@media (max-width:640px){.hub-live-card-frame{width:min(94%,88px);max-width:88px}.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame{width:min(96%,104px);max-width:104px}.hub-live-card.is-mvp .hub-live-card-metric b{font-size:20px}}

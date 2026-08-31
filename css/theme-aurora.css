@@ -372,6 +372,28 @@ html,body{max-width:100%;overflow-x:clip}
 #tab-jugadores .roster-grid-head::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,rgba(88,215,255,.72),rgba(88,215,255,.08) 42%,transparent 78%);box-shadow:0 0 12px rgba(88,215,255,.35)}
 #tab-jugadores .roster-eyebrow{color:#d6f47b;text-shadow:0 0 10px rgba(190,255,102,.25)}
 #tab-jugadores .roster-grid-head h2{color:#f7fbff;text-shadow:0 2px 0 #02070b,0 0 18px rgba(113,211,255,.18)}
+
+/* ===== MATCHDAY STADIUM BACKDROP ====================================
+   El estadio vive en el fondo del producto, no dentro de una tarjeta:
+   luces laterales, gradas sutiles y césped lejano sin tapar datos. */
+body{
+  background:
+    radial-gradient(ellipse 25% 64% at -7% 43%,rgba(68,190,255,.44) 0%,rgba(42,138,234,.17) 30%,transparent 67%),
+    radial-gradient(ellipse 25% 64% at 107% 43%,rgba(97,255,175,.29) 0%,rgba(55,159,105,.13) 31%,transparent 67%),
+    radial-gradient(ellipse 56% 24% at 50% 100%,rgba(38,132,89,.18),transparent 72%),
+    repeating-linear-gradient(172deg,transparent 0 22px,rgba(147,201,246,.026) 23px 24px,transparent 25px 46px),
+    linear-gradient(180deg,#081528 0%,#030914 46%,#050711 100%);
+  background-attachment:fixed;
+}
+body::before{
+  opacity:.62;
+  background:
+    linear-gradient(104deg,transparent 0 3%,rgba(190,239,255,.22) 11%,rgba(92,202,255,.08) 16%,transparent 28%),
+    linear-gradient(76deg,transparent 72%,rgba(221,255,184,.17) 84%,rgba(96,255,176,.06) 90%,transparent 100%),
+    repeating-linear-gradient(180deg,rgba(255,255,255,.028) 0 1px,transparent 1px 7px);
+  background-size:100% 100%,100% 100%,100% 210px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.96),transparent 94%);
+}
 #tab-jugadores .players-grid{grid-template-columns:repeat(auto-fit,minmax(220px,260px));justify-content:center;gap:28px 20px;max-width:1240px;margin:0 auto}
 @media (max-width:640px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,260px));gap:26px 16px}}
 @media (max-width:500px){#tab-jugadores .players-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}}

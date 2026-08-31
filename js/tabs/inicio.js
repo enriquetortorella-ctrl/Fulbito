@@ -178,15 +178,28 @@ function renderHub() {
   const latest = played[0] || null;
   const openMatch = hubOpenMatch();
   const rows = state.players.map(p => ({ p, rec: getPlayerRecord(p.id), ovr: getOverall(p) || 60 }));
-  const hubMinGpp = goalAverageMinimum(played);
-  const byGoals = rows.slice().filter(x => x.rec.goals > 0).sort((a,b) => b.rec.goals - a.rec.goals || a.p.name.localeCompare(b.p.name))[0];
-  const byAverage = rows.slice().filter(x => x.rec.goalPj >= hubMinGpp && x.rec.goals > 0).sort((a,b) => (b.rec.goals / b.rec.goalPj) - (a.rec.goals / a.rec.goalPj) || b.rec.goals - a.rec.goals)[0];
-  const byGames = rows.slice().filter(x => x.rec.pj > 0).sort((a,b) => b.rec.pj - a.rec.pj || b.rec.pts - a.rec.pts)[0];
-  const byOverall = rows.slice().sort((a,b) => b.ovr - a.ovr || a.p.name.localeCompare(b.p.name))[0];
   const cardHighlights = typeof getCardHighlights === 'function'
     ? getCardHighlights(rows)
     : { topScorerIds: new Set(), latestMvpId: null, forms: new Map() };
   const greeting = (me?.name || 'equipo').split(' ')[0];
+
+  // El podio del inicio no repite jugadores: la figura central es el MVP
+  // más reciente; a los costados quedan el goleador y la mejor racha histórica.
+  const latestMvpMatch = played.find(m => m.result?.mvp) || null;
+  const latestMvp = latestMvpMatch
+    ? rows.find(x => x.p.id === latestMvpMatch.result.mvp) || null
+    : rows.slice().filter(x => x.rec.mvps > 0).sort((a,b) => b.rec.mvps - a.rec.mvps || b.ovr - a.ovr)[0] || null;
+  const podiumUsed = new Set(latestMvp?.p?.id ? [latestMvp.p.id] : []);
+  const podiumScorer = rows.slice()
+    .filter(x => x.rec.goals > 0 && !podiumUsed.has(x.p.id))
+    .sort((a,b) => b.rec.goals - a.rec.goals || b.rec.goalPj - a.rec.goalPj || a.p.name.localeCompare(b.p.name))[0] || null;
+  if (podiumScorer?.p?.id) podiumUsed.add(podiumScorer.p.id);
+  const streakRows = rows.map(x => ({ ...x, streak: getMaxWinStreak(x.p.id) }));
+  const podiumStreak = streakRows
+    .filter(x => x.streak > 0 && !podiumUsed.has(x.p.id))
+    .sort((a,b) => b.streak - a.streak || b.rec.w - a.rec.w || b.rec.mvps - a.rec.mvps)[0]
+    || rows.slice().filter(x => x.rec.mvps > 0 && !podiumUsed.has(x.p.id)).sort((a,b) => b.rec.mvps - a.rec.mvps)[0]
+    || null;
 
   let lastMatchHTML = `<div class="hub-empty-result">Todavía no hay un resultado cerrado. Cuando se juegue el primero, este espacio va a guardar la historia del club.</div>`;
   if (latest) {
@@ -228,9 +241,9 @@ function renderHub() {
       <aside class="hub-live-podium">
         <div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div>
         <div class="hub-live-cards">
-          ${hubLiveCard('MEJOR PROMEDIO', byAverage, byAverage ? (byAverage.rec.goals / byAverage.rec.goalPj).toFixed(2) : '—', 'G/PJ', 'is-average', cardHighlights)}
-          ${hubLiveCard('GOLEADOR', byGoals, byGoals ? byGoals.rec.goals : '—', 'GOLES', 'is-scorer', cardHighlights)}
-          ${hubLiveCard('MÁS PRESENTE', byGames, byGames ? byGames.rec.pj : '—', 'PJ', 'is-games', cardHighlights)}
+          ${hubLiveCard('MÁXIMO GOLEADOR', podiumScorer, podiumScorer ? podiumScorer.rec.goals : '—', 'GOLES', 'is-scorer', cardHighlights)}
+          ${hubLiveCard('ÚLTIMO MVP', latestMvp, latestMvp ? '★' : '—', latestMvp ? 'FIGURA' : 'SIN DATOS', 'is-mvp', cardHighlights)}
+          ${hubLiveCard(podiumStreak?.streak ? 'MEJOR RACHA' : 'MÁS MVP', podiumStreak, podiumStreak ? (podiumStreak.streak || podiumStreak.rec.mvps) : '—', podiumStreak?.streak ? 'VICTORIAS' : 'MVP', 'is-streak', cardHighlights)}
         </div>
       </aside>
     </section>
