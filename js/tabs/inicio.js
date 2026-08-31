@@ -83,6 +83,19 @@ function hubLeaderRow(icon, label, item, value, meta) {
   </div>`;
 }
 
+// Podio del inicio: usa exactamente las cartas reales del plantel.
+// Así conserva foto, OVR, racha, MVP y goleador sin duplicar reglas visuales.
+function hubLiveCard(label, item, value, unit, tone, highlights) {
+  if (!item?.p || typeof renderFifaCard !== 'function') {
+    return hubPodiumCard(label, item, value, unit);
+  }
+  return `<article class="hub-live-card ${tone}">
+    <div class="hub-live-card-label">${label}</div>
+    <div class="hub-live-card-frame">${renderFifaCard(item.p, highlights)}</div>
+    <div class="hub-live-card-metric"><b>${value}</b><span>${unit}</span></div>
+  </article>`;
+}
+
 function hubDateISO(m) {
   return m?.match_date || (m?.created_at || '').slice(0,10);
 }
@@ -170,6 +183,9 @@ function renderHub() {
   const byAverage = rows.slice().filter(x => x.rec.goalPj >= hubMinGpp && x.rec.goals > 0).sort((a,b) => (b.rec.goals / b.rec.goalPj) - (a.rec.goals / a.rec.goalPj) || b.rec.goals - a.rec.goals)[0];
   const byGames = rows.slice().filter(x => x.rec.pj > 0).sort((a,b) => b.rec.pj - a.rec.pj || b.rec.pts - a.rec.pts)[0];
   const byOverall = rows.slice().sort((a,b) => b.ovr - a.ovr || a.p.name.localeCompare(b.p.name))[0];
+  const cardHighlights = typeof getCardHighlights === 'function'
+    ? getCardHighlights(rows)
+    : { topScorerIds: new Set(), latestMvpId: null, forms: new Map() };
   const greeting = (me?.name || 'equipo').split(' ')[0];
 
   let lastMatchHTML = `<div class="hub-empty-result">Todavía no hay un resultado cerrado. Cuando se juegue el primero, este espacio va a guardar la historia del club.</div>`;
@@ -199,21 +215,24 @@ function renderHub() {
       <aside class="hub-attendance"><div class="hub-attendance-top"><div><div class="hub-panel-label">TU DISPONIBILIDAD</div><div class="hub-attendance-state ${attendance ? `is-${attendance}` : ''}">${attendanceState}</div><div class="hub-attendance-copy">${attendanceCopy}</div></div><div style="font-size:22px">${attendance === 'going' ? '✅' : attendance === 'notgoing' ? '❌' : '⚽'}</div></div><div class="hub-choice-row"><button class="hub-choice going${attendance === 'going' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','going')">✅ VOY</button><button class="hub-choice notgoing${attendance === 'notgoing' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','notgoing')">❌ NO VOY</button></div><div class="hub-attendance-meter"><div class="going"><b>${going}</b><span>Van</span></div><div class="no"><b>${notgoing}</b><span>No van</span></div><div><b>${pending}</b><span>Faltan</span></div></div></aside>
     </section>
     ${fixtureHTML}
-    <section class="hub-panel hub-lastmatch-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">ARCHIVO DEL CLUB</div><div class="hub-panel-title">ÚLTIMO PARTIDO</div></div><span class="chip">${played.length} jugado${played.length === 1 ? '' : 's'}</span></div>${lastMatchHTML}</section>
+    <section class="hub-command-grid">
+      <section class="hub-panel hub-matchcentre">
+        <div class="hub-panel-head"><div><div class="hub-panel-kicker">ARCHIVO DEL CLUB</div><div class="hub-panel-title">ÚLTIMO PARTIDO</div></div><span class="chip">${played.length} jugado${played.length === 1 ? '' : 's'}</span></div>
+        ${lastMatchHTML}
+        <div class="hub-matchcentre-lower">
+          <section class="hub-matchcentre-scorers"><div class="hub-subhead"><span>⚽</span><b>GOLEADORES</b><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubScorersHTML(rows)}</section>
+          <aside class="hub-matchcentre-activity"><div class="hub-subhead"><span>◉</span><b>ÚLTIMA ACTIVIDAD</b></div>${hubActivityHTML(played)}</aside>
+        </div>
+      </section>
 
-    <section class="podium-section">
-      <div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div>
-      <div class="podium-rail" id="podium-rail">
-        ${hubPodiumCard('OVR DEL CLUB', byOverall, byOverall ? byOverall.ovr : '—', 'OVR', byOverall ? (POS_LABELS[getEffectivePosition(byOverall.p)] || getEffectivePosition(byOverall.p)) : null, 'Puesto')}
-        ${hubPodiumCard('MEJOR PROMEDIO', byAverage, byAverage ? (byAverage.rec.goals / byAverage.rec.goalPj).toFixed(2) : '—', 'G/PJ', byAverage ? byAverage.rec.goalPj : null, 'PJ reg.')}
-        ${hubPodiumCard('GOLEADOR', byGoals, byGoals ? byGoals.rec.goals : '—', 'Goles', byGoals && byGoals.rec.goalPj ? (byGoals.rec.goals / byGoals.rec.goalPj).toFixed(2) : null, 'G/PJ', 'Goleador de Oro')}
-        ${hubPodiumCard('MÁS PRESENTE', byGames, byGames ? byGames.rec.pj : '—', 'PJ', byGames ? `${byGames.rec.w}V` : null, 'Ganados')}
-      </div>
-    </section>
-
-    <section class="hub-grid">
-      <div class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">TABLA DEL CLUB</div><div class="hub-panel-title">GOLES</div></div><button class="hub-mini-btn" onclick="switchTab('goles')">Planilla ↗</button></div>${hubScorersHTML(rows)}</div>
-      <aside class="hub-panel"><div class="hub-panel-head"><div><div class="hub-panel-kicker">MOVIMIENTO</div><div class="hub-panel-title">ÚLTIMA ACTIVIDAD</div></div></div>${hubActivityHTML(played)}</aside>
+      <aside class="hub-live-podium">
+        <div class="hub-panel-head"><div><div class="hub-panel-kicker">FORMA ACTUAL</div><div class="hub-panel-title">PODIO DEL CLUB</div></div><button class="hub-mini-btn" onclick="switchTab('partidos')">Stats ↗</button></div>
+        <div class="hub-live-cards">
+          ${hubLiveCard('MEJOR PROMEDIO', byAverage, byAverage ? (byAverage.rec.goals / byAverage.rec.goalPj).toFixed(2) : '—', 'G/PJ', 'is-average', cardHighlights)}
+          ${hubLiveCard('GOLEADOR', byGoals, byGoals ? byGoals.rec.goals : '—', 'GOLES', 'is-scorer', cardHighlights)}
+          ${hubLiveCard('MÁS PRESENTE', byGames, byGames ? byGames.rec.pj : '—', 'PJ', 'is-games', cardHighlights)}
+        </div>
+      </aside>
     </section>
     <section class="hub-quick-grid"><button class="hub-quick" onclick="switchTab('asistencia')"><div class="hub-quick-icon">📣</div><div><b>Confirmar asistencia</b><span>Quién está para el sábado</span></div></button><button class="hub-quick" onclick="switchTab('jugadores')"><div class="hub-quick-icon">👥</div><div><b>Explorar plantel</b><span>${state.players.length} cartas del club</span></div></button>${quickThird}</section>
   </div>`;

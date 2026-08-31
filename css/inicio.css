@@ -77,3 +77,45 @@
 @media (prefers-reduced-motion:reduce){
   .podium-card,.podium-card:hover{transition:none}
 }
+
+/* ===== INICIO / MATCHDAY CENTRAL — tablero principal ================= */
+/* El inicio funciona como una pantalla de partido: resultado a la izquierda,
+   cartas reales del plantel a la derecha. No duplica datos ni estilos de carta. */
+.hub-shell{gap:14px}
+.hub-hero{min-height:176px;padding:20px 23px;border-color:rgba(175,211,239,.46);border-radius:16px;background:radial-gradient(circle at 10% 8%,rgba(88,209,255,.13),transparent 28%),radial-gradient(circle at 83% 100%,rgba(255,211,106,.10),transparent 34%),repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 1px,transparent 1px 6px),linear-gradient(112deg,rgba(6,15,26,.97),rgba(26,43,61,.91) 57%,rgba(7,14,24,.98));box-shadow:0 0 0 2px rgba(2,8,15,.88),0 22px 42px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(82,182,247,.18)}
+.hub-hero::after{content:'FULBITO';right:20px;bottom:-22px;font-size:91px;letter-spacing:1px;opacity:.045;transform:none}
+.hub-hero h1{font-size:clamp(38px,4.2vw,59px);max-width:560px;text-shadow:0 2px 0 #02070c,0 0 18px rgba(114,211,255,.16)}
+.hub-hero h1 strong{color:#f0d17b;text-shadow:0 0 16px rgba(255,210,105,.22)}
+.hub-hero p{font-size:11px;max-width:390px}
+.hub-hero-actions{margin-top:14px}
+.hub-attendance{width:min(315px,35%);min-width:265px;padding:14px 16px;border-color:rgba(200,216,232,.44);border-radius:12px;background:linear-gradient(145deg,rgba(60,77,92,.95),rgba(16,27,39,.98) 58%,rgba(66,76,80,.94));box-shadow:0 0 0 2px rgba(3,8,14,.70),0 14px 27px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.55)}
+.hub-attendance::after{content:'';position:absolute;inset:6px;border:1px solid rgba(255,255,255,.13);border-radius:8px;pointer-events:none}
+.hub-attendance-top,.hub-choice-row,.hub-attendance-meter{position:relative;z-index:1}
+.hub-attendance-state{font-size:27px;color:#d8f47d;text-shadow:0 0 13px rgba(194,255,100,.23)}
+.hub-choice-row{margin-top:11px}.hub-choice{padding:7px 6px;border-radius:7px;font-size:10px}.hub-attendance-meter{margin-top:10px;padding-top:9px}.hub-attendance-meter b{font-size:20px}
+
+.hub-command-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(350px,.88fr);gap:14px;align-items:stretch}
+.hub-matchcentre,.hub-live-podium{min-width:0;border:1px solid rgba(166,198,225,.37);border-radius:14px;background:linear-gradient(145deg,rgba(25,42,59,.96),rgba(5,13,24,.99) 67%),repeating-linear-gradient(135deg,rgba(255,255,255,.022) 0 1px,transparent 1px 7px);box-shadow:0 0 0 2px rgba(3,9,15,.88),0 18px 35px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.20),inset 0 -1px 0 rgba(81,167,227,.15);overflow:hidden}
+.hub-live-podium{position:relative;border-color:rgba(255,210,100,.46);background:radial-gradient(circle at 50% 11%,rgba(255,208,101,.16),transparent 34%),linear-gradient(145deg,rgba(41,46,45,.97),rgba(7,14,25,.99) 70%)}
+.hub-matchcentre .hub-panel-head,.hub-live-podium .hub-panel-head{padding:12px 14px;background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,0));border-bottom:1px solid rgba(191,219,243,.17)}
+.hub-matchcentre .hub-last-match{padding:16px 15px 13px;min-height:102px}.hub-matchcentre .hub-score{font-size:clamp(48px,5.2vw,75px)}.hub-matchcentre .hub-team-name{font-size:20px}.hub-matchcentre .hub-match-meta{padding:0 15px 13px}
+.hub-matchcentre-lower{display:grid;grid-template-columns:minmax(0,1.42fr) minmax(205px,.78fr);border-top:1px solid rgba(191,219,243,.16)}
+.hub-matchcentre-scorers,.hub-matchcentre-activity{min-width:0}.hub-matchcentre-activity{border-left:1px solid rgba(191,219,243,.14)}
+.hub-subhead{display:flex;align-items:center;gap:7px;min-height:37px;padding:8px 11px;border-bottom:1px solid rgba(191,219,243,.12);background:linear-gradient(90deg,rgba(255,255,255,.055),rgba(255,255,255,0))}
+.hub-subhead>span{font-size:14px;filter:drop-shadow(0 0 7px rgba(255,210,92,.43))}.hub-subhead b{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.6px;color:#f3f8fb}.hub-subhead .hub-mini-btn{margin-left:auto;padding:4px 6px;font-size:9px}
+.hub-matchcentre .scoreboard-table{padding:3px 7px 7px}.hub-matchcentre .scoreboard-head,.hub-matchcentre .scoreboard-row{padding:6px 8px}.hub-matchcentre .scoreboard-row{font-size:11px}.hub-matchcentre .scoreboard-goals{font-size:17px}.hub-matchcentre .activity-feed{padding:3px 7px 7px}.hub-matchcentre .activity-row{padding:7px 6px}.hub-matchcentre .activity-copy b{font-size:11px}.hub-matchcentre .activity-copy span,.hub-matchcentre .activity-date{font-size:8px}
+
+.hub-live-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:3px;padding:9px 8px 10px;min-height:274px;background:radial-gradient(ellipse 90% 52% at 50% 100%,rgba(71,179,255,.13),transparent 70%)}
+.hub-live-card{position:relative;z-index:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;transition:transform .24s cubic-bezier(.16,1,.3,1)}
+.hub-live-card:hover{z-index:2;transform:translateY(-7px) scale(1.035)}
+.hub-live-card-label{width:100%;min-height:18px;text-align:center;font-size:7px;line-height:1.05;font-weight:900;letter-spacing:.65px;color:rgba(231,240,248,.76);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-live-card-frame{width:min(100%,116px);filter:drop-shadow(0 10px 12px rgba(0,0,0,.44))}.hub-live-card.is-scorer .hub-live-card-frame{width:min(100%,139px);filter:drop-shadow(0 0 13px rgba(255,211,98,.26)) drop-shadow(0 12px 14px rgba(0,0,0,.46))}
+.hub-live-card-frame .fifa-card{max-width:none!important;min-width:0}.hub-live-card-metric{display:flex;align-items:baseline;justify-content:center;gap:3px;margin-top:-3px;min-height:17px;color:#fff0a5;text-shadow:0 0 9px rgba(255,210,89,.34)}.hub-live-card-metric b{font-family:'Bebas Neue',sans-serif;font-size:17px;line-height:1}.hub-live-card-metric span{font-size:7px;letter-spacing:.5px;color:rgba(226,238,247,.65);font-weight:800}
+.hub-live-card.is-scorer .hub-live-card-label{color:#ffe89d}.hub-live-card.is-scorer .hub-live-card-metric b{font-size:21px}.hub-live-card.is-average .hub-live-card-metric b{color:#a8ecff}.hub-live-card.is-games .hub-live-card-metric b{color:#d9f47f}
+
+@media (max-width:920px){
+  .hub-command-grid{grid-template-columns:1fr}.hub-live-cards{min-height:0;max-width:600px;margin:auto;width:100%}.hub-live-card-frame{width:min(100%,135px)}.hub-live-card.is-scorer .hub-live-card-frame{width:min(100%,154px)}
+}
+@media (max-width:640px){
+  .hub-hero{padding:18px 16px}.hub-hero h1{font-size:39px}.hub-attendance{min-width:0}.hub-command-grid{gap:12px}.hub-matchcentre-lower{grid-template-columns:1fr}.hub-matchcentre-activity{border-left:0;border-top:1px solid rgba(191,219,243,.14)}.hub-live-cards{gap:0;padding:9px 4px 8px}.hub-live-card-frame{width:min(100%,102px)}.hub-live-card.is-scorer .hub-live-card-frame{width:min(100%,119px)}.hub-live-card-label{font-size:6px}.hub-live-card-metric b{font-size:15px}.hub-live-card.is-scorer .hub-live-card-metric b{font-size:18px}
+}
