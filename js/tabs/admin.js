@@ -1,6 +1,8 @@
 // ADMIN
 // ============================================================
 let clubBrandDraftCrest;
+let clubBrandDraftName = '';
+let clubBrandDraftClubId = null;
 
 function clubBrandPreviewHTML(crest, name) {
   const imageUrl = safeClubCrestUrl(crest);
@@ -12,7 +14,13 @@ function clubBrandPreviewHTML(crest, name) {
 function renderAdmin() {
   const clubInfo = document.getElementById('club-admin-info');
   if (clubInfo && state.currentClub) {
-    clubBrandDraftCrest = undefined;
+    if (clubBrandDraftClubId !== state.currentClub.id) {
+      clubBrandDraftClubId = state.currentClub.id;
+      clubBrandDraftCrest = undefined;
+      clubBrandDraftName = '';
+    }
+    const draftName = clubBrandDraftName || state.currentClub.name;
+    const draftCrest = clubBrandDraftCrest === undefined ? state.currentClub.crest : clubBrandDraftCrest;
     const isSupport = !!state.currentUser?.supportMode;
     const inviteCode = safePlainText(state.currentClub.inviteCode, 24);
     const invite = isSupport ? `
@@ -20,10 +28,10 @@ function renderAdmin() {
       <div class="club-brand-invite"><div><b>Código de invitación</b><span>Compartilo para que entren al grupo.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Cargando…')}</code><button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()" ${inviteCode ? '' : 'disabled'}>📋 Copiar</button></div></div>`;
     clubInfo.innerHTML = `
       <div class="club-brand-editor">
-        <div class="club-brand-preview" id="club-brand-preview">${clubBrandPreviewHTML(state.currentClub.crest, state.currentClub.name)}</div>
+        <div class="club-brand-preview ${safeClubCrestUrl(draftCrest) ? 'has-custom-crest' : ''}" id="club-brand-preview">${clubBrandPreviewHTML(draftCrest, draftName)}</div>
         <div class="club-brand-fields">
           <label for="club-brand-name">Nombre del club</label>
-          <input id="club-brand-name" maxlength="50" value="${escapeHtml(state.currentClub.name)}" placeholder="Ej.: Los del Sábado">
+          <input id="club-brand-name" maxlength="50" value="${escapeHtml(draftName)}" placeholder="Ej.: Los del Sábado" oninput="trackClubBrandName(this.value)">
           <label class="club-brand-upload" for="club-brand-crest-input">🖼️ Cambiar escudo <small>PNG, JPG o WEBP · se optimiza antes de guardar</small></label>
           <input id="club-brand-crest-input" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewClubCrest(this)">
           <div class="club-brand-actions"><button class="btn btn-primary btn-sm" onclick="saveClubIdentity()">💾 Guardar identidad</button><button class="btn btn-ghost btn-sm" onclick="clearClubCrest()">↺ Usar iniciales</button></div>
@@ -45,7 +53,15 @@ function renderAdmin() {
 
 function updateClubBrandPreview(crest, name) {
   const preview = document.getElementById('club-brand-preview');
-  if (preview) preview.innerHTML = clubBrandPreviewHTML(crest, name);
+  if (!preview) return;
+  preview.classList.toggle('has-custom-crest', !!safeClubCrestUrl(crest));
+  preview.innerHTML = clubBrandPreviewHTML(crest, name);
+}
+
+function trackClubBrandName(name) {
+  clubBrandDraftName = safePlainText(name, 50);
+  const crest = clubBrandDraftCrest === undefined ? state.currentClub?.crest : clubBrandDraftCrest;
+  updateClubBrandPreview(crest, clubBrandDraftName || state.currentClub?.name || 'FC');
 }
 
 async function optimizeClubCrest(file) {
@@ -63,7 +79,7 @@ async function optimizeClubCrest(file) {
     });
     const side = Math.min(360, Math.max(96, Math.min(image.naturalWidth, image.naturalHeight)));
     const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d', { alpha: false });
+    const context = canvas.getContext('2d', { alpha: true });
     let currentSide = side;
     let encoded = '';
     do {
@@ -75,8 +91,7 @@ async function optimizeClubCrest(file) {
       const scale = Math.min(safeSide / image.naturalWidth, safeSide / image.naturalHeight);
       const drawWidth = image.naturalWidth * scale;
       const drawHeight = image.naturalHeight * scale;
-      context.fillStyle = '#101923';
-      context.fillRect(0, 0, currentSide, currentSide);
+      context.clearRect(0, 0, currentSide, currentSide);
       context.drawImage(image, (currentSide - drawWidth) / 2, (currentSide - drawHeight) / 2, drawWidth, drawHeight);
       encoded = canvas.toDataURL('image/webp', .84);
       currentSide = Math.floor(currentSide * .82);
@@ -94,7 +109,7 @@ async function previewClubCrest(input) {
   try {
     input.disabled = true;
     clubBrandDraftCrest = await optimizeClubCrest(file);
-    updateClubBrandPreview(clubBrandDraftCrest, document.getElementById('club-brand-name')?.value || state.currentClub.name);
+    updateClubBrandPreview(clubBrandDraftCrest, clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub.name);
     showToast('✅ Escudo listo para guardar');
   } catch (error) {
     input.value = '';
@@ -108,7 +123,7 @@ function clearClubCrest() {
   clubBrandDraftCrest = null;
   const fileInput = document.getElementById('club-brand-crest-input');
   if (fileInput) fileInput.value = '';
-  updateClubBrandPreview(null, document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC');
+  updateClubBrandPreview(null, clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC');
 }
 
 async function saveClubIdentity() {
@@ -128,6 +143,9 @@ async function saveClubIdentity() {
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
     SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
+    clubBrandDraftCrest = undefined;
+    clubBrandDraftName = '';
+    clubBrandDraftClubId = state.currentClub.id;
     renderClubIdentity();
     renderHub();
     renderAdmin();

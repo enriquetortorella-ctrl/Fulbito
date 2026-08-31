@@ -87,7 +87,7 @@ body{
 .brand-lockup{display:flex;align-items:center;gap:10px;min-width:0}
 .brand-crest{width:34px;height:40px;display:grid;place-items:center;position:relative;isolation:isolate;overflow:hidden;color:#10140b;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:-2px;font-weight:900;background:linear-gradient(145deg,#dcff75,var(--lime) 52%,#7da724);clip-path:polygon(50% 0,93% 14%,86% 80%,50% 100%,14% 80%,7% 14%);box-shadow:0 0 22px rgba(182,242,61,.22)}
 .brand-crest::after{content:'';position:absolute;inset:4px;z-index:-1;border:1px solid rgba(11,17,7,.35);clip-path:inherit}
-.brand-crest.has-custom-crest{background:#0d1620}.brand-crest.has-custom-crest img{width:100%;height:100%;object-fit:contain;display:block;padding:3px;background:#0d1620}
+.brand-crest.has-custom-crest{clip-path:none;overflow:visible;background:transparent;box-shadow:none}.brand-crest.has-custom-crest::after{display:none}.brand-crest.has-custom-crest img{width:100%;height:100%;object-fit:contain;display:block;padding:0;background:transparent;filter:drop-shadow(0 3px 5px rgba(0,0,0,.42))}
 .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:25px;line-height:.9;letter-spacing:1.1px;color:var(--text);text-shadow:none}
 .brand-caption{font-size:8px;line-height:1.1;letter-spacing:2px;color:var(--lime);font-weight:700;margin-top:4px}
 .topbar-user{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
