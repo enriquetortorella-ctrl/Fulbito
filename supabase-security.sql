@@ -553,8 +553,23 @@ begin
     raise exception 'Jugador no encontrado' using errcode = '22023';
   end if;
 
+  -- jsonb_set no crea niveles intermedios: con un JSON vacío, intentar
+  -- escribir {id-del-votante, estadística} devolvía {} y la primera estrella
+  -- nunca persistía. Inicializamos primero el objeto del votante.
   update public.fulbito_players
-     set ratings = jsonb_set(coalesce(ratings, '{}'::jsonb), array[v_rater.id, p_stat], to_jsonb(p_value), true)
+     set ratings = jsonb_set(
+       coalesce(ratings, '{}'::jsonb) || jsonb_build_object(
+         v_rater.id,
+         case
+           when jsonb_typeof(coalesce(ratings, '{}'::jsonb) -> v_rater.id) = 'object'
+             then coalesce(ratings, '{}'::jsonb) -> v_rater.id
+           else '{}'::jsonb
+         end
+       ),
+       array[v_rater.id, p_stat],
+       to_jsonb(p_value),
+       true
+     )
    where id = v_target.id
    returning * into v_target;
   return public.fulbito_player_payload(v_target, public.fulbito_is_admin(p_club_id));

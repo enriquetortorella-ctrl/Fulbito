@@ -61,7 +61,13 @@ async function rateStat(playerId, stat, val) {
       p_stat: stat,
       p_value: val
     });
-    Object.assign(p, mapPlayers([data])[0]);
+    const saved = mapPlayers([data])[0];
+    // No mostramos un éxito optimista: la respuesta debe traer la estrella
+    // recién guardada. Así una falla del servidor no queda disimulada en pantalla.
+    if (!saved || Number(saved.ratings?.[myId]?.[stat] || 0) !== val) {
+      throw new Error('La calificación no quedó confirmada. Actualizá la app e intentá de nuevo.');
+    }
+    Object.assign(p, saved);
   } catch (error) { showToast(`❌ ${error.message}`); return; }
   const container = document.getElementById(`stars-${playerId}-${stat}`);
   if (container) {

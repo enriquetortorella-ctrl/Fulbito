@@ -40,7 +40,10 @@ function saveMatchFromTeams() {
         isGuest: !!p.isGuest
       }))
     })),
-    result: { winner: null, margin: null, mvp: null, goals: {}, goalsTracked: true },
+    // La planilla sólo cuenta desde que alguien decide cargarla en Goles.
+    // Así los clubes que sólo anotan quién ganó no alteran las estadísticas
+    // de goles ni los promedios.
+    result: { winner: null, margin: null, mvp: null, goals: {}, goalsTracked: false },
     created_by: state.currentUser.id
   };
   matches.unshift(m);
@@ -100,7 +103,10 @@ function renderHistorial() {
     let badge;
     if (!res) badge = `<span class="match-badge pend">⏳ ${hasGoals ? 'En juego ' + matchScoreStr(m) : 'Sin resultado'}</span>`;
     else if (res.winner === 'draw') badge = `<span class="match-badge draw">🤝 Empate${hasGoals?' '+matchScoreStr(m):''}</span>`;
-    else badge = `<span class="match-badge win">🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${hasGoals?' '+matchScoreStr(m):' '+marginLabel(res.margin)}</span>`;
+    else {
+      const detail = hasGoals ? matchScoreStr(m) : marginLabel(res.margin);
+      badge = `<span class="match-badge win">🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${detail ? ' ' + detail : ''}</span>`;
+    }
 
     // Fecha: editable inline para admin, texto para el resto
     const dateHTML = isAdmin
@@ -169,6 +175,7 @@ let resultMatchId = null;
 let resultWinner = null;
 let resultMargin = null;
 let resultMvp = null;
+let resultTracksGoals = false;
 
 function openResultModal(mid) {
   const m = matches.find(x => x.id === mid);
@@ -177,6 +184,7 @@ function openResultModal(mid) {
   resultWinner = isPlayed(m) ? m.result.winner : null;
   resultMargin = isPlayed(m) ? m.result.margin : null;
   resultMvp = (m.result && m.result.mvp) || null;
+  resultTracksGoals = hasGoalsTracking(m);
   renderResultModal();
   openModal('modal-result');
 }
@@ -189,6 +197,12 @@ function setResultWinner(w) {
 
 function setResultMargin(mg) {
   resultMargin = mg;
+  renderResultModal();
+}
+
+function setResultTracksGoals(enabled) {
+  resultTracksGoals = !!enabled;
+  if (!resultTracksGoals) resultMargin = null;
   renderResultModal();
 }
 
@@ -217,6 +231,15 @@ function renderResultModal() {
 
   let html = `<div class="text-muted" style="margin-bottom:6px">Partido del ${formatMatchDate(m)}</div>`;
 
+  html += `<div style="margin-top:12px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Cómo registrar el partido</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm ${!resultTracksGoals?'btn-primary':'btn-ghost'}" onclick="setResultTracksGoals(false)">🏆 Solo ganador</button>
+      <button class="btn btn-sm ${resultTracksGoals?'btn-primary':'btn-ghost'}" onclick="setResultTracksGoals(true)">⚽ Con planilla de goles</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:7px;line-height:1.4">${resultTracksGoals ? 'Este partido contará para goles y promedios. Podés completar o ajustar la planilla en Goles.' : 'Se guarda quién ganó y el MVP, sin marcador ni goles en las estadísticas.'}</div>
+  </div>`;
+
   if (matchHasGoals(m)) {
     html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:10px">
       <div style="flex:1">
@@ -236,7 +259,7 @@ function renderResultModal() {
   html += `<button class="btn ${resultWinner==='draw'?'btn-primary':'btn-ghost'}" style="flex:1;min-width:90px;justify-content:center" onclick="setResultWinner('draw')">🤝 Empate</button>`;
   html += `</div>`;
 
-  if (resultWinner !== null && resultWinner !== 'draw') {
+  if (resultTracksGoals && resultWinner !== null && resultWinner !== 'draw') {
     html += `<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">¿Por cuánto?</div>`;
     html += `<div style="display:flex;gap:8px;margin-bottom:8px">`;
     [[1,'Por 1'],[2,'Por 2'],[3,'Goleada 3+']].forEach(([v,label]) => {
@@ -261,7 +284,7 @@ function renderResultModal() {
     html += `</div>`;
   }
 
-  const ready = resultWinner === 'draw' || (resultWinner !== null && resultMargin !== null);
+  const ready = resultWinner !== null && (!resultTracksGoals || resultWinner === 'draw' || resultMargin !== null);
   html += `<button class="btn btn-green w-full" style="justify-content:center;margin-top:14px" ${ready?'':'disabled'} onclick="saveMatchResult()">✅ Guardar resultado</button>`;
 
   document.getElementById('modal-result-content').innerHTML = html;
@@ -272,10 +295,17 @@ async function saveMatchResult() {
   if (!m) return;
   if (resultWinner === null) return;
   const goals = getGoals(m);
-  m.result = resultWinner === 'draw'
-    ? { winner: 'draw', margin: null, mvp: resultMvp || null, goals, goalsTracked: hasGoalsTracking(m) }
-    : { winner: resultWinner, margin: resultMargin, mvp: resultMvp || null, goals, goalsTracked: hasGoalsTracking(m) };
-  await upsertMatch(m);
+  m.result = {
+    winner: resultWinner,
+    margin: resultTracksGoals && resultWinner !== 'draw' ? resultMargin : null,
+    mvp: resultMvp || null,
+    // Conservamos una planilla previa si se edita el modo, pero sólo se usa
+    // para estadísticas cuando el administrador confirma que se registra.
+    goals,
+    goalsTracked: resultTracksGoals
+  };
+  const saved = await upsertMatch(m);
+  if (!saved) return;
   closeModal('modal-result');
   renderHub();
   renderPartidos();
@@ -295,7 +325,10 @@ async function shareMatchResult(id) {
   let text = `⚽ EL FULBITO — ${formatMatchDate(m)}\n`;
   if (!res) text += hasGoals ? `⏳ En juego: ${matchScoreStr(m)}\n` : '⏳ Resultado pendiente\n';
   else if (res.winner === 'draw') text += `🤝 Empate${hasGoals?' '+matchScoreStr(m):''}\n`;
-  else text += `🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${hasGoals?' '+matchScoreStr(m):' '+marginLabel(res.margin)}\n`;
+  else {
+    const detail = hasGoals ? matchScoreStr(m) : marginLabel(res.margin);
+    text += `🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${detail ? ' ' + detail : ''}\n`;
+  }
 
   (m.teams||[]).forEach((t, i) => {
     text += `\n${TEAM_EMOJIS[i]||'⚪'} EQUIPO ${TEAM_NAMES[i]}${hasGoals?` (${sc[i]})`:''}${res && res.winner===i ? ' 🏆' : ''}\n`;
