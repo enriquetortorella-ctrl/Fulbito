@@ -216,3 +216,32 @@
 .fifa-card.card-hot .fifa-medal b,.fifa-card.card-mvp .fifa-medal b{color:#14100a}
 .fifa-card.card-hot .fifa-medal.is-mvp,.fifa-card.card-mvp .fifa-medal.is-mvp,
 .fifa-card.silver .fifa-medal.is-mvp,.fifa-card.gold .fifa-medal.is-mvp{background:rgba(255,205,80,.55)}
+
+
+/* ===== LEYENDA DE MARCOS =============================================
+   Cada muestra usa el mismo archivo que el escudo real, recortado a su
+   parte central, así nunca se desincroniza del diseño de las cartas.
+   ==================================================================== */
+.frame-legend{margin:0 0 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);overflow:hidden}
+.frame-legend summary{cursor:pointer;padding:11px 15px;font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--muted);list-style:none;user-select:none}
+.frame-legend summary::-webkit-details-marker{display:none}
+.frame-legend summary::after{content:'▾';float:right;transition:transform .2s}
+.frame-legend[open] summary::after{transform:rotate(180deg)}
+.frame-legend summary:hover{color:var(--text)}
+.frame-legend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:8px 16px;padding:4px 15px 12px}
+.frame-key{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--text)}
+.frame-key i{
+  flex-shrink:0;width:20px;height:27px;border-radius:4px;
+  background-size:150% 150%;background-position:center 38%;
+  box-shadow:0 0 0 1px rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.4);
+}
+.frame-key i[data-frame="gold"]{background-image:url('../assets/cards/gold.webp')}
+.frame-key i[data-frame="silver"]{background-image:url('../assets/cards/silver.webp')}
+.frame-key i[data-frame="bronze"]{background-image:url('../assets/cards/bronze.webp')}
+.frame-key i[data-frame="icon"]{background-image:url('../assets/cards/icon.webp')}
+.frame-key i[data-frame="mvp"]{background-image:url('../assets/cards/mvp.webp')}
+.frame-key i[data-frame="scorer"]{background-image:url('../assets/cards/scorer.webp')}
+.frame-key i[data-frame="hot"]{background-image:url('../assets/cards/hot.webp')}
+.frame-legend-note{padding:0 15px 13px;font-size:11px;color:var(--muted);line-height:1.45}
+/* la etiqueta del marco puede ser larga: que no rompa la columna */
+.fifa-card-tier{white-space:nowrap;letter-spacing:.09em}
