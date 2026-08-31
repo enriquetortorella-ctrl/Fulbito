@@ -51,7 +51,7 @@ function renderAdmin() {
       : `<div class="admin-player-actions">
           <button class="btn-icon" title="${p.isAdmin?'Quitar admin':'Hacer admin'}" onclick="toggleAdmin('${p.id}')">${p.isAdmin?'👑':'⬜'}</button>
           <button class="btn-icon" title="Cambiar contraseña" onclick="adminChangePassword('${p.id}')">🔑</button>
-          <button class="btn-icon" title="Eliminar usuario" onclick="removePlayer('${p.id}')">🗑️</button>
+          <button class="btn-icon" title="Eliminar usuario" onclick="removePlayer('${p.id}', this)">🗑️</button>
         </div>`;
     return `
     <div class="admin-player-row">
@@ -279,18 +279,27 @@ async function saveClubInviteCode() {
   }
 }
 
-async function removePlayer(id) {
+async function removePlayer(id, button) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
   if (p.id === state.currentUser?.id) { showToast('⚠️ No podés eliminar tu propia cuenta desde acá.'); return; }
+  const admins = state.players.filter(player => player.isAdmin);
+  if (p.isAdmin && admins.length <= 1) {
+    showToast('⚠️ No se puede eliminar al último administrador. Primero asigná otro admin.');
+    return;
+  }
   if (!confirm(`¿Eliminar a ${p.name} (@${p.username})? Esta acción no se puede deshacer.`)) return;
+  if (button) { button.disabled = true; button.textContent = '…'; button.title = 'Eliminando…'; }
   try {
     await deletePlayer(id);
     state.players = state.players.filter(x=>x.id!==id);
     renderAdmin();
     renderPlayers();
     showToast('🗑️ Usuario eliminado');
-  } catch (error) { showToast(`❌ ${error.message || 'No se pudo eliminar el usuario.'}`); }
+  } catch (error) {
+    if (button) { button.disabled = false; button.textContent = '🗑️'; button.title = 'Eliminar usuario'; }
+    showToast(`❌ ${error.message || 'No se pudo eliminar el usuario.'}`);
+  }
 }
 
 // ============================================================
