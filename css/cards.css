@@ -47,13 +47,13 @@
 /* --- Fila 2, izquierda: OVR, tier, posición --- */
 .fifa-top{
   grid-column:1;grid-row:2;display:flex;flex-direction:column;
-  justify-content:space-between;align-items:flex-start;padding:4% 0 4%;
-  padding:0 0 0 27%;min-width:0;
+  justify-content:space-between;align-items:stretch;
+  padding:4% 3% 4% 30%;min-width:0;   /* 33% de la columna = ~14.5% de la carta */
 }
 .fifa-left{display:block;text-align:left}
 .fifa-card-overall{font-family:'Bebas Neue',sans-serif;font-size:17cqw;line-height:.85;color:#1c1305}
-.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:6.4cqw;letter-spacing:.06em;color:#1c1305;margin-top:1.6cqw;padding-top:1.6cqw;border-top:1px solid rgba(0,0,0,.3);display:inline-block;min-width:34px}
-.fifa-card-tier{font-size:4.3cqw;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#3a2a0c;margin-top:1.2cqw;opacity:.85}
+.fifa-card-pos{font-family:'Bebas Neue',sans-serif;font-size:7.4cqw;letter-spacing:.05em;color:#1c1305;margin-top:1.6cqw;padding-top:1.6cqw;border-top:1px solid rgba(0,0,0,.3);display:inline-block;min-width:34px}
+.fifa-card-tier{font-size:4.7cqw;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#3a2a0c;margin-top:1.2cqw;opacity:.85}
 
 /* --- Fila 2, derecha: la foto, enmarcada, dentro de su celda --- */
 .fifa-card-portrait{
@@ -83,7 +83,7 @@
 .fifa-card-stats{
   grid-column:1/-1;grid-row:4;position:relative;
   display:grid;grid-template-columns:1fr 1fr;gap:1px 0;
-  width:auto;margin:0;padding:0 12%;align-content:center;
+  width:auto;margin:0;padding:0 15% 0 9%;align-content:center;
 }
 .fifa-card-stats::before{content:'';position:absolute;left:50%;top:1px;bottom:1px;width:1px;background:rgba(0,0,0,.24)}
 .fifa-card-stat{
@@ -170,7 +170,7 @@
 
 @media (max-width:640px){
   #tab-jugadores .fifa-card,.fifa-card{max-width:none}
-  .fifa-top{padding-left:25%}
+  .fifa-top{padding-left:28%}
   .fifa-card-portrait{margin-right:16%}
 }
 @media (prefers-reduced-motion:reduce){
@@ -245,9 +245,9 @@
 .frame-legend-note{padding:0 15px 13px;font-size:11px;color:var(--muted);line-height:1.45}
 /* la etiqueta del marco puede ser larga: que no rompa la columna */
 /* tope duro: una etiqueta larga se recorta, nunca invade la foto */
-.fifa-card .fifa-card-tier{white-space:nowrap;letter-spacing:.05em;font-size:4.3cqw;
+.fifa-card .fifa-card-tier{white-space:nowrap;letter-spacing:.05em;font-size:4.7cqw;
   max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.fifa-card .fifa-left{max-width:100%;overflow:hidden}
+.fifa-card .fifa-left{width:100%;max-width:100%;overflow:hidden;text-align:left}
 
 /* ===== ANULACIÓN DE GEOMETRÍA HEREDADA ==============================
    jugadores.css fija width, max-width, position, inset y márgenes sobre
@@ -268,3 +268,4 @@
 .fifa-card .fifa-shine,.fifa-card .fifa-card-photo{display:none}
 .fifa-card .fifa-card-portrait.is-placeholder{padding:0}
 .fifa-card .fifa-card-portrait img{transform:none}
+.frame-key b{font-weight:800;letter-spacing:.04em}
