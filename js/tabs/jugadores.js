@@ -143,9 +143,15 @@ function renderFifaCard(p, highlights) {
     : `<div class="fifa-card-portrait is-placeholder" aria-hidden="true">⚽</div>`;
 
   const rec = getPlayerRecord(p.id);
-  const extras = (rec.mvps>0?` · ⭐${rec.mvps}`:'') + (rec.goals>0?` · ⚽${rec.goals}`:'');
+  // MVPs y goles salen de la franja: van en medallas propias, que entran
+  // donde el escudo tiene lugar. La franja queda solo con el récord.
+  const medals = [
+    rec.mvps > 0 ? `<span class="fifa-medal is-mvp" title="${rec.mvps} MVP"><i>★</i><b>${rec.mvps}</b></span>` : '',
+    rec.goals > 0 ? `<span class="fifa-medal is-goal" title="${rec.goals} goles"><i>⚽</i><b>${rec.goals}</b></span>` : '',
+  ].filter(Boolean).join('');
+  const medalsHTML = medals ? `<div class="fifa-card-medals">${medals}</div>` : '';
   const recHTML = rec.pj > 0
-    ? `<div class="fifa-card-record">${rec.w}V · ${rec.d}E · ${rec.l}D${extras}</div>`
+    ? `<div class="fifa-card-record">${rec.w}V · ${rec.d}E · ${rec.l}D</div>`
     : '';
   const form = highlights.forms.get(p.id);
   const isHot = form?.type === 'V' && form.streak >= 2;
@@ -168,6 +174,7 @@ function renderFifaCard(p, highlights) {
     <div class="fifa-card-name">${escapeHtml(p.username.toUpperCase())}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
     ${recHTML}
+    ${medalsHTML}
     ${spotlights}
   </div>`;
 }
