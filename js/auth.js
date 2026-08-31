@@ -10,12 +10,32 @@ function showLoginForm() {
   document.getElementById('forgot-form-box').classList.add('hidden');
   updateLoginClubContext();
 }
-function showRegisterForm() {
+async function showRegisterForm() {
   if (!state.currentClub?.inviteCode) {
+    const codeInput = document.getElementById('login-invite-code');
+    const code = safePlainText(codeInput?.value, 16).toUpperCase().replace(/[^A-Z0-9-]/g, '');
     const errEl = document.getElementById('login-error');
-    errEl.innerHTML = 'Para crear una cuenta necesitás el código del administrador. <a href="#" onclick="showClubChooser();return false" style="color:var(--gold)">Ingresar código</a>';
-    errEl.style.display = 'block';
-    return;
+    if (!code) {
+      errEl.textContent = 'Ingresá el código que te compartió el administrador para poder registrarte.';
+      errEl.style.display = 'block';
+      codeInput?.focus();
+      return;
+    }
+    try {
+      const data = await callRpc('fulbito_lookup_club', { p_invite_code: code });
+      if (!data || data.id !== state.currentClub.id) throw new Error('Código inválido para este club');
+      state.currentClub = { ...state.currentClub, ...mapClubBrand(data, state.currentClub), inviteCode: code };
+      const known = state.clubs.find(club => club.id === state.currentClub.id);
+      if (known) Object.assign(known, state.currentClub);
+      KNOWN_CLUBS.remember(state.currentClub);
+      updateLoginClubContext();
+      errEl.style.display = 'none';
+    } catch (_) {
+      errEl.textContent = 'El código no es válido para el club seleccionado. Pedíselo al administrador.';
+      errEl.style.display = 'block';
+      codeInput?.focus();
+      return;
+    }
   }
   document.getElementById('login-form-box').classList.add('hidden');
   document.getElementById('register-form-box').classList.remove('hidden');

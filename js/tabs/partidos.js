@@ -292,7 +292,7 @@ async function shareMatchResult(id) {
   const sc = matchScore(m);
   const goals = getGoals(m);
 
-  let text = `⚽ FULBITO — ${formatMatchDate(m)}\n`;
+  let text = `⚽ EL FULBITO — ${formatMatchDate(m)}\n`;
   if (!res) text += hasGoals ? `⏳ En juego: ${matchScoreStr(m)}\n` : '⏳ Resultado pendiente\n';
   else if (res.winner === 'draw') text += `🤝 Empate${hasGoals?' '+matchScoreStr(m):''}\n`;
   else text += `🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${hasGoals?' '+matchScoreStr(m):' '+marginLabel(res.margin)}\n`;

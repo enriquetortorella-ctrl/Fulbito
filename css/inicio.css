@@ -83,7 +83,7 @@
    cartas reales del plantel a la derecha. No duplica datos ni estilos de carta. */
 .hub-shell{gap:14px}
 .hub-hero{min-height:176px;padding:20px 23px;border-color:rgba(175,211,239,.46);border-radius:16px;background:radial-gradient(circle at 10% 8%,rgba(88,209,255,.13),transparent 28%),radial-gradient(circle at 83% 100%,rgba(255,211,106,.10),transparent 34%),repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 1px,transparent 1px 6px),linear-gradient(112deg,rgba(6,15,26,.97),rgba(26,43,61,.91) 57%,rgba(7,14,24,.98));box-shadow:0 0 0 2px rgba(2,8,15,.88),0 22px 42px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(82,182,247,.18)}
-.hub-hero::after{content:'FULBITO';right:20px;bottom:-22px;font-size:91px;letter-spacing:1px;opacity:.045;transform:none}
+.hub-hero::after{content:'EL FULBITO';right:20px;bottom:-22px;font-size:91px;letter-spacing:1px;opacity:.045;transform:none}
 .hub-hero h1{font-size:clamp(38px,4.2vw,59px);max-width:560px;text-shadow:0 2px 0 #02070c,0 0 18px rgba(114,211,255,.16)}
 .hub-hero h1 strong{color:#f0d17b;text-shadow:0 0 16px rgba(255,210,105,.22)}
 .hub-hero p{font-size:11px;max-width:390px}

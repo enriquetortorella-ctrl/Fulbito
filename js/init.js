@@ -141,10 +141,12 @@ async function joinClubByCode() {
 function updateLoginClubContext() {
   const context = document.getElementById('login-club-context');
   if (!context || !state.currentClub) return;
+  const codeInput = document.getElementById('login-invite-code');
   const code = window.__newClubInviteCode && state.currentClub.inviteCode === window.__newClubInviteCode
     ? ` · Código ${state.currentClub.inviteCode}` : '';
   context.textContent = `🏟️ ${state.currentClub.name}${code}`;
   context.classList.remove('hidden');
+  if (codeInput) codeInput.value = state.currentClub.inviteCode || '';
 }
 
 async function selectClub(clubId, { restoreSession = false } = {}) {

@@ -13,7 +13,7 @@
 <meta http-equiv="Expires" content="0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://yhedcxxbjprgbodfrumu.supabase.co wss://yhedcxxbjprgbodfrumu.supabase.co; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
-<title>⚽ Fulbito del Sábado</title>
+<title>⚽ El Fulbito</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/fulbito-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/fulbito-icon.svg">
@@ -100,8 +100,8 @@
 
 <!-- LOGIN SCREEN -->
 <div id="screen-login" class="screen">
-  <div class="login-logo">⚽ FULBITO</div>
-  <div class="login-sub">del Sábado</div>
+  <div class="login-logo">⚽ EL FULBITO</div>
+  <div class="login-sub">tu club · tus partidos · tu historia</div>
   <div id="login-club-context" class="hidden" style="margin:-23px 0 25px;padding:7px 11px;border:1px solid rgba(182,242,61,.28);border-radius:999px;background:rgba(182,242,61,.08);color:var(--lime);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase"></div>
 
   <!-- LOGIN FORM -->
@@ -114,6 +114,10 @@
     <div class="form-group">
       <label>Contraseña</label>
       <input type="password" id="login-pass" placeholder="••••••" autocomplete="current-password">
+    </div>
+    <div class="form-group">
+      <label>Código de invitación <small style="color:var(--muted);font-weight:500">solo para crear una cuenta</small></label>
+      <input type="text" id="login-invite-code" maxlength="16" placeholder="Ej: MARMOL-26" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,16)">
     </div>
     <div class="login-error" id="login-error">Usuario o contraseña incorrectos</div>
     <button class="btn-login" onclick="doLogin()">ENTRAR</button>
@@ -197,7 +201,7 @@
     <div class="brand-lockup">
       <div class="brand-crest" id="brand-crest">FS</div>
       <div>
-        <div class="topbar-logo">FULBITO <span id="conn-dot" style="font-size:8px;vertical-align:middle" title="Conexión">🟡</span></div>
+        <div class="topbar-logo">EL FULBITO <span id="conn-dot" style="font-size:8px;vertical-align:middle" title="Conexión">🟡</span></div>
         <div class="brand-caption" id="club-caption">CLUB DEL SÁBADO</div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Fulbito del Sábado",
-  "short_name": "Fulbito",
+  "name": "El Fulbito",
+  "short_name": "El Fulbito",
   "description": "Tu club, partidos, estadísticas y votaciones en un solo lugar.",
   "lang": "es-AR",
   "start_url": "./",
