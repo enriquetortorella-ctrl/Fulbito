@@ -22,7 +22,7 @@
   grid-template-columns:44% 56%;
   /* 13% cabecera · 40% foto+datos · nombre · stats · resto para la punta */
   /* alineado a las líneas que trae dibujadas el escudo: 53%, 62% y 85% */
-  grid-template-rows:15% 38% 9% 20% 1fr;
+  grid-template-rows:15% 38% 10% 22% 1fr;
   align-items:stretch;
   transition:transform .26s cubic-bezier(.16,1,.3,1);
 }
@@ -47,7 +47,7 @@
 /* --- Fila 2, izquierda: OVR, tier, posición --- */
 .fifa-top{
   grid-column:1;grid-row:2;display:flex;flex-direction:column;
-  justify-content:flex-start;align-items:flex-start;padding-top:4%;
+  justify-content:space-between;align-items:flex-start;padding:4% 0 4%;
   padding:0 0 0 27%;min-width:0;
 }
 .fifa-left{display:block;text-align:left}
@@ -69,7 +69,8 @@
 }
 .fifa-card-portrait img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block}
 .fifa-card-portrait::after{content:none}
-.fifa-card-portrait.is-placeholder{display:grid;place-items:center;padding:0;font-size:13cqw;opacity:.45;background:rgba(0,0,0,.3)}
+/* Sin foto no hay marco vacío: se ve el escudo, como en las cartas de referencia */
+.fifa-card-portrait.is-placeholder{background:none;box-shadow:none;font-size:0}
 
 /* --- Nombre y stats: ancho completo, cada uno en su fila --- */
 .fifa-divider{grid-column:1/-1;grid-row:3;height:1px;margin:0 13%;background:rgba(0,0,0,.28);align-self:start}
@@ -82,25 +83,24 @@
 .fifa-card-stats{
   grid-column:1/-1;grid-row:4;position:relative;
   display:grid;grid-template-columns:1fr 1fr;gap:1px 0;
-  width:auto;margin:0;padding:0 12%;align-content:center;
+  width:auto;margin:0;padding:2% 12% 0;align-content:start;
 }
 .fifa-card-stats::before{content:'';position:absolute;left:50%;top:1px;bottom:1px;width:1px;background:rgba(0,0,0,.24)}
 .fifa-card-stat{
   display:flex;align-items:baseline;justify-content:center;gap:1.8cqw;
-  font-size:4cqw;font-weight:800;color:#2a1d06;line-height:1.45;border-radius:0;
+  font-size:4.1cqw;font-weight:800;color:#2a1d06;line-height:1.42;border-radius:0;
 }
-.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:6.8cqw;color:#140d02;min-width:2.4em;text-align:right}
+.fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:7cqw;color:#140d02;min-width:2.4em;text-align:right}
 .fifa-card-stat.best,.fifa-card.rare .fifa-card-stat.best,
 .fifa-card.card-mvp .fifa-card-stat.best,
 .fifa-card.card-top-scorer .fifa-card-stat.best{background:none}
-.fifa-card-stat.best span:first-child{color:#000;font-size:7.2cqw}
+.fifa-card-stat.best span:first-child{color:#000;font-size:7.4cqw}
 
 /* --- Récord y distintivos: fila baja, lejos de la punta --- */
 .fifa-card-record{
-  grid-column:1/-1;grid-row:5;align-self:start;
-  margin:1cqw 20% 0;padding:1.2cqw 2cqw;border-radius:5px;
+  align-self:stretch;margin:0;padding:1cqw 2cqw;border-radius:5px;
   background:rgba(0,0,0,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);
-  font-size:3.7cqw;font-weight:700;color:#1c1305;text-align:center;
+  font-size:3.5cqw;font-weight:700;color:#1c1305;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 /* El escudo ya identifica MVP, goleador y racha, y el récord muestra ⭐ y ⚽.
@@ -177,14 +177,15 @@
   .fifa-card,.fifa-card:hover,#tab-jugadores .fifa-card:hover{transition:none;transform:none}
 }
 
+.fifa-meta{display:flex;flex-direction:column;align-items:flex-start;gap:1.6cqw;width:100%}
+
 /* ===== MEDALLAS — MVPs y goles ======================================
    Antes iban dentro de la franja de récord y se salían por la punta.
    Ahora viven en la columna izquierda, debajo del OVR, donde el
    escudo es ancho. Cada una es un disco con su número.
    ==================================================================== */
 .fifa-card-medals{
-  grid-column:1;grid-row:2;align-self:end;justify-self:start;
-  display:flex;gap:2cqw;padding:0 0 4% 27%;position:relative;z-index:3;
+  display:flex;gap:2cqw;padding:0;position:relative;z-index:3;
 }
 .fifa-medal{
   display:inline-flex;align-items:center;justify-content:center;gap:.8cqw;
@@ -205,4 +206,3 @@
 .fifa-card.card-hot .fifa-medal b,.fifa-card.card-mvp .fifa-medal b{color:#14100a}
 .fifa-card.card-hot .fifa-medal.is-mvp,.fifa-card.card-mvp .fifa-medal.is-mvp,
 .fifa-card.silver .fifa-medal.is-mvp,.fifa-card.gold .fifa-medal.is-mvp{background:rgba(255,205,80,.55)}
-@media (max-width:640px){.fifa-card-medals{padding-left:25%}}
