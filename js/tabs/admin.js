@@ -68,7 +68,10 @@ async function optimizeClubCrest(file) {
     do {
       canvas.width = currentSide;
       canvas.height = currentSide;
-      const scale = Math.max(currentSide / image.naturalWidth, currentSide / image.naturalHeight);
+      // Nunca recortamos: el escudo entra entero en una zona segura del 84%.
+      // Así funcionan igual logos cuadrados, redondos, altos o apaisados.
+      const safeSide = currentSide * .84;
+      const scale = Math.min(safeSide / image.naturalWidth, safeSide / image.naturalHeight);
       const drawWidth = image.naturalWidth * scale;
       const drawHeight = image.naturalHeight * scale;
       context.fillStyle = '#101923';
