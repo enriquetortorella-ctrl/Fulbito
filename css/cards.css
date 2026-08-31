@@ -177,6 +177,16 @@
   .fifa-card,.fifa-card:hover,#tab-jugadores .fifa-card:hover{transition:none;transform:none}
 }
 
+/* Si el jugadores.js viejo todavía está cacheado, el récord y las medallas
+   llegan como hijos directos de la carta. Sin posición explícita se
+   autocolocaban en la corona. Estas dos reglas los mantienen en su lugar
+   hasta que el JS nuevo se propague. */
+.fifa-card > .fifa-card-record{
+  grid-column:1;grid-row:2;align-self:end;justify-self:start;
+  margin:0 0 13cqw 27%;width:auto}
+.fifa-card > .fifa-card-medals{
+  grid-column:1;grid-row:2;align-self:end;justify-self:start;margin:0 0 4% 27%;padding:0}
+
 .fifa-meta{display:flex;flex-direction:column;align-items:flex-start;gap:1.6cqw;width:100%}
 
 /* ===== MEDALLAS — MVPs y goles ======================================
