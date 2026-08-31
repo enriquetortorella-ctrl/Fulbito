@@ -163,7 +163,7 @@ function renderFifaCard(p, highlights) {
   // que los fondos en cards.css: racha < goleador < MVP.
   const frameLabel = isLatestMvp ? 'ÚLTIMO MVP'
     : isTopScorer ? 'GOLEADOR'
-    : isHot ? `EN RACHA · ${form.streak}V`
+    : isHot ? `RACHA · ${form.streak}V`
     : tier.label;
 
   return `<div class="fifa-card ${cardClasses}" onclick="openPlayerProfile('${p.id}')">
