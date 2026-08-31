@@ -51,7 +51,7 @@ function renderAdmin() {
       : `<div class="admin-player-actions">
           <button class="btn-icon" title="${p.isAdmin?'Quitar admin':'Hacer admin'}" onclick="toggleAdmin('${p.id}')">${p.isAdmin?'👑':'⬜'}</button>
           <button class="btn-icon" title="Cambiar contraseña" onclick="adminChangePassword('${p.id}')">🔑</button>
-          <button class="btn-icon" title="Eliminar usuario" onclick="removePlayer('${p.id}', this)">🗑️</button>
+          <button class="btn-icon" title="Eliminar usuario" onclick="removePlayer('${p.id}')">🗑️</button>
         </div>`;
     return `
     <div class="admin-player-row">
@@ -279,7 +279,9 @@ async function saveClubInviteCode() {
   }
 }
 
-async function removePlayer(id, button) {
+let pendingPlayerRemovalId = null;
+
+function removePlayer(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
   if (p.id === state.currentUser?.id) { showToast('⚠️ No podés eliminar tu propia cuenta desde acá.'); return; }
@@ -288,17 +290,44 @@ async function removePlayer(id, button) {
     showToast('⚠️ No se puede eliminar al último administrador. Primero asigná otro admin.');
     return;
   }
-  if (!confirm(`¿Eliminar a ${p.name} (@${p.username})? Esta acción no se puede deshacer.`)) return;
-  if (button) { button.disabled = true; button.textContent = '…'; button.title = 'Eliminando…'; }
+  pendingPlayerRemovalId = id;
+  document.getElementById('modal-delete-player-content').innerHTML = `
+    <p style="color:var(--muted);line-height:1.5;margin-bottom:18px">Vas a eliminar a <strong style="color:var(--text)">${escapeHtml(p.name)}</strong> <span style="color:var(--muted)">(@${escapeHtml(p.username)})</span>.</p>
+    <p style="color:#fda4af;font-size:13px;line-height:1.45;margin-bottom:20px">No podrá volver a ingresar con esa cuenta. Esta acción no se puede deshacer.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="cancelPlayerRemoval()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-delete-player" onclick="confirmPlayerRemoval()">🗑️ Eliminar usuario</button>
+    </div>`;
+  openModal('modal-delete-player');
+}
+
+function cancelPlayerRemoval() {
+  pendingPlayerRemovalId = null;
+  closeModal('modal-delete-player');
+}
+
+async function confirmPlayerRemoval() {
+  const id = pendingPlayerRemovalId;
+  const p = state.players.find(x=>x.id===id);
+  if (!p) { cancelPlayerRemoval(); return; }
+  const button = document.getElementById('confirm-delete-player');
+  if (button) { button.disabled = true; button.textContent = 'Eliminando…'; }
   try {
     await deletePlayer(id);
     state.players = state.players.filter(x=>x.id!==id);
+    pendingPlayerRemovalId = null;
+    closeModal('modal-delete-player');
     renderAdmin();
     renderPlayers();
     showToast('🗑️ Usuario eliminado');
   } catch (error) {
-    if (button) { button.disabled = false; button.textContent = '🗑️'; button.title = 'Eliminar usuario'; }
-    showToast(`❌ ${error.message || 'No se pudo eliminar el usuario.'}`);
+    if (button) { button.disabled = false; button.textContent = '🗑️ Eliminar usuario'; }
+    const message = error.message || 'No se pudo eliminar el usuario.';
+    const content = document.getElementById('modal-delete-player-content');
+    const existingError = document.getElementById('delete-player-error');
+    if (existingError) existingError.textContent = `❌ ${message}`;
+    else if (content) content.insertAdjacentHTML('afterbegin', `<p id="delete-player-error" style="color:#fda4af;line-height:1.4;margin-bottom:14px">❌ ${escapeHtml(message)}</p>`);
+    showToast(`❌ ${message}`);
   }
 }
 
