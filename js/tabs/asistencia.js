@@ -50,8 +50,8 @@ async function setAttendance(id, val) {
 }
 
 async function clearAllAttendance() {
-  if (!confirm('¿Borrar toda la asistencia?')) return;
   if (!state.currentUser?.isAdmin) { showToast('⚠️ Solo un admin puede borrar toda la asistencia'); return; }
+  if (!await confirmAppAction({ title: 'BORRAR ASISTENCIA', message: 'Se borrará toda la asistencia registrada del club. Esta acción no se puede deshacer.', confirmText: 'Sí, borrar', danger: true })) return;
   try {
     await callRpc('fulbito_clear_attendance', { p_club_id: state.currentClub.id });
     state.players.forEach(p => p.attendance = null);

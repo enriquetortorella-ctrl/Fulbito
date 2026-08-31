@@ -175,8 +175,8 @@ function exportVotesCSV() {
 }
 
 async function resetAllRatings() {
-  if (!confirm('¿Borrar TODAS las calificaciones?')) return;
   if (!state.currentUser?.isAdmin) { showToast('⚠️ Solo un admin puede borrar las calificaciones'); return; }
+  if (!await confirmAppAction({ title: 'BORRAR CALIFICACIONES', message: 'Se borrarán todas las calificaciones del club. Esta acción no se puede deshacer.', confirmText: 'Sí, borrar', danger: true })) return;
   try {
     await callRpc('fulbito_clear_ratings', { p_club_id: state.currentClub.id });
     state.players.forEach(p => p.ratings = {});

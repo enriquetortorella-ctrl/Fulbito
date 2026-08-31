@@ -419,6 +419,34 @@
   </div>
 </div>
 
+<!-- MODAL: CONFIRMACIONES DE LA APP -->
+<div class="modal-overlay" id="modal-action-confirm">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" onclick="cancelAppActionConfirmation()">✕</button>
+    <h2 id="modal-action-confirm-title">CONFIRMAR ACCIÓN</h2>
+    <p id="modal-action-confirm-message" style="color:var(--muted);line-height:1.5;white-space:pre-line;margin-bottom:20px"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-ghost" onclick="cancelAppActionConfirmation()">Cancelar</button><button class="btn btn-primary" id="modal-action-confirm-button" onclick="acceptAppActionConfirmation()">Confirmar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMAR CAMBIOS DEL CLUB -->
+<div class="modal-overlay" id="modal-club-confirm">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" onclick="cancelClubConfirmation()">✕</button>
+    <h2>CONFIRMAR CAMBIOS</h2>
+    <div id="modal-club-confirm-content"></div>
+  </div>
+</div>
+
+<!-- MODAL: CAMBIAR CONTRASEÑA DE JUGADOR -->
+<div class="modal-overlay" id="modal-admin-password">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" onclick="cancelAdminPasswordDialog()">✕</button>
+    <h2>CAMBIAR CONTRASEÑA</h2>
+    <div id="modal-admin-password-content"></div>
+  </div>
+</div>
+
 <!-- MODAL: CENTRO DE SOPORTE MAESTRO -->
 <div class="modal-overlay" id="modal-platform-admin">
   <div class="modal" style="max-width:680px">

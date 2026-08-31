@@ -49,6 +49,10 @@ function stopSync() {
 // ============================================================
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (document.getElementById('modal-action-confirm')?.classList.contains('open')) {
+      cancelAppActionConfirmation();
+      return;
+    }
     document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
   }
 });

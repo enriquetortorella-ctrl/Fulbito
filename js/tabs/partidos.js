@@ -22,10 +22,10 @@ function daysSince(dateStr) {
   return Math.round((Date.now() - d.getTime()) / 86400000);
 }
 
-function saveMatchFromTeams() {
+async function saveMatchFromTeams() {
   const teams = state.builtTeams;
   if (!teams || !teams.length) return;
-  if (!confirm('¿Guardar este partido y abrir la planilla de goles?')) return;
+  if (!await confirmAppAction({ title: 'GUARDAR PARTIDO', message: 'Se guardará el partido y se abrirá la planilla de goles.', confirmText: 'Guardar partido' })) return;
 
   const m = {
     id: `m${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
@@ -162,7 +162,7 @@ function renderHistorial() {
 }
 
 async function removeMatch(id) {
-  if (!confirm('¿Eliminar este partido del historial?')) return;
+  if (!await confirmAppAction({ title: 'ELIMINAR PARTIDO', message: 'El partido se eliminará del historial. Esta acción no se puede deshacer.', confirmText: 'Sí, eliminar', danger: true })) return;
   matches = matches.filter(m => m.id !== id);
   await deleteMatchDb(id);
   renderHistorial();

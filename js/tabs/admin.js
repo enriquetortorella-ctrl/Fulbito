@@ -190,7 +190,11 @@ function clearClubCrest() {
   updateClubBrandPreview(null, clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC');
 }
 
-async function saveClubIdentity() {
+let pendingClubIdentityUpdate = null;
+let pendingClubInviteCode = null;
+let pendingAdminPasswordPlayerId = null;
+
+function saveClubIdentity() {
   if (!state.currentUser?.isAdmin || !state.currentClub) return;
   const nameInput = document.getElementById('club-brand-name');
   const nextName = safePlainText(nameInput?.value, 50).trim();
@@ -198,11 +202,28 @@ async function saveClubIdentity() {
     showToast('⚠️ El nombre debe tener al menos 3 caracteres.');
     return;
   }
-  const button = document.querySelector('.club-brand-actions .btn-primary');
+  const crest = clubBrandDraftCrest === undefined ? state.currentClub.crest : clubBrandDraftCrest;
+  pendingClubIdentityUpdate = { name: nextName, crest };
+  document.getElementById('modal-club-confirm-content').innerHTML = `
+    <p style="color:var(--muted);line-height:1.5;margin-bottom:16px">Esta identidad será visible para todos los integrantes del club.</p>
+    <div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.035);margin-bottom:20px"><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Nuevo nombre</span><strong style="display:block;font-size:17px;margin-top:4px">${escapeHtml(nextName)}</strong>${crest !== state.currentClub.crest ? '<span style="display:block;color:var(--lime);font-size:12px;margin-top:7px">✓ También se actualizará el escudo.</span>' : ''}</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-ghost" onclick="cancelClubConfirmation()">Cancelar</button><button class="btn btn-primary" id="confirm-club-change" onclick="confirmClubIdentitySave()">Guardar cambios</button></div>`;
+  openModal('modal-club-confirm');
+}
+
+function cancelClubConfirmation() {
+  pendingClubIdentityUpdate = null;
+  pendingClubInviteCode = null;
+  closeModal('modal-club-confirm');
+}
+
+async function confirmClubIdentitySave() {
+  const update = pendingClubIdentityUpdate;
+  if (!update) { cancelClubConfirmation(); return; }
+  const button = document.getElementById('confirm-club-change');
   if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
   try {
-    const crest = clubBrandDraftCrest === undefined ? state.currentClub.crest : clubBrandDraftCrest;
-    const freshClub = await saveClubBrand(nextName, crest);
+    const freshClub = await saveClubBrand(update.name, update.crest);
     state.currentClub = { ...state.currentClub, ...freshClub };
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
@@ -211,13 +232,18 @@ async function saveClubIdentity() {
     clubBrandDraftCrest = undefined;
     clubBrandDraftName = '';
     clubBrandDraftClubId = state.currentClub.id;
+    pendingClubIdentityUpdate = null;
+    closeModal('modal-club-confirm');
     renderClubIdentity();
     renderHub();
     renderAdmin();
     showToast('✅ Identidad del club actualizada para todo el grupo');
   } catch (error) {
-    showToast(`❌ ${error.message}`);
-    if (button) { button.disabled = false; button.textContent = '💾 Guardar identidad'; }
+    const message = error.message || 'No se pudo guardar la identidad.';
+    showToast(`❌ ${message}`);
+    if (button) { button.disabled = false; button.textContent = 'Guardar cambios'; }
+    document.getElementById('club-confirm-error')?.remove();
+    document.getElementById('modal-club-confirm-content')?.insertAdjacentHTML('afterbegin', `<p id="club-confirm-error" style="color:#fda4af;line-height:1.4;margin-bottom:14px">❌ ${escapeHtml(message)}</p>`);
   }
 }
 
@@ -254,7 +280,7 @@ function toggleClubInviteEditor(force) {
   if (clubInviteEditorOpen) document.getElementById('club-invite-code-input')?.focus();
 }
 
-async function saveClubInviteCode() {
+function saveClubInviteCode() {
   if (!state.currentUser?.isAdmin || !state.currentClub) return;
   const input = document.getElementById('club-invite-code-input');
   const nextCode = safePlainText(input?.value, 16).toUpperCase().replace(/[^A-Z0-9-]/g, '');
@@ -262,7 +288,18 @@ async function saveClubInviteCode() {
     showToast('⚠️ Usá entre 4 y 16 letras, números o guiones.');
     return;
   }
-  const button = document.querySelector('.club-invite-editor-actions .btn-primary');
+  pendingClubInviteCode = nextCode;
+  document.getElementById('modal-club-confirm-content').innerHTML = `
+    <p style="color:var(--muted);line-height:1.5;margin-bottom:16px">El código anterior dejará de permitir registros en este club.</p>
+    <div style="padding:13px;border:1px solid rgba(240,192,64,.35);border-radius:10px;background:rgba(240,192,64,.08);margin-bottom:20px;text-align:center"><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Nuevo código</span><strong style="display:block;color:var(--gold);font-size:24px;letter-spacing:.12em;margin-top:4px">${escapeHtml(nextCode)}</strong></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-ghost" onclick="cancelClubConfirmation()">Cancelar</button><button class="btn btn-primary" id="confirm-club-change" onclick="confirmClubInviteCodeSave()">Cambiar código</button></div>`;
+  openModal('modal-club-confirm');
+}
+
+async function confirmClubInviteCodeSave() {
+  const nextCode = pendingClubInviteCode;
+  if (!nextCode) { cancelClubConfirmation(); return; }
+  const button = document.getElementById('confirm-club-change');
   if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
   try {
     const freshClub = await updateClubInviteCode(nextCode);
@@ -271,11 +308,57 @@ async function saveClubInviteCode() {
     if (known) Object.assign(known, freshClub);
     SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubInviteCode: nextCode });
     clubInviteEditorOpen = false;
+    pendingClubInviteCode = null;
+    closeModal('modal-club-confirm');
     renderAdmin();
     showToast('✅ Código actualizado. El anterior ya no permite ingresar.');
   } catch (error) {
-    showToast(`❌ ${error.message || 'No se pudo cambiar el código.'}`);
-    if (button) { button.disabled = false; button.textContent = 'Guardar código'; }
+    const message = error.message || 'No se pudo cambiar el código.';
+    showToast(`❌ ${message}`);
+    if (button) { button.disabled = false; button.textContent = 'Cambiar código'; }
+    document.getElementById('club-confirm-error')?.remove();
+    document.getElementById('modal-club-confirm-content')?.insertAdjacentHTML('afterbegin', `<p id="club-confirm-error" style="color:#fda4af;line-height:1.4;margin-bottom:14px">❌ ${escapeHtml(message)}</p>`);
+  }
+}
+
+function openAdminPasswordDialog(id) {
+  const p = state.players.find(x=>x.id===id);
+  if (!p) return;
+  if (p.id === state.currentUser?.id) { showToast('⚠️ Tu contraseña se cambia desde Mi perfil.'); return; }
+  pendingAdminPasswordPlayerId = id;
+  document.getElementById('modal-admin-password-content').innerHTML = `
+    <p style="color:var(--muted);line-height:1.5;margin-bottom:16px">Nueva contraseña para <strong style="color:var(--text)">${escapeHtml(p.name)}</strong> <span style="color:var(--muted)">(@${escapeHtml(p.username)})</span>.</p>
+    <label for="admin-new-password" style="display:block;font-size:12px;font-weight:700;margin-bottom:7px">Nueva contraseña</label>
+    <input id="admin-new-password" type="password" minlength="6" maxlength="128" autocomplete="new-password" placeholder="Entre 6 y 128 caracteres" style="width:100%;margin-bottom:20px">
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-ghost" onclick="cancelAdminPasswordDialog()">Cancelar</button><button class="btn btn-primary" id="confirm-admin-password" onclick="confirmAdminPasswordChange()">Cambiar contraseña</button></div>`;
+  openModal('modal-admin-password');
+  setTimeout(() => document.getElementById('admin-new-password')?.focus(), 0);
+}
+
+function cancelAdminPasswordDialog() {
+  pendingAdminPasswordPlayerId = null;
+  closeModal('modal-admin-password');
+}
+
+async function confirmAdminPasswordChange() {
+  const id = pendingAdminPasswordPlayerId;
+  const p = state.players.find(x=>x.id===id);
+  const newPassword = document.getElementById('admin-new-password')?.value || '';
+  if (!p) { cancelAdminPasswordDialog(); return; }
+  if (newPassword.length < 6 || newPassword.length > 128) { showToast('⚠️ La contraseña debe tener entre 6 y 128 caracteres.'); return; }
+  const button = document.getElementById('confirm-admin-password');
+  if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
+  try {
+    await adminSetPlayerPassword(id, newPassword);
+    p._resetRequested = false;
+    pendingAdminPasswordPlayerId = null;
+    closeModal('modal-admin-password');
+    renderAdmin();
+    showToast(`🔑 Contraseña actualizada para ${p.username}`);
+  } catch (error) {
+    const message = error.message || 'No se pudo cambiar la contraseña.';
+    if (button) { button.disabled = false; button.textContent = 'Cambiar contraseña'; }
+    showToast(`❌ ${message}`);
   }
 }
 

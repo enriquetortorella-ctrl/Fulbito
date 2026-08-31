@@ -143,4 +143,30 @@ function showToast(msg, ms=2200) {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+let appActionConfirmationResolver = null;
+
+function confirmAppAction({ title = 'CONFIRMAR ACCIÓN', message, confirmText = 'Confirmar', danger = false }) {
+  if (appActionConfirmationResolver) appActionConfirmationResolver(false);
+  const modal = document.getElementById('modal-action-confirm');
+  const heading = document.getElementById('modal-action-confirm-title');
+  const copy = document.getElementById('modal-action-confirm-message');
+  const confirmButton = document.getElementById('modal-action-confirm-button');
+  heading.textContent = title;
+  copy.textContent = message;
+  confirmButton.textContent = confirmText;
+  confirmButton.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+  openModal('modal-action-confirm');
+  return new Promise(resolve => { appActionConfirmationResolver = resolve; });
+}
+
+function resolveAppActionConfirmation(accepted) {
+  const resolve = appActionConfirmationResolver;
+  appActionConfirmationResolver = null;
+  closeModal('modal-action-confirm');
+  if (resolve) resolve(accepted);
+}
+
+function cancelAppActionConfirmation() { resolveAppActionConfirmation(false); }
+function acceptAppActionConfirmation() { resolveAppActionConfirmation(true); }
+
 // ============================================================

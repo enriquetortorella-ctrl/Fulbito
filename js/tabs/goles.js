@@ -215,8 +215,8 @@ async function closeMatchFromGoals(mid) {
   const resumen = winner === 'draw'
     ? `Empate ${sc.join('–')}`
     : `Gana Equipo ${TEAM_NAMES[winner]} ${sc.join('–')} (${marginLabel(margin)})`;
-  const mvpTxt = mvpSugerido ? `\nMVP: ${playerNameById(mvpSugerido)}` : '';
-  if (!confirm(`¿Cerrar el partido con este marcador?\n\n${resumen}${mvpTxt}`)) return;
+  const mvpTxt = mvpSugerido ? `\n\nMVP: ${playerNameById(mvpSugerido)}` : '';
+  if (!await confirmAppAction({ title: 'CERRAR PARTIDO', message: `${resumen}${mvpTxt}`, confirmText: 'Cerrar partido' })) return;
 
   m.result = {
     winner,
@@ -235,7 +235,7 @@ async function closeMatchFromGoals(mid) {
 async function resetGoals(mid) {
   const m = matches.find(x => x.id === mid);
   if (!m) return;
-  if (!confirm('¿Borrar todos los goles de este partido?')) return;
+  if (!await confirmAppAction({ title: 'BORRAR GOLES', message: 'Se borrarán todos los goles registrados en este partido. Esta acción no se puede deshacer.', confirmText: 'Sí, borrar', danger: true })) return;
   if (isPlayed(m)) {
     m.result.goals = {};
     m.result.goalsTracked = true;

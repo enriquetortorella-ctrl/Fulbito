@@ -494,7 +494,7 @@ async function toggleAdmin(id) {
 async function adminResetPassword(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
-  if (!confirm(`¿Resetear contraseña de ${p.name} (@${p.username}) a "1234"?`)) return;
+  if (!await confirmAppAction({ title: 'RESETEAR CONTRASEÑA', message: `La contraseña de ${p.name} (@${p.username}) pasará a ser 1234.`, confirmText: 'Resetear contraseña', danger: true })) return;
   try {
     await callRpc('fulbito_admin_reset_player', { p_club_id: state.currentClub.id, p_player_id: id });
     p._resetRequested = false;
@@ -503,23 +503,8 @@ async function adminResetPassword(id) {
   } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
-async function adminChangePassword(id) {
-  const p = state.players.find(x=>x.id===id);
-  if (!p) return;
-  if (p.id === state.currentUser?.id) { showToast('⚠️ Tu contraseña se cambia desde Mi perfil.'); return; }
-  const newPassword = prompt(`Nueva contraseña para ${p.name} (@${p.username}).\n\nDebe tener entre 6 y 128 caracteres:`);
-  if (newPassword === null) return;
-  if (newPassword.length < 6 || newPassword.length > 128) {
-    showToast('⚠️ La contraseña debe tener entre 6 y 128 caracteres.');
-    return;
-  }
-  if (!confirm(`¿Cambiar la contraseña de ${p.name}? Deberá iniciar sesión nuevamente con la nueva clave.`)) return;
-  try {
-    await adminSetPlayerPassword(id, newPassword);
-    p._resetRequested = false;
-    renderAdmin();
-    showToast(`🔑 Contraseña actualizada para ${p.username}`);
-  } catch (error) { showToast(`❌ ${error.message || 'No se pudo cambiar la contraseña.'}`); }
+function adminChangePassword(id) {
+  openAdminPasswordDialog(id);
 }
 
 function posEmoji(pos) { return {POR:'🧤',DEF:'🛡️',MED:'⚙️',DEL:'⚡'}[pos]||'' }
