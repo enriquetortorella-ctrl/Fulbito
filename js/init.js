@@ -138,6 +138,19 @@ async function joinClubByCode() {
   await selectClub(club.id);
 }
 
+const APP_LOADER_MINIMUM_MS = 420;
+const appBootStartedAt = performance.now();
+
+function finishAppBoot() {
+  const loader = document.getElementById('app-loader');
+  if (!loader || loader.classList.contains('is-hidden')) return;
+  const delay = Math.max(0, APP_LOADER_MINIMUM_MS - (performance.now() - appBootStartedAt));
+  window.setTimeout(() => {
+    loader.classList.add('is-hidden');
+    window.setTimeout(() => loader.remove(), 420);
+  }, delay);
+}
+
 function updateLoginClubContext() {
   const context = document.getElementById('login-club-context');
   if (!context || !state.currentClub) return;
@@ -186,25 +199,32 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
 async function init() {
   document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   showScreen('screen-club');
-  try { await getSB(); } catch (error) { showClubError(`No se pudo iniciar una sesión segura: ${error.message}`); }
-  await refreshClubChooser();
-  const sess = SESSION.get();
-  const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
-  if (sess && sess.clubName) {
-    const sessionClub = { id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest), inviteCode: safePlainText(sess.clubInviteCode, 24) || null };
-    const existingClub = state.clubs.find(club => club.id === clubId);
-    if (existingClub) {
-      if (sessionClub.inviteCode) existingClub.inviteCode = sessionClub.inviteCode;
-    } else {
-      state.clubs.push(sessionClub);
+  try {
+    try { await getSB(); } catch (error) { showClubError(`No se pudo iniciar una sesión segura: ${error.message}`); }
+    await refreshClubChooser();
+    const sess = SESSION.get();
+    const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
+    if (sess && sess.clubName) {
+      const sessionClub = { id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest), inviteCode: safePlainText(sess.clubInviteCode, 24) || null };
+      const existingClub = state.clubs.find(club => club.id === clubId);
+      if (existingClub) {
+        if (sessionClub.inviteCode) existingClub.inviteCode = sessionClub.inviteCode;
+      } else {
+        state.clubs.push(sessionClub);
+      }
     }
+    if (sess && state.clubs.some(club => club.id === clubId)) {
+      await selectClub(clubId, { restoreSession: true });
+      return;
+    }
+    if (sess) SESSION.del();
+    showClubLanding();
+  } catch (error) {
+    console.error('init:', error);
+    showClubError('No pudimos cargar los clubes. Actualizá e intentá nuevamente.');
+  } finally {
+    finishAppBoot();
   }
-  if (sess && state.clubs.some(club => club.id === clubId)) {
-    await selectClub(clubId, { restoreSession: true });
-    return;
-  }
-  if (sess) SESSION.del();
-  showClubLanding();
 }
 
 async function refreshPlayers() {
