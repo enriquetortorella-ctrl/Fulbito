@@ -208,6 +208,10 @@ body::after{
   box-shadow:0 0 0 1px rgba(255,255,255,.3),0 0 0 5px rgba(201,255,99,.06),0 0 31px rgba(201,255,99,.34),0 16px 25px rgba(0,0,0,.34);
   animation:crestPulse 3.8s ease-in-out infinite;
 }
+.brand-crest.has-custom-crest{
+  width:46px;height:52px;margin:-6px 0;
+  flex:0 0 46px;
+}
 .topbar-logo{color:#f4f8ff;letter-spacing:1.8px;text-shadow:0 0 25px rgba(112,215,255,.23)}
 .brand-caption{color:var(--aurora-lime);letter-spacing:2.3px}
 .topbar-avatar,.topbar-avatar-placeholder{border-color:var(--aurora-gold);box-shadow:0 0 0 4px rgba(255,211,106,.11),0 0 19px rgba(112,215,255,.14)}
@@ -363,6 +367,7 @@ html,body{max-width:100%;overflow-x:clip}
 
 @keyframes navPulse{0%,100%{transform:translateY(-1px) scale(1.06)}50%{transform:translateY(-3px) scale(1.13)}}
 @media (max-width:640px){.topbar{border-radius:0 0 12px 12px}.nav-tabs{border-radius:12px}.hub-hero,.roster-hero,.hub-fixture,.hub-panel{border-radius:13px}.hub-score,.hub-score-single{font-size:54px}.nav-tab{min-height:51px}}
+@media (max-width:640px){.brand-crest.has-custom-crest{width:39px;height:45px;margin:-4px 0;flex-basis:39px}}
 
 /* ===== COLECCIÓN / GEMINI INSPIRED =====
    Marco de carta más compacto, legible y cercano a una colección de juego. */
