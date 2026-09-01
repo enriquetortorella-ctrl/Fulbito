@@ -29,10 +29,10 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Build APK
+      - name: Validate debug and release builds
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --no-daemon
+          ./gradlew :app:assembleDebug :app:assembleRelease --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

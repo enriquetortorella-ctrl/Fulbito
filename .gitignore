@@ -1,3 +1,8 @@
 # Herramientas y artefactos locales de compilación Android.
 .build-tools/
 android-app/manual-build/
+android-app/.gradle/
+android-app/app/build/
+android-app/keystore.properties
+android-app/*.jks
+android-app/*.keystore
