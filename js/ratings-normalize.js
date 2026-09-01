@@ -15,7 +15,8 @@ function computeVoterBiases() {
     Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
       if (voterId === p.id) return;
       STATS.forEach(s => {
-        if (r[s] > 0) allVotes.push(r[s]);
+        const value = getStatValue(r, s);
+        if (value > 0) allVotes.push(value);
       });
     });
   });
@@ -27,7 +28,8 @@ function computeVoterBiases() {
       if (voterId === p.id) return;
       if (!voterVotes[voterId]) voterVotes[voterId] = [];
       STATS.forEach(s => {
-        if (r[s] > 0) voterVotes[voterId].push(r[s]);
+        const value = getStatValue(r, s);
+        if (value > 0) voterVotes[voterId].push(value);
       });
     });
   });
@@ -61,7 +63,8 @@ function getValidRatings(player) {
     .map(([voterId, rating]) => {
       const normalized = {};
       STATS.forEach(s => {
-        if (rating[s] > 0) normalized[s] = normalizeVote(rating[s], voterId);
+        const value = getStatValue(rating, s);
+        if (value > 0) normalized[s] = normalizeVote(value, voterId);
       });
       return normalized;
     });
@@ -87,7 +90,7 @@ function getOverall(player) {
 
   const pos = getEffectivePosition(player);
   let ovr;
-  if (pos==='POR') ovr = avg.atajadas*0.4 + avg.ritmo*0.15 + avg.fisico*0.25 + avg.pase*0.1 + avg.defensa*0.1;
+  if (pos==='POR') ovr = avg.ataque*0.4 + avg.ritmo*0.15 + avg.fisico*0.25 + avg.pase*0.1 + avg.defensa*0.1;
   else if (pos==='DEF') ovr = avg.defensa*0.35 + avg.fisico*0.2 + avg.ritmo*0.2 + avg.pase*0.15 + avg.tiro*0.1;
   else if (pos==='MED') ovr = avg.pase*0.35 + avg.ritmo*0.2 + avg.defensa*0.15 + avg.tiro*0.15 + avg.fisico*0.15;
   else ovr = avg.tiro*0.4 + avg.ritmo*0.25 + avg.pase*0.15 + avg.fisico*0.15 + avg.defensa*0.05;
@@ -106,7 +109,7 @@ function getEffectivePosition(player) {
   const avg = {};
   STATS.forEach(s => { avg[s] = getStatAverage(allRatings, s); });
   const posScore = {
-    POR: avg.atajadas*0.6 + avg.fisico*0.4,
+    POR: avg.ataque*0.6 + avg.fisico*0.4,
     DEF: avg.defensa*0.6 + avg.fisico*0.4,
     MED: avg.pase*0.6 + avg.ritmo*0.4,
     DEL: avg.tiro*0.6 + avg.ritmo*0.4,

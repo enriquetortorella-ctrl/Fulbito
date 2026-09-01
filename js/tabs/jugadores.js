@@ -76,7 +76,7 @@ function hasSelfRating(p) {
 function getSelfStats(p) {
   const r = p.ratings?.[p.id] || {};
   const stats = {};
-  STATS.forEach(s => { stats[s] = r[s] || 0; });
+  STATS.forEach(s => { stats[s] = getStatValue(r, s); });
   return stats;
 }
 
@@ -86,7 +86,7 @@ function getSelfOverall(p) {
   if (!vals.length) return null;
   const pos = p.posPrimary || 'MED';
   let ovr;
-  if (pos==='POR') ovr = stats.atajadas*0.4 + stats.ritmo*0.15 + stats.fisico*0.25 + stats.pase*0.1 + stats.defensa*0.1;
+  if (pos==='POR') ovr = stats.ataque*0.4 + stats.ritmo*0.15 + stats.fisico*0.25 + stats.pase*0.1 + stats.defensa*0.1;
   else if (pos==='DEF') ovr = stats.defensa*0.35 + stats.fisico*0.2 + stats.ritmo*0.2 + stats.pase*0.15 + stats.tiro*0.1;
   else if (pos==='MED') ovr = stats.pase*0.35 + stats.ritmo*0.2 + stats.defensa*0.15 + stats.tiro*0.15 + stats.fisico*0.15;
   else ovr = stats.tiro*0.4 + stats.ritmo*0.25 + stats.pase*0.15 + stats.fisico*0.15 + stats.defensa*0.05;
@@ -100,7 +100,7 @@ function cardStatsHTML(stats) {
     ['PAS', statToFifa(stats.pase)],
     ['DEF', statToFifa(stats.defensa)],
     ['FIS', statToFifa(stats.fisico)],
-    ['ATA', statToFifa(stats.atajadas)],
+    ['ATA', statToFifa(stats.ataque)],
   ];
   const max = Math.max(...pairs.map(([,v]) => v));
   return pairs.map(([k,v]) =>

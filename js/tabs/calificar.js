@@ -20,7 +20,7 @@ function renderRate() {
     const myRating = p.ratings?.[myId] || {};
     const hasVoted = Object.keys(myRating).length > 0;
     const statsHTML = STATS.map(s => {
-      const val = myRating[s] || 0;
+      const val = getStatValue(myRating, s);
       const stars = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateStat('${p.id}','${s}',${n})"  data-pid="${p.id}" data-stat="${s}" data-val="${n}">★</span>`).join('');
       return `<div class="rate-stars-row">
         <div class="rate-stars-label">${STAT_LABELS[s]}</div>
@@ -55,13 +55,15 @@ async function rateStat(playerId, stat, val) {
     const data = await callRpc('fulbito_rate_player', {
       p_club_id: state.currentClub.id,
       p_player_id: playerId,
-      p_stat: stat,
+      // La RPC mantiene "atajadas" como nombre de almacenamiento heredado.
+      // En la app y para los jugadores, ATA es siempre Ataque.
+      p_stat: stat === 'ataque' ? 'atajadas' : stat,
       p_value: val
     });
     const saved = mapPlayers([data])[0];
     // No mostramos un éxito optimista: la respuesta debe traer la estrella
     // recién guardada. Así una falla del servidor no queda disimulada en pantalla.
-    if (!saved || Number(saved.ratings?.[myId]?.[stat] || 0) !== val) {
+    if (!saved || getStatValue(saved.ratings?.[myId], stat) !== val) {
       throw new Error('La calificación no quedó confirmada. Actualizá la app e intentá de nuevo.');
     }
     Object.assign(p, saved);
@@ -70,7 +72,7 @@ async function rateStat(playerId, stat, val) {
   if (container) {
     container.innerHTML = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateStat('${playerId}','${stat}',${n})">★</span>`).join('');
   }
-  const hasAllStats = STATS.every(s => (p.ratings[myId]?.[s]||0) > 0);
+  const hasAllStats = STATS.every(s => getStatValue(p.ratings[myId], s) > 0);
   const header = document.querySelector(`#rate-body-${playerId}`)?.previousElementSibling;
   if (header && hasAllStats) {
     let badge = header.querySelector('.rate-player-voted');
@@ -99,8 +101,11 @@ function exportVotesCSV() {
       if (voterId === votado.id) return;
       const votanteName = idToName[voterId] || voterId;
       const bias = biases[voterId] !== undefined ? biases[voterId].toFixed(2) : '0';
-      const rawVals = STATS.map(s => rating[s] || '');
-      const normVals = STATS.map(s => rating[s] > 0 ? normalizeVote(rating[s], voterId).toFixed(2) : '');
+      const rawVals = STATS.map(s => getStatValue(rating, s) || '');
+      const normVals = STATS.map(s => {
+        const value = getStatValue(rating, s);
+        return value > 0 ? normalizeVote(value, voterId).toFixed(2) : '';
+      });
       rows.push([votanteName, bias, votado.username, ...rawVals, ...normVals]);
     });
   });
