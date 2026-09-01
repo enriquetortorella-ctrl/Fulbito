@@ -612,6 +612,9 @@ begin
   if p_stat not in ('ritmo','tiro','pase','defensa','fisico','atajadas') or p_value not between 1 and 5 then
     raise exception 'Calificación inválida' using errcode = '22023';
   end if;
+  if v_rater.id = p_player_id then
+    raise exception 'No podés calificarte a vos mismo' using errcode = '22023';
+  end if;
   select * into v_target from public.fulbito_players where id = p_player_id and club_id = p_club_id for update;
   if not found then
     raise exception 'Jugador no encontrado' using errcode = '22023';

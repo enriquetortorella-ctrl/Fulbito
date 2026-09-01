@@ -209,7 +209,6 @@ function openPlayerProfile(id) {
   }).join('');
 
   const validVoters = getValidRatings(p).length;
-  const hasSelf = hasSelfRating(p);
   const trimmedNote = validVoters >= 4 ? ' · extremos filtrados por atributo' : '';
 
   const rec = getPlayerRecord(p.id);
@@ -223,40 +222,6 @@ function openPlayerProfile(id) {
   const goalChip = rec.goals > 0
     ? `<span class="chip" style="margin-top:8px;color:var(--green);border-color:rgba(34,197,94,.4)">⚽ ${rec.goals} gol${rec.goals===1?'':'es'}${rec.goalPj?` · ${(rec.goals/rec.goalPj).toFixed(1)} por partido desde registro`:''}</span>`
     : '';
-
-  let selfSection = '';
-  if (hasSelf) {
-    const selfOvr = getSelfOverall(p);
-    const selfStats = getSelfStats(p);
-    const selfBars = STATS.map(s => {
-      const groupFifa = statToFifa(stats[s]||0);
-      const selfFifa = statToFifa(selfStats[s]||0);
-      const diff = selfFifa - groupFifa;
-      const diffColor = Math.abs(diff) < 5 ? 'var(--muted)' : diff > 0 ? 'var(--gold)' : '#60a5fa';
-      return `<div style="margin-bottom:6px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
-          <span style="color:var(--muted)">${STAT_LABELS[s]}</span>
-          <span style="color:${diffColor};font-family:'Bebas Neue',sans-serif;font-size:14px">
-            ${selfFifa} <span style="color:var(--muted);font-size:10px">(grupo: ${groupFifa})</span>
-          </span>
-        </div>
-        <div style="height:3px;background:var(--bg3);border-radius:2px;position:relative">
-          <div style="height:3px;border-radius:2px;width:${selfFifa}%;background:#14b8a6"></div>
-        </div>
-      </div>`;
-    }).join('');
-
-    selfSection = `
-      <div style="margin-top:20px;padding:14px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.3);border-radius:10px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <span style="font-size:18px">⭐</span>
-          <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#14b8a6">Autocalificación</span>
-          <span style="margin-left:auto;font-family:'Bebas Neue',sans-serif;font-size:24px;color:#14b8a6">${selfOvr}</span>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.4">Cómo se ve ${p.username} a sí mismo. No afecta el overall del grupo.</p>
-        ${selfBars}
-      </div>`;
-  }
 
   // Sociedades y rivalidades del jugador
   let socHTML = '';
@@ -342,7 +307,6 @@ function openPlayerProfile(id) {
     </div>
     <div>${statBars}</div>
     ${socHTML}
-    ${selfSection}
   `;
   openModal('modal-profile');
 }
