@@ -14,9 +14,9 @@ android {
     namespace 'ar.com.fulbito.app'
     compileSdk 34
 
-    signingConfigs {
-        release {
-            if (hasReleaseSigning) {
+    if (hasReleaseSigning) {
+        signingConfigs {
+            release {
                 storeFile rootProject.file(releaseProperties.getProperty('storeFile'))
                 storePassword releaseProperties.getProperty('storePassword')
                 keyAlias releaseProperties.getProperty('keyAlias')
