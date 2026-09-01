@@ -59,7 +59,7 @@ jobs:
           ./gradlew :app:assembleRelease --no-daemon
 
       - name: Publish GitHub release
-        working-directory: .
+        working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: android-v${{ inputs.version_name }}
