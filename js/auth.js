@@ -3,6 +3,7 @@
 let regPhotoData = null;
 let regPosPrimary = null;
 let regPosSecondary = null;
+let regRatingMode = 'field';
 
 function showLoginForm() {
   document.getElementById('login-form-box').classList.remove('hidden');
@@ -88,6 +89,7 @@ async function doRegister() {
       p_password: pass,
       p_pos_primary: regPosPrimary,
       p_pos_secondary: regPosSecondary || regPosPrimary,
+      p_rating_mode: regRatingMode,
       p_photo: regPhotoData || null
     });
     await openAuthorizedPlayer(data);
@@ -153,6 +155,31 @@ function selectPos(type, el) {
   el.classList.add('selected');
   if (type === 'primary') regPosPrimary = el.dataset.pos;
   else regPosSecondary = el.dataset.pos;
+  if (type === 'primary') renderRegRatingMode();
+}
+
+function renderRegRatingMode() {
+  const group = document.getElementById('reg-rating-mode-group');
+  if (!group) return;
+  if (regPosPrimary !== 'POR') {
+    regRatingMode = 'field';
+    group.classList.add('hidden');
+    group.innerHTML = '';
+    return;
+  }
+  group.classList.remove('hidden');
+  group.innerHTML = `
+    <label>¿Cómo querés que te califiquen?</label>
+    <div class="pos-grid" id="reg-rating-mode">
+      <button type="button" class="pos-btn${regRatingMode==='goalkeeper'?' selected':''}" onclick="selectRegRatingMode('goalkeeper')">🧤 Estadísticas de arquero</button>
+      <button type="button" class="pos-btn${regRatingMode==='field'?' selected':''}" onclick="selectRegRatingMode('field')">⚽ Estadísticas de campo</button>
+    </div>
+    <div class="text-muted" style="font-size:12px;margin-top:7px">La elección define las seis estadísticas que verán tus compañeros al calificarte.</div>`;
+}
+
+function selectRegRatingMode(mode) {
+  regRatingMode = mode === 'goalkeeper' ? 'goalkeeper' : 'field';
+  renderRegRatingMode();
 }
 
 // ============================================================

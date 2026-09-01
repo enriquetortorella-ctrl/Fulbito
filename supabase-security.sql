@@ -11,7 +11,8 @@ alter table public.fulbito_clubs
 
 alter table public.fulbito_players
   add column if not exists auth_user_id uuid references auth.users(id) on delete set null,
-  add column if not exists _reset_requested boolean not null default false;
+  add column if not exists _reset_requested boolean not null default false,
+  add column if not exists rating_mode text not null default 'field' check (rating_mode in ('field', 'goalkeeper'));
 
 -- Existe un único acceso maestro para toda la plataforma. Se vincula al ID
 -- estable del jugador histórico TITI, no al nombre ni a una sesión temporal.
@@ -114,6 +115,7 @@ as $$
     'photo', p_player.photo,
     'pos_primary', p_player.pos_primary,
     'pos_secondary', p_player.pos_secondary,
+    'rating_mode', p_player.rating_mode,
     'is_admin', p_player.is_admin,
     'attendance', p_player.attendance,
     'ratings', coalesce(p_player.ratings, '{}'::jsonb),
@@ -331,6 +333,8 @@ begin
 end;
 $$;
 
+drop function if exists public.fulbito_register_player(text, text, text, text, text, text, text);
+
 create or replace function public.fulbito_register_player(
   p_invite_code text,
   p_name text,
@@ -338,7 +342,8 @@ create or replace function public.fulbito_register_player(
   p_password text,
   p_pos_primary text,
   p_pos_secondary text default null,
-  p_photo text default null
+  p_photo text default null,
+  p_rating_mode text default 'field'
 )
 returns jsonb
 language plpgsql
@@ -353,6 +358,7 @@ declare
   v_name text := trim(p_name);
   v_primary text := upper(trim(p_pos_primary));
   v_secondary text := upper(coalesce(nullif(trim(p_pos_secondary), ''), trim(p_pos_primary)));
+  v_rating_mode text := lower(coalesce(nullif(trim(p_rating_mode), ''), 'field'));
   v_is_admin boolean;
 begin
   if v_uid is null then
@@ -369,6 +375,9 @@ begin
   end if;
   if v_primary not in ('POR','DEF','MED','DEL') or v_secondary not in ('POR','DEF','MED','DEL') then
     raise exception 'La posición no es válida' using errcode = '22023';
+  end if;
+  if v_rating_mode not in ('field', 'goalkeeper') or (v_rating_mode = 'goalkeeper' and v_primary <> 'POR') then
+    raise exception 'El tipo de estadísticas no es válido para la posición elegida' using errcode = '22023';
   end if;
   if not public.fulbito_valid_photo(p_photo) then
     raise exception 'La foto no es válida o es demasiado grande' using errcode = '22023';
@@ -392,11 +401,11 @@ begin
     or not exists (select 1 from public.fulbito_players where club_id = v_club.id and is_admin);
 
   insert into public.fulbito_players (
-    id, username, name, password, photo, pos_primary, pos_secondary,
+    id, username, name, password, photo, pos_primary, pos_secondary, rating_mode,
     is_admin, attendance, ratings, club_id, auth_user_id
   ) values (
     'p-' || encode(gen_random_bytes(12), 'hex'), v_username, v_name,
-    crypt(p_password, gen_salt('bf', 10)), p_photo, v_primary, v_secondary,
+    crypt(p_password, gen_salt('bf', 10)), p_photo, v_primary, v_secondary, v_rating_mode,
     v_is_admin, null, '{}'::jsonb, v_club.id, v_uid
   ) returning * into v_player;
 
@@ -458,6 +467,8 @@ begin
 end;
 $$;
 
+drop function if exists public.fulbito_update_my_profile(text, text, text, text, text, text, text, text);
+
 create or replace function public.fulbito_update_my_profile(
   p_club_id text,
   p_name text default null,
@@ -466,7 +477,8 @@ create or replace function public.fulbito_update_my_profile(
   p_pos_secondary text default null,
   p_photo text default null,
   p_current_password text default null,
-  p_new_password text default null
+  p_new_password text default null,
+  p_rating_mode text default null
 )
 returns jsonb
 language plpgsql
@@ -480,6 +492,7 @@ declare
   v_name text;
   v_primary text;
   v_secondary text;
+  v_rating_mode text;
   v_credentials_changed boolean;
   v_password_ok boolean;
 begin
@@ -496,10 +509,12 @@ begin
   v_name := coalesce(nullif(trim(p_name), ''), v_player.name);
   v_primary := coalesce(nullif(upper(trim(p_pos_primary)), ''), v_player.pos_primary);
   v_secondary := coalesce(nullif(upper(trim(p_pos_secondary)), ''), v_player.pos_secondary, v_primary);
+  v_rating_mode := lower(coalesce(nullif(trim(p_rating_mode), ''), v_player.rating_mode, 'field'));
   v_credentials_changed := v_username <> v_player.username or coalesce(p_new_password, '') <> '';
 
   if v_username !~ '^[a-z0-9._-]{3,32}$' or char_length(v_name) not between 2 and 48 or v_name ~ '[[:cntrl:]<>]'
-     or v_primary not in ('POR','DEF','MED','DEL') or v_secondary not in ('POR','DEF','MED','DEL') then
+     or v_primary not in ('POR','DEF','MED','DEL') or v_secondary not in ('POR','DEF','MED','DEL')
+     or v_rating_mode not in ('field', 'goalkeeper') or (v_rating_mode = 'goalkeeper' and v_primary <> 'POR') then
     raise exception 'Los datos del perfil no son válidos' using errcode = '22023';
   end if;
   if not public.fulbito_valid_photo(p_photo) then
@@ -533,6 +548,7 @@ begin
          name = v_name,
          pos_primary = v_primary,
          pos_secondary = v_secondary,
+         rating_mode = v_rating_mode,
          photo = coalesce(p_photo, v_player.photo),
          password = case when coalesce(p_new_password, '') <> '' then crypt(p_new_password, gen_salt('bf', 10)) else v_player.password end
    where id = v_player.id
@@ -609,7 +625,8 @@ begin
   if not found then
     raise exception 'No tenés acceso a este club' using errcode = '42501';
   end if;
-  if p_stat not in ('ritmo','tiro','pase','defensa','fisico','atajadas') or p_value not between 1 and 5 then
+  if p_stat not in ('ritmo','tiro','pase','defensa','fisico','atajadas','estirada','manos','saque','reflejos','posicion','uno_contra_uno')
+     or p_value not between 1 and 5 then
     raise exception 'Calificación inválida' using errcode = '22023';
   end if;
   if v_rater.id = p_player_id then
@@ -760,6 +777,10 @@ begin
    where id = p_player_id and club_id = p_club_id;
   if not found then
     raise exception 'Jugador no encontrado' using errcode = '22023';
+  end if;
+  if (v_target.rating_mode = 'goalkeeper' and p_stat not in ('estirada','manos','saque','reflejos','posicion','uno_contra_uno'))
+     or (coalesce(v_target.rating_mode, 'field') <> 'goalkeeper' and p_stat not in ('ritmo','tiro','pase','defensa','fisico','atajadas')) then
+    raise exception 'Ese atributo no corresponde al tipo de estadísticas del jugador' using errcode = '22023';
   end if;
 end;
 $$;
@@ -1017,9 +1038,9 @@ revoke all on function public.fulbito_lookup_club(text) from public;
 revoke all on function public.fulbito_list_clubs() from public;
 revoke all on function public.fulbito_platform_list_clubs() from public;
 revoke all on function public.fulbito_create_club(text) from public;
-revoke all on function public.fulbito_register_player(text, text, text, text, text, text, text) from public;
+revoke all on function public.fulbito_register_player(text, text, text, text, text, text, text, text) from public;
 revoke all on function public.fulbito_login_player(text, text, text) from public;
-revoke all on function public.fulbito_update_my_profile(text, text, text, text, text, text, text, text) from public;
+revoke all on function public.fulbito_update_my_profile(text, text, text, text, text, text, text, text, text) from public;
 revoke all on function public.fulbito_set_attendance(text, text, text) from public;
 revoke all on function public.fulbito_clear_attendance(text) from public;
 revoke all on function public.fulbito_rate_player(text, text, text, integer) from public;
@@ -1042,9 +1063,9 @@ grant execute on function public.fulbito_lookup_club(text) to authenticated;
 grant execute on function public.fulbito_list_clubs() to authenticated;
 grant execute on function public.fulbito_platform_list_clubs() to authenticated;
 grant execute on function public.fulbito_create_club(text) to authenticated;
-grant execute on function public.fulbito_register_player(text, text, text, text, text, text, text) to authenticated;
+grant execute on function public.fulbito_register_player(text, text, text, text, text, text, text, text) to authenticated;
 grant execute on function public.fulbito_login_player(text, text, text) to authenticated;
-grant execute on function public.fulbito_update_my_profile(text, text, text, text, text, text, text, text) to authenticated;
+grant execute on function public.fulbito_update_my_profile(text, text, text, text, text, text, text, text, text) to authenticated;
 grant execute on function public.fulbito_set_attendance(text, text, text) to authenticated;
 grant execute on function public.fulbito_clear_attendance(text) to authenticated;
 grant execute on function public.fulbito_rate_player(text, text, text, integer) to authenticated;

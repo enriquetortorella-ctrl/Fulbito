@@ -14,7 +14,7 @@ function computeVoterBiases() {
   state.players.forEach(p => {
     Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
       if (voterId === p.id) return;
-      STATS.forEach(s => {
+      getRatingStats(p).forEach(s => {
         const value = getStatValue(r, s);
         if (value > 0) allVotes.push(value);
       });
@@ -27,7 +27,7 @@ function computeVoterBiases() {
     Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
       if (voterId === p.id) return;
       if (!voterVotes[voterId]) voterVotes[voterId] = [];
-      STATS.forEach(s => {
+      getRatingStats(p).forEach(s => {
         const value = getStatValue(r, s);
         if (value > 0) voterVotes[voterId].push(value);
       });
@@ -62,7 +62,7 @@ function getValidRatings(player) {
     .filter(([voterId]) => voterId !== myId)
     .map(([voterId, rating]) => {
       const normalized = {};
-      STATS.forEach(s => {
+      getRatingStats(player).forEach(s => {
         const value = getStatValue(rating, s);
         if (value > 0) normalized[s] = normalizeVote(value, voterId);
       });
@@ -86,11 +86,12 @@ function getOverall(player) {
   if (!allRatings.length) return null;
 
   const avg = {};
-  STATS.forEach(s => { avg[s] = getStatAverage(allRatings, s); });
+  getRatingStats(player).forEach(s => { avg[s] = getStatAverage(allRatings, s); });
 
   const pos = getEffectivePosition(player);
   let ovr;
-  if (pos==='POR') ovr = avg.ataque*0.4 + avg.ritmo*0.15 + avg.fisico*0.25 + avg.pase*0.1 + avg.defensa*0.1;
+  if (usesGoalkeeperStats(player)) ovr = avg.reflejos*0.3 + avg.manos*0.25 + avg.posicion*0.2 + avg.estirada*0.15 + avg.uno_contra_uno*0.1;
+  else if (pos==='POR') ovr = avg.ataque*0.4 + avg.ritmo*0.15 + avg.fisico*0.25 + avg.pase*0.1 + avg.defensa*0.1;
   else if (pos==='DEF') ovr = avg.defensa*0.35 + avg.fisico*0.2 + avg.ritmo*0.2 + avg.pase*0.15 + avg.tiro*0.1;
   else if (pos==='MED') ovr = avg.pase*0.35 + avg.ritmo*0.2 + avg.defensa*0.15 + avg.tiro*0.15 + avg.fisico*0.15;
   else ovr = avg.tiro*0.4 + avg.ritmo*0.25 + avg.pase*0.15 + avg.fisico*0.15 + avg.defensa*0.05;
@@ -104,10 +105,11 @@ function getOverall(player) {
 }
 
 function getEffectivePosition(player) {
+  if (usesGoalkeeperStats(player)) return 'POR';
   const allRatings = getValidRatings(player);
   if (allRatings.length < 2) return player.posPrimary || 'MED';
   const avg = {};
-  STATS.forEach(s => { avg[s] = getStatAverage(allRatings, s); });
+  getRatingStats(player).forEach(s => { avg[s] = getStatAverage(allRatings, s); });
   const posScore = {
     POR: avg.ataque*0.6 + avg.fisico*0.4,
     DEF: avg.defensa*0.6 + avg.fisico*0.4,
@@ -126,7 +128,7 @@ function getAvgStats(player) {
   const allRatings = getValidRatings(player);
   if (!allRatings.length) return null;
   const avg = {};
-  STATS.forEach(s => { avg[s] = Math.round(getStatAverage(allRatings, s) * 10) / 10; });
+  getRatingStats(player).forEach(s => { avg[s] = Math.round(getStatAverage(allRatings, s) * 10) / 10; });
   return avg;
 }
 

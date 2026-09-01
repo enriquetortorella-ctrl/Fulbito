@@ -19,7 +19,8 @@ function renderRate() {
   list.innerHTML = toRate.map((p, idx) => {
     const myRating = p.ratings?.[myId] || {};
     const hasVoted = Object.keys(myRating).length > 0;
-    const statsHTML = STATS.map(s => {
+    const playerStats = getRatingStats(p);
+    const statsHTML = playerStats.map(s => {
       const val = getStatValue(myRating, s);
       const stars = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateStat('${p.id}','${s}',${n})"  data-pid="${p.id}" data-stat="${s}" data-val="${n}">★</span>`).join('');
       return `<div class="rate-stars-row">
@@ -72,7 +73,7 @@ async function rateStat(playerId, stat, val) {
   if (container) {
     container.innerHTML = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateStat('${playerId}','${stat}',${n})">★</span>`).join('');
   }
-  const hasAllStats = STATS.every(s => getStatValue(p.ratings[myId], s) > 0);
+  const hasAllStats = getRatingStats(p).every(s => getStatValue(p.ratings[myId], s) > 0);
   const header = document.querySelector(`#rate-body-${playerId}`)?.previousElementSibling;
   if (header && hasAllStats) {
     let badge = header.querySelector('.rate-player-voted');
@@ -92,7 +93,8 @@ function exportVotesCSV() {
 
   const { biases, globalAvg } = computeVoterBiases();
 
-  const headers = ['Votante', 'Bias', 'Votado', ...STATS.map(s=>STAT_LABELS[s]), ...STATS.map(s=>STAT_LABELS[s]+'_norm')];
+  const exportStats = [...FIELD_STATS, ...GOALKEEPER_STATS];
+  const headers = ['Votante', 'Bias', 'Votado', 'Modo', ...exportStats.map(s=>STAT_LABELS[s]), ...exportStats.map(s=>STAT_LABELS[s]+'_norm')];
   const rows = [headers];
 
   state.players.forEach(votado => {
@@ -101,12 +103,14 @@ function exportVotesCSV() {
       if (voterId === votado.id) return;
       const votanteName = idToName[voterId] || voterId;
       const bias = biases[voterId] !== undefined ? biases[voterId].toFixed(2) : '0';
-      const rawVals = STATS.map(s => getStatValue(rating, s) || '');
-      const normVals = STATS.map(s => {
+      const playerStats = getRatingStats(votado);
+      const rawVals = exportStats.map(s => playerStats.includes(s) ? getStatValue(rating, s) || '' : '');
+      const normVals = exportStats.map(s => {
+        if (!playerStats.includes(s)) return '';
         const value = getStatValue(rating, s);
         return value > 0 ? normalizeVote(value, voterId).toFixed(2) : '';
       });
-      rows.push([votanteName, bias, votado.username, ...rawVals, ...normVals]);
+      rows.push([votanteName, bias, votado.username, usesGoalkeeperStats(votado) ? 'Arquero' : 'Campo', ...rawVals, ...normVals]);
     });
   });
 
@@ -128,14 +132,14 @@ function exportVotesCSV() {
 
   rows.push([]);
   rows.push(['=== RESUMEN POR JUGADOR ===']);
-  rows.push(['Jugador', 'Posición', 'OVR', 'Votos válidos', 'PJ', 'V', 'E', 'D', 'Pts', 'MVPs', 'Goles', ...STATS.map(s=>STAT_LABELS[s]+' prom')]);
+  rows.push(['Jugador', 'Posición', 'Modo', 'OVR', 'Votos válidos', 'PJ', 'V', 'E', 'D', 'Pts', 'MVPs', 'Goles', ...exportStats.map(s=>STAT_LABELS[s]+' prom')]);
   state.players.forEach(p => {
     const ovr = getOverall(p) || '-';
     const pos = getEffectivePosition(p);
     const validCount = getValidRatings(p).length;
     const avg = getAvgStats(p) || {};
     const rec = getPlayerRecord(p.id);
-    rows.push([p.username, pos, ovr, validCount, rec.pj, rec.w, rec.d, rec.l, rec.pts, rec.mvps, rec.goals, ...STATS.map(s => avg[s] || '-')]);
+    rows.push([p.username, pos, usesGoalkeeperStats(p) ? 'Arquero' : 'Campo', ovr, validCount, rec.pj, rec.w, rec.d, rec.l, rec.pts, rec.mvps, rec.goals, ...exportStats.map(s => avg[s] || '-')]);
   });
 
   rows.push([]);

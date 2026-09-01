@@ -76,32 +76,26 @@ function hasSelfRating(p) {
 function getSelfStats(p) {
   const r = p.ratings?.[p.id] || {};
   const stats = {};
-  STATS.forEach(s => { stats[s] = getStatValue(r, s); });
+  getRatingStats(p).forEach(s => { stats[s] = getStatValue(r, s); });
   return stats;
 }
 
 function getSelfOverall(p) {
   const stats = getSelfStats(p);
-  const vals = STATS.map(s => stats[s]).filter(v => v > 0);
+  const vals = getRatingStats(p).map(s => stats[s]).filter(v => v > 0);
   if (!vals.length) return null;
   const pos = p.posPrimary || 'MED';
   let ovr;
-  if (pos==='POR') ovr = stats.ataque*0.4 + stats.ritmo*0.15 + stats.fisico*0.25 + stats.pase*0.1 + stats.defensa*0.1;
+  if (usesGoalkeeperStats(p)) ovr = stats.reflejos*0.3 + stats.manos*0.25 + stats.posicion*0.2 + stats.estirada*0.15 + stats.uno_contra_uno*0.1;
+  else if (pos==='POR') ovr = stats.ataque*0.4 + stats.ritmo*0.15 + stats.fisico*0.25 + stats.pase*0.1 + stats.defensa*0.1;
   else if (pos==='DEF') ovr = stats.defensa*0.35 + stats.fisico*0.2 + stats.ritmo*0.2 + stats.pase*0.15 + stats.tiro*0.1;
   else if (pos==='MED') ovr = stats.pase*0.35 + stats.ritmo*0.2 + stats.defensa*0.15 + stats.tiro*0.15 + stats.fisico*0.15;
   else ovr = stats.tiro*0.4 + stats.ritmo*0.25 + stats.pase*0.15 + stats.fisico*0.15 + stats.defensa*0.05;
   return Math.round(50 + (ovr-1)/4 * 49);
 }
 
-function cardStatsHTML(stats) {
-  const pairs = [
-    ['RIT', statToFifa(stats.ritmo)],
-    ['TIR', statToFifa(stats.tiro)],
-    ['PAS', statToFifa(stats.pase)],
-    ['DEF', statToFifa(stats.defensa)],
-    ['FIS', statToFifa(stats.fisico)],
-    ['ATA', statToFifa(stats.ataque)],
-  ];
+function cardStatsHTML(stats, player) {
+  const pairs = getRatingStats(player).map(stat => [STAT_LABELS[stat], statToFifa(stats[stat])]);
   const max = Math.max(...pairs.map(([,v]) => v));
   return pairs.map(([k,v]) =>
     `<div class="fifa-card-stat${v===max && v>40 ? ' best' : ''}"><span>${v}</span><span>${k}</span></div>`
@@ -179,7 +173,7 @@ function renderFifaCard(p, highlights) {
     </div>
     <div class="fifa-divider"></div>
     <div class="fifa-card-name">${escapeHtml(p.username.toUpperCase())}</div>
-    <div class="fifa-card-stats">${cardStatsHTML(stats)}</div>
+    <div class="fifa-card-stats">${cardStatsHTML(stats, p)}</div>
     ${spotlights}
   </div>`;
 }
@@ -195,7 +189,7 @@ function openPlayerProfile(id) {
   const profilePhotoUrl = safePhotoUrl(p.photo);
   const photo = profilePhotoUrl ? `<img src="${escapeHtml(profilePhotoUrl)}" alt="" style="width:100px;height:100px;border-radius:10px;object-fit:cover;border:2px solid var(--gold);display:block;margin:0 auto 12px">` : `<div style="font-size:64px;text-align:center;margin-bottom:12px">👤</div>`;
 
-  const statBars = STATS.map(s => {
+  const statBars = getRatingStats(p).map(s => {
     const fifa = statToFifa(stats[s]||0);
     return `<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
@@ -301,6 +295,7 @@ function openPlayerProfile(id) {
     <div style="text-align:center;margin-bottom:16px">
       <span style="font-family:'Bebas Neue',sans-serif;font-size:48px">${ovr}</span>
       <span style="display:block;color:var(--muted);font-size:13px">${tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
+      ${usesGoalkeeperStats(p) ? '<span style="display:block;color:var(--cyan);font-size:12px;margin-top:4px">🧤 Estadísticas de arquero</span>' : ''}
       <span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">Posición secundaria: ${p.posSecondary||'-'}</span>
       ${recChip}
       ${goalChip}
@@ -321,6 +316,9 @@ function openEditProfile() {
   const me = getMe();
   if (!me) return;
   editPhotoData = me.photo;
+  editPosPrimary = me.posPrimary;
+  editPosSecondary = me.posSecondary;
+  editRatingMode = me.ratingMode || 'field';
 
   const photoHTML = me.photo
     ? `<img src="${escapeHtml(safePhotoUrl(me.photo))}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
@@ -346,6 +344,7 @@ function openEditProfile() {
         ${POSITIONS.map(pos=>`<div class="pos-btn${me.posPrimary===pos?' selected':''}" data-pos="${pos}" onclick="selectEditPos('primary',this)">${posEmoji(pos)} ${pos}</div>`).join('')}
       </div>
     </div>
+    <div class="form-group hidden" id="edit-rating-mode-group"></div>
     <div class="form-group">
       <label>Posición secundaria</label>
       <div class="pos-grid" id="edit-pos-secondary">
@@ -363,15 +362,41 @@ function openEditProfile() {
     <div id="edit-profile-error" style="color:var(--red);font-size:13px;display:none;margin-bottom:8px"></div>
     <button class="btn btn-primary w-full" style="justify-content:center;margin-top:8px" onclick="saveEditProfile()">💾 Guardar</button>
   `;
+  renderEditRatingMode();
   openModal('modal-edit-profile');
 }
 
-let editPosPrimary = null, editPosSecondary = null;
+let editPosPrimary = null, editPosSecondary = null, editRatingMode = 'field';
 function selectEditPos(type, el) {
   el.closest('.pos-grid').querySelectorAll('.pos-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
   if(type==='primary') editPosPrimary = el.dataset.pos;
   else editPosSecondary = el.dataset.pos;
+  if (type === 'primary') renderEditRatingMode();
+}
+
+function renderEditRatingMode() {
+  const group = document.getElementById('edit-rating-mode-group');
+  if (!group) return;
+  if (editPosPrimary !== 'POR') {
+    editRatingMode = 'field';
+    group.classList.add('hidden');
+    group.innerHTML = '';
+    return;
+  }
+  group.classList.remove('hidden');
+  group.innerHTML = `
+    <label>Tipo de estadísticas</label>
+    <div class="pos-grid" id="edit-rating-mode">
+      <button type="button" class="pos-btn${editRatingMode==='goalkeeper'?' selected':''}" onclick="selectEditRatingMode('goalkeeper')">🧤 Arquero</button>
+      <button type="button" class="pos-btn${editRatingMode==='field'?' selected':''}" onclick="selectEditRatingMode('field')">⚽ Campo</button>
+    </div>
+    <div class="text-muted" style="font-size:12px;margin-top:7px">Al elegir arquero, tus compañeros verán Estirada, Manos, Saque, Reflejos, Posición y 1 vs 1.</div>`;
+}
+
+function selectEditRatingMode(mode) {
+  editRatingMode = mode === 'goalkeeper' ? 'goalkeeper' : 'field';
+  renderEditRatingMode();
 }
 function handleEditPhoto(input) {
   const file = input.files[0]; if(!file) return;
@@ -406,6 +431,7 @@ async function saveEditProfile() {
       p_username: newUser || me.username,
       p_pos_primary: primarySel?.dataset.pos || me.posPrimary,
       p_pos_secondary: secondarySel?.dataset.pos || me.posSecondary,
+      p_rating_mode: editRatingMode,
       p_photo: editPhotoData || null,
       p_current_password: currentPass || null,
       p_new_password: newPass || null

@@ -118,6 +118,7 @@ function mapPlayers(data) {
     photo: safePhotoUrl(row.photo),
     posPrimary: row.pos_primary,
     posSecondary: row.pos_secondary,
+    ratingMode: row.rating_mode === 'goalkeeper' ? 'goalkeeper' : 'field',
     isAdmin: row.is_admin,
     attendance: row.attendance,
     ratings: row.ratings || {},
