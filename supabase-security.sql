@@ -334,6 +334,7 @@ end;
 $$;
 
 drop function if exists public.fulbito_register_player(text, text, text, text, text, text, text);
+drop function if exists public.fulbito_register_player(text, text, text, text, text, text, text, text);
 
 create or replace function public.fulbito_register_player(
   p_invite_code text,
@@ -468,6 +469,7 @@ end;
 $$;
 
 drop function if exists public.fulbito_update_my_profile(text, text, text, text, text, text, text, text);
+drop function if exists public.fulbito_update_my_profile(text, text, text, text, text, text, text, text, text);
 
 create or replace function public.fulbito_update_my_profile(
   p_club_id text,
@@ -636,6 +638,10 @@ begin
   if not found then
     raise exception 'Jugador no encontrado' using errcode = '22023';
   end if;
+  if (v_target.rating_mode = 'goalkeeper' and p_stat not in ('estirada','manos','saque','reflejos','posicion','uno_contra_uno'))
+     or (coalesce(v_target.rating_mode, 'field') <> 'goalkeeper' and p_stat not in ('ritmo','tiro','pase','defensa','fisico','atajadas')) then
+    raise exception 'Ese atributo no corresponde al tipo de estadísticas del jugador' using errcode = '22023';
+  end if;
 
   -- jsonb_set no crea niveles intermedios: con un JSON vacío, intentar
   -- escribir {id-del-votante, estadística} devolvía {} y la primera estrella
@@ -777,10 +783,6 @@ begin
    where id = p_player_id and club_id = p_club_id;
   if not found then
     raise exception 'Jugador no encontrado' using errcode = '22023';
-  end if;
-  if (v_target.rating_mode = 'goalkeeper' and p_stat not in ('estirada','manos','saque','reflejos','posicion','uno_contra_uno'))
-     or (coalesce(v_target.rating_mode, 'field') <> 'goalkeeper' and p_stat not in ('ritmo','tiro','pase','defensa','fisico','atajadas')) then
-    raise exception 'Ese atributo no corresponde al tipo de estadísticas del jugador' using errcode = '22023';
   end if;
 end;
 $$;

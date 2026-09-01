@@ -144,6 +144,7 @@ async function upsertPlayer(p) {
       p_username: p.username,
       p_pos_primary: p.posPrimary,
       p_pos_secondary: p.posSecondary,
+      p_rating_mode: p.ratingMode || 'field',
       p_photo: p.photo || null
     });
     const saved = mapPlayers([data])[0];
