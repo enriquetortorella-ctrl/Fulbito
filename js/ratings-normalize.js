@@ -4,7 +4,10 @@ let _biasCache = null;
 let _biasCacheStamp = 0;
 
 function computeVoterBiases() {
-  const stamp = state.players.length + '_' + JSON.stringify(state.players.map(p=>Object.keys(p.ratings||{}).length)).length;
+  // El sesgo depende de los valores, no sólo de la cantidad de votos. Si una
+  // persona corrige una estrella ya registrada, el objeto conserva la misma
+  // cantidad de claves y la caché anterior quedaba desactualizada.
+  const stamp = JSON.stringify(state.players.map(p => [p.id, p.ratings || {}]));
   if (_biasCache && _biasCacheStamp === stamp) return _biasCache;
 
   const allVotes = [];

@@ -210,7 +210,7 @@ function openPlayerProfile(id) {
 
   const validVoters = getValidRatings(p).length;
   const hasSelf = hasSelfRating(p);
-  const trimmedNote = validVoters >= 5 ? ' · con filtro extremos' : '';
+  const trimmedNote = validVoters >= 4 ? ' · extremos filtrados por atributo' : '';
 
   const rec = getPlayerRecord(p.id);
   const form = getPlayerForm(p.id);
