@@ -39,6 +39,10 @@ android {
             shrinkResources false
             if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
+            } else if (System.getenv('GITHUB_ACTIONS') == 'true') {
+                // La CI verifica el empaquetado release con la firma debug
+                // descartable. La publicación final exige la firma privada.
+                signingConfig signingConfigs.debug
             }
         }
     }
