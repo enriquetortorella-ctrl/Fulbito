@@ -132,19 +132,19 @@ function exportVotesCSV() {
 
   rows.push([]);
   rows.push(['=== RESUMEN POR JUGADOR ===']);
-  rows.push(['Jugador', 'Posición', 'Modo', 'OVR', 'Votos válidos', 'PJ', 'V', 'E', 'D', 'Pts', 'MVPs', 'Goles', ...exportStats.map(s=>STAT_LABELS[s]+' prom')]);
+  rows.push(['Jugador', 'Posición', 'Modo', 'OVR', 'Votos válidos', 'PJ', 'V', 'E', 'D', 'Pts', 'MVPs', 'Goles', 'PJ con goles registrados', 'G/PJ', 'Asistencias', 'PJ con asistencias registradas', 'A/PJ', ...exportStats.map(s=>STAT_LABELS[s]+' prom')]);
   state.players.forEach(p => {
     const ovr = getOverall(p) || '-';
     const pos = getEffectivePosition(p);
     const validCount = getValidRatings(p).length;
     const avg = getAvgStats(p) || {};
     const rec = getPlayerRecord(p.id);
-    rows.push([p.username, pos, usesGoalkeeperStats(p) ? 'Arquero' : 'Campo', ovr, validCount, rec.pj, rec.w, rec.d, rec.l, rec.pts, rec.mvps, rec.goals, ...exportStats.map(s => avg[s] || '-')]);
+    rows.push([p.username, pos, usesGoalkeeperStats(p) ? 'Arquero' : 'Campo', ovr, validCount, rec.pj, rec.w, rec.d, rec.l, rec.pts, rec.mvps, rec.goals, rec.goalPj, rec.goalPj ? (rec.goals/rec.goalPj).toFixed(2) : '', rec.assistPj ? rec.assists : '', rec.assistPj || '', rec.assistPj ? (rec.assists/rec.assistPj).toFixed(2) : '', ...exportStats.map(s => avg[s] || '-')]);
   });
 
   rows.push([]);
   rows.push(['=== HISTORIAL DE PARTIDOS ===']);
-  rows.push(['Fecha', 'Equipos', 'Resultado', 'Marcador', 'Margen', 'MVP', 'Goleadores']);
+  rows.push(['Fecha', 'Equipos', 'Resultado', 'Marcador', 'Margen', 'MVP', 'Goleadores', 'Asistidores', 'Detalle de asistencias', 'Estado asistencias']);
   matches.forEach(m => {
     const teamsStr = (m.teams||[]).map((t,i)=>`${TEAM_NAMES[i]}: ${(t.players||[]).map(p=>p.name).join(' / ')}`).join(' || ');
     let resStr = 'Pendiente', marginStr = '', mvpStr = '';
@@ -158,11 +158,26 @@ function exportVotesCSV() {
     }
     const scoreStr = matchHasGoals(m) ? matchScoreStr(m) : '';
     const scorersStr = matchScorers(m).map(s => `${s.name} (${s.goals})`).join(' / ');
-    rows.push([m.match_date || '', teamsStr, resStr, scoreStr, marginStr, mvpStr, scorersStr]);
+    const assistComplete = hasAssistsTracking(m);
+    const assistEvents = getGoalEvents(m);
+    const assistersStr = assistEvents.length ? matchAssisters(m).map(a => `${a.name} (${a.assists})`).join(' / ') : '';
+    const assistDetail = assistEvents.length
+      ? assistEvents.map(event => event.assistType === 'player'
+        ? `${matchPlayerName(m, event.scorerId)} ← ${matchPlayerName(m, event.assistPlayerId)}`
+        : `${matchPlayerName(m, event.scorerId)} ← ${event.assistType === 'individual' ? 'Jugada individual' : event.assistType === 'rebound' ? 'Rebote' : 'Sin registrar'}`).join(' / ')
+      : '';
+    const assistStatus = !hasGoalsTracking(m) ? 'Sin planilla'
+      : assistComplete ? (isPlayed(m) ? 'Completo' : 'Abierto · completo hasta ahora')
+      : assistEvents.length ? 'Parcial — fuera de estadísticas'
+      : 'Sin detalle — fuera de estadísticas';
+    rows.push([m.match_date || '', teamsStr, resStr, scoreStr, marginStr, mvpStr, scorersStr, assistersStr, assistDetail, assistStatus]);
   });
 
   const csv = rows.map(row => row.map(cell => {
-    const str = String(cell ?? '');
+    let str = String(cell ?? '');
+    // Evita que nombres u otros textos editables se interpreten como fórmulas
+    // al abrir el archivo en Excel, sin convertir números negativos en texto.
+    if (/^[\t\r ]*[=+@]/.test(str) || /^[\t\r ]*-(?!\d+(?:[.,]\d+)?$)/.test(str)) str = `'${str}`;
     return str.includes(',') || str.includes('"') || str.includes('\n')
       ? `"${str.replace(/"/g,'""')}"`
       : str;

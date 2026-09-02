@@ -6,7 +6,19 @@ function isPlayed(m) {
   return !!(m && m.result && m.result.winner !== null && m.result.winner !== undefined);
 }
 
-function getGoals(m) { return (m && m.result && m.result.goals) || {}; }
+function getGoals(m) {
+  const raw = m && m.result && m.result.goals;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const normalized = Object.create(null);
+  Object.entries(raw).forEach(([playerId, value]) => {
+    // La base guarda enteros, pero se aceptan strings numéricos de versiones
+    // antiguas. Todo lo demás se descarta antes de llegar a cálculos o HTML.
+    if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d{1,4}$/.test(value))) return;
+    const goals = Number(value);
+    if (Number.isSafeInteger(goals) && goals >= 0 && goals <= 9999) normalized[playerId] = goals;
+  });
+  return normalized;
+}
 
 // Las asistencias se guardan como eventos individuales dentro del resultado.
 // Los partidos anteriores a esta función no tienen `goalEvents`: se mantienen
@@ -25,9 +37,37 @@ function hasAssistsTracking(m) {
   // También cubre un partido histórico que ya tenía goles y recién después
   // recibió su primer evento de asistencia: sólo se considera completo cuando
   // cada gol con autor tiene su evento correspondiente.
-  const authoredGoals = Object.entries(getGoals(m)).reduce((total, [playerId, goals]) =>
-    playerId.startsWith('__t') ? total : total + Math.max(0, Number(goals) || 0), 0);
-  return m.result.goalEvents.length === authoredGoals;
+  const goalsByScorer = new Map(Object.entries(getGoals(m))
+    .filter(([playerId]) => !playerId.startsWith('__t'))
+    .map(([playerId, goals]) => [playerId, Math.max(0, Number(goals) || 0)]));
+  const authoredGoals = [...goalsByScorer.values()].reduce((total, goals) => total + goals, 0);
+  if (m.result.goalEvents.length !== authoredGoals) return false;
+
+  // Además de la cantidad total, valida la correspondencia goleador por
+  // goleador y que una asistencia pertenezca al mismo equipo. Un JSON parcial
+  // o mal sincronizado se muestra como tal, pero nunca contamina estadísticas.
+  const eventIds = new Set();
+  const eventsByScorer = new Map();
+  const playerTeam = new Map();
+  const duplicatePlayers = new Set();
+  (m.teams || []).forEach((team, teamIndex) => (team.players || []).forEach(player => {
+    if (!player?.id) return;
+    if (playerTeam.has(player.id)) duplicatePlayers.add(player.id);
+    else playerTeam.set(player.id, teamIndex);
+  }));
+  if (duplicatePlayers.size) return false;
+  if ([...goalsByScorer.keys()].some(playerId => !playerTeam.has(playerId) || duplicatePlayers.has(playerId))) return false;
+  for (const event of m.result.goalEvents) {
+    if (!event || typeof event.id !== 'string' || !event.id || eventIds.has(event.id) || !goalsByScorer.has(event.scorerId)) return false;
+    eventIds.add(event.id);
+    if (!['player', 'individual', 'rebound'].includes(event.assistType)) return false;
+    eventsByScorer.set(event.scorerId, (eventsByScorer.get(event.scorerId) || 0) + 1);
+    if (event.assistType === 'player') {
+      if (!event.assistPlayerId || event.assistPlayerId === event.scorerId) return false;
+      if (playerTeam.get(event.assistPlayerId) === undefined || playerTeam.get(event.assistPlayerId) !== playerTeam.get(event.scorerId)) return false;
+    } else if (event.assistPlayerId) return false;
+  }
+  return [...goalsByScorer.entries()].every(([playerId, goals]) => (eventsByScorer.get(playerId) || 0) === goals);
 }
 
 function assistTrackedMatches(ms) {

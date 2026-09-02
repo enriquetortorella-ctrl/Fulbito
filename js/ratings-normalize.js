@@ -148,8 +148,26 @@ function showToast(msg, ms=2200) {
   setTimeout(()=>t.classList.remove('show'), ms);
 }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+const genericModalReturnFocus = new Map();
+const specializedModalIds = new Set(['modal-goal-assist', 'modal-crest-designer']);
+
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  if (!specializedModalIds.has(id)) genericModalReturnFocus.set(id, document.activeElement);
+  modal.classList.add('open');
+  if (!specializedModalIds.has(id)) requestAnimationFrame(() => modal.querySelector('.modal-close,button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')?.focus());
+}
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.remove('open');
+  if (!specializedModalIds.has(id)) {
+    const returnFocus = genericModalReturnFocus.get(id);
+    genericModalReturnFocus.delete(id);
+    if (returnFocus && document.contains(returnFocus) && typeof returnFocus.focus === 'function') returnFocus.focus();
+  }
+}
 
 let appActionConfirmationResolver = null;
 

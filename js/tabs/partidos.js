@@ -120,6 +120,11 @@ function renderHistorial() {
 
     const goals = getGoals(m);
     const assistsByPlayer = Object.fromEntries(matchAssisters(m).map(item => [item.id, item.assists]));
+    const assistEvents = getGoalEvents(m);
+    const assistDetailPartial = hasGoalsTracking(m) && !hasAssistsTracking(m);
+    const assistWarning = assistEvents.length
+      ? '⚠️ Asistencias parciales: faltan detalles de algunos goles y no se incluyen en promedios.'
+      : 'ℹ️ Este partido no tiene detalle de asistencias y no se incluye en esos promedios.';
     const teamsHTML = teams.map((t, i) => {
       const isWinner = res && res.winner === i;
       const names = (t.players||[]).map(p => {
@@ -128,7 +133,7 @@ function renderHistorial() {
         const golTxt = gn > 0 ? ` <span style="color:var(--green);font-weight:700">${'⚽'.repeat(Math.min(gn,3))}${gn>3?'×'+gn:''}</span>` : '';
         const an = assistsByPlayer[p.id] || 0;
         const assistTxt = an > 0 ? ` <span style="color:#c4b5fd;font-weight:700">🎯${an}</span>` : '';
-        return (p.isGuest ? p.name+' 👤' : p.name) + mvpStar + golTxt + assistTxt;
+        return `${escapeHtml(p.name)}${p.isGuest ? ' 👤' : ''}${mvpStar}${golTxt}${assistTxt}`;
       }).join('<br>');
       const goalsTeam = hasGoals ? `<span class="match-score">${sc[i]}</span>` : '';
       return `<div class="match-team t${i}${isWinner?' winner':''}">
@@ -141,7 +146,7 @@ function renderHistorial() {
     if (res && res.mvp) {
       const all = teams.flatMap(t => t.players || []);
       const mvpPlayer = all.find(p => p.id === res.mvp);
-      if (mvpPlayer) mvpHTML = `<div class="match-mvp">⭐ MVP del partido: <b>${mvpPlayer.name}</b></div>`;
+      if (mvpPlayer) mvpHTML = `<div class="match-mvp">⭐ MVP del partido: <b>${escapeHtml(mvpPlayer.name)}</b></div>`;
     }
 
     let actions = `<div class="match-actions">`;
@@ -164,6 +169,7 @@ function renderHistorial() {
       </div>
       <div class="match-teams">${teamsHTML}</div>
       ${mvpHTML}
+      ${assistDetailPartial ? `<div class="match-data-warning">${assistWarning}</div>` : ''}
       ${actions}
     </div>`;
   }).join('');
@@ -287,7 +293,7 @@ function renderResultModal() {
     allPlayers.forEach(p => {
       const active = resultMvp === p.id;
       const gn = goals[p.id] || 0;
-      html += `<button class="btn btn-sm ${active?'btn-primary':'btn-ghost'}" onclick="setResultMvp('${p.id}')">${active?'⭐ ':''}${p.name}${p.isGuest?' 👤':''}${gn?` ⚽${gn}`:''}</button>`;
+      html += `<button type="button" class="btn btn-sm result-mvp-player ${active?'btn-primary':'btn-ghost'}" data-player-id="${escapeHtml(p.id)}">${active?'⭐ ':''}${escapeHtml(p.name)}${p.isGuest?' 👤':''}${gn?` ⚽${gn}`:''}</button>`;
     });
     html += `</div>`;
   }
@@ -296,6 +302,9 @@ function renderResultModal() {
   html += `<button class="btn btn-green w-full" style="justify-content:center;margin-top:14px" ${ready?'':'disabled'} onclick="saveMatchResult()">✅ Guardar resultado</button>`;
 
   document.getElementById('modal-result-content').innerHTML = html;
+  document.querySelectorAll('#modal-result-content .result-mvp-player').forEach(button => {
+    button.addEventListener('click', () => setResultMvp(button.dataset.playerId));
+  });
 }
 
 async function saveMatchResult() {
@@ -332,6 +341,8 @@ async function shareMatchResult(id) {
   const sc = matchScore(m);
   const goals = getGoals(m);
   const assistsByPlayer = Object.fromEntries(matchAssisters(m).map(item => [item.id, item.assists]));
+  const assistEvents = getGoalEvents(m);
+  const assistDetailPartial = hasGoalsTracking(m) && !hasAssistsTracking(m);
 
   let text = `⚽ EL FULBITO — ${formatMatchDate(m)}\n`;
   if (!res) text += hasGoals ? `⏳ En juego: ${matchScoreStr(m)}\n` : '⏳ Resultado pendiente\n';
@@ -340,6 +351,9 @@ async function shareMatchResult(id) {
     const detail = hasGoals ? matchScoreStr(m) : marginLabel(res.margin);
     text += `🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${detail ? ' ' + detail : ''}\n`;
   }
+  if (assistDetailPartial) text += assistEvents.length
+    ? '⚠️ Asistencias parciales: faltan detalles de algunos goles.\n'
+    : 'ℹ️ Este partido no tiene detalle histórico de asistencias.\n';
 
   (m.teams||[]).forEach((t, i) => {
     text += `\n${TEAM_EMOJIS[i]||'⚪'} EQUIPO ${TEAM_NAMES[i]}${hasGoals?` (${sc[i]})`:''}${res && res.winner===i ? ' 🏆' : ''}\n`;
@@ -401,7 +415,8 @@ function renderRanking() {
   const medals = ['🥇','🥈','🥉'];
   const leader = ranked[0];
   const runner = ranked[1] || null;
-  const highlights = typeof leaderboardHighlights === 'function' ? leaderboardHighlights() : null;
+  const rankingScope = matches.filter(m => isPlayed(m) && (!yearArg || (m.match_date || '').slice(0,4) === yearArg));
+  const highlights = typeof leaderboardHighlights === 'function' ? leaderboardHighlights(ranked, rankingScope) : null;
 
   let html = `${yearFilterHTML}<section class="leaderboard-page positions-page">
     <header class="leaderboard-page-head"><div><span>TABLA GENERAL</span><h2>POSICIONES</h2><p>Victoria = 3 puntos · Empate = 1 punto</p></div><div class="leaderboard-page-total"><b>${leader.pts}</b><span>Puntos del líder</span></div></header>
@@ -424,7 +439,7 @@ function renderRanking() {
 
   html += ranked.map((r, i) => {
     const posLabel = medals[i] || (i+1);
-    const form = getPlayerForm(r.p.id);
+    const form = getPlayerForm(r.p.id, rankingScope);
     const dots = form.last5.map(x=>`<span class="form-dot ${x==='V'?'fd-v':x==='E'?'fd-e':'fd-d'}">${x}</span>`).join('');
     let streakHTML = '';
     if (form.streak >= 2) {

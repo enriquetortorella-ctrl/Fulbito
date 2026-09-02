@@ -999,6 +999,11 @@ begin
   if not found then
     raise exception 'Partido no encontrado' using errcode = '22023';
   end if;
+  if coalesce(v_match.result ->> 'winner', '') <> ''
+     and not public.fulbito_is_admin(p_club_id)
+     and not public.fulbito_is_platform_admin() then
+    raise exception 'El partido ya fue cerrado. Solo un administrador puede corregir la planilla' using errcode = '42501';
+  end if;
 
   select exists (
     select 1
@@ -1117,6 +1122,7 @@ declare
   v_scorer_count integer;
   v_scorer_team integer;
   v_assister_count integer;
+  v_assister_team integer;
   v_remove_index integer;
   v_had_goal_events boolean := false;
   v_assists_complete boolean := true;
@@ -1139,6 +1145,11 @@ begin
    for update;
   if not found then
     raise exception 'Partido no encontrado' using errcode = '22023';
+  end if;
+  if coalesce(v_match.result ->> 'winner', '') <> ''
+     and not public.fulbito_is_admin(p_club_id)
+     and not public.fulbito_is_platform_admin() then
+    raise exception 'El partido ya fue cerrado. Solo un administrador puede corregir la planilla' using errcode = '42501';
   end if;
 
   select count(*)::integer, (min(team_number)::integer - 1)
@@ -1166,17 +1177,17 @@ begin
          or p_assist_player_id = p_scorer_id then
         raise exception 'El asistidor no es válido' using errcode = '22023';
       end if;
-      select count(*)::integer
-        into v_assister_count
-        from jsonb_array_elements(
+      select count(*)::integer, (min(team_number)::integer - 1)
+        into v_assister_count, v_assister_team
+        from jsonb_array_elements(v_match.teams) with ordinality as team_item(team_data, team_number)
+        cross join lateral jsonb_array_elements(
           case
-            when jsonb_typeof((v_match.teams -> v_scorer_team) -> 'players') = 'array'
-              then (v_match.teams -> v_scorer_team) -> 'players'
+            when jsonb_typeof(team_data -> 'players') = 'array' then team_data -> 'players'
             else '[]'::jsonb
           end
-        ) as teammate(player_data)
+        ) as player_item(player_data)
        where player_data ->> 'id' = p_assist_player_id;
-      if v_assister_count <> 1 then
+      if v_assister_count <> 1 or v_assister_team <> v_scorer_team then
         raise exception 'El asistidor debe pertenecer al mismo equipo del goleador' using errcode = '22023';
       end if;
     elsif p_assist_player_id is not null then
@@ -1326,6 +1337,7 @@ declare
   v_trimmed_mutation_ids jsonb;
   v_replace_goal_data boolean := false;
   v_server_key text;
+  v_normalized_goals jsonb := '{}'::jsonb;
 begin
   if not v_is_platform and not public.fulbito_is_admin(p_club_id) then
     raise exception 'Solo un administrador puede guardar partidos' using errcode = '42501';
@@ -1350,6 +1362,47 @@ begin
      or jsonb_typeof(p_match -> 'teams') <> 'array' or jsonb_array_length(p_match -> 'teams') not between 2 and 3
      or pg_column_size(p_match) > 200000 then
     raise exception 'El partido no tiene un formato válido' using errcode = '22023';
+  end if;
+  if exists (
+    select 1
+      from jsonb_array_elements(p_match -> 'teams') as team(team_data)
+     where jsonb_typeof(team_data) <> 'object'
+        or jsonb_typeof(coalesce(team_data -> 'players', '[]'::jsonb)) <> 'array'
+  ) then
+    raise exception 'Los equipos del partido no tienen un formato válido' using errcode = '22023';
+  end if;
+  if exists (
+    select 1
+      from (
+        select player_data ->> 'id' as player_id, count(*) as appearances
+          from jsonb_array_elements(p_match -> 'teams') as team(team_data)
+          cross join lateral jsonb_array_elements(coalesce(team_data -> 'players', '[]'::jsonb)) as player(player_data)
+         group by player_data ->> 'id'
+      ) listed
+     where player_id is null or char_length(player_id) not between 2 and 96 or appearances <> 1
+  ) then
+    raise exception 'Cada jugador debe tener un identificador único dentro del partido' using errcode = '22023';
+  end if;
+  if exists (
+    select 1
+      from jsonb_array_elements(p_match -> 'teams') as team(team_data)
+      cross join lateral jsonb_array_elements(coalesce(team_data -> 'players', '[]'::jsonb)) as player(player_data)
+     where coalesce(player_data ->> 'isGuest', 'false') = 'true'
+       and (
+         coalesce(player_data ->> 'id', '') !~ '^guest_[0-9]{10,20}$'
+         or char_length(btrim(coalesce(player_data ->> 'name', ''))) not between 1 and 48
+         or coalesce(player_data ->> 'name', '') ~ '[<>]'
+         or coalesce(player_data ->> 'name', '') ~ '[[:cntrl:]]'
+         or coalesce(player_data ->> 'pos', '') not in ('POR', 'DEF', 'MED', 'DEL')
+         or case
+              when jsonb_typeof(player_data -> 'ovr') = 'number'
+                then (player_data ->> 'ovr')::numeric not between 38 and 99
+              else true
+            end
+         or coalesce(player_data ->> 'photo', '') <> ''
+       )
+  ) then
+    raise exception 'Los datos de un invitado no tienen un formato válido' using errcode = '22023';
   end if;
   if v_incoming_result is null or v_incoming_result = 'null'::jsonb then
     v_incoming_result := '{}'::jsonb;
@@ -1413,6 +1466,54 @@ begin
         v_incoming_result := v_incoming_result - v_server_key;
       end if;
     end loop;
+  end if;
+
+  -- Versiones anteriores podían persistir cantidades como strings ("2"). Las
+  -- convertimos una vez a números antes de validar y conservar el resultado.
+  if v_incoming_result ? 'goals'
+     and jsonb_typeof(v_incoming_result -> 'goals') = 'object' then
+    select coalesce(jsonb_object_agg(
+      goal_key,
+      case
+        when jsonb_typeof(goal_value) = 'string'
+         and (goal_value #>> '{}') ~ '^[0-9]{1,4}$'
+          then to_jsonb((goal_value #>> '{}')::integer)
+        else goal_value
+      end
+    ), '{}'::jsonb)
+      into v_normalized_goals
+      from jsonb_each(v_incoming_result -> 'goals') as goal(goal_key, goal_value);
+    v_incoming_result := jsonb_set(v_incoming_result, '{goals}', v_normalized_goals, true);
+  end if;
+
+  -- Nunca conservar goles como texto libre ni para jugadores ajenos al
+  -- plantel. Además de mantener el marcador consistente, evita que un payload
+  -- manipulado termine renderizado como HTML en clientes antiguos.
+  if v_incoming_result ? 'goals' then
+    if jsonb_typeof(v_incoming_result -> 'goals') <> 'object' then
+      raise exception 'La planilla de goles no tiene un formato válido' using errcode = '22023';
+    end if;
+    if exists (
+      select 1
+        from jsonb_each(v_incoming_result -> 'goals') as goal(goal_key, goal_value)
+       where jsonb_typeof(goal_value) <> 'number'
+          or (goal_value #>> '{}') !~ '^(0|[1-9][0-9]{0,3})$'
+          or (
+            not case
+              when goal_key ~ '^__t[0-2]$'
+                then substring(goal_key from 4)::integer < jsonb_array_length(p_match -> 'teams')
+              else false
+            end
+            and not exists (
+              select 1
+                from jsonb_array_elements(p_match -> 'teams') as team(team_data)
+                cross join lateral jsonb_array_elements(coalesce(team_data -> 'players', '[]'::jsonb)) as player(player_data)
+               where player_data ->> 'id' = goal_key
+            )
+          )
+    ) then
+      raise exception 'La planilla de goles contiene valores o jugadores inválidos' using errcode = '22023';
+    end if;
   end if;
 
   if jsonb_typeof(v_incoming_result) = 'object'

@@ -57,7 +57,11 @@ function hubMatchScorersHTML(latest) {
     const label = `EQUIPO ${TEAM_NAMES[index] || index + 1}`;
     return `<section class="hub-team-goal-sheet ${accent}">
       <div class="hub-team-goal-head"><span>${index === 0 ? '🔵' : '🔴'} ${label}</span><b>${teamGoals(latest, index)}</b><small>GOLES</small></div>
-      <div class="hub-team-goal-list">${scorers.length ? scorers.map(player => `<button class="hub-team-goal-row" onclick="openPlayerProfile('${player.id}')"><span>${escapeHtml(player.name)}</span><b>${player.goals}</b><i>⚽</i></button>`).join('') : '<div class="hub-team-goal-empty">Sin goleadores cargados</div>'}</div>
+      <div class="hub-team-goal-list">${scorers.length ? scorers.map(player => {
+        const hasProfile = state.players.some(item => item.id === player.id);
+        const tag = hasProfile ? 'button' : 'div';
+        return `<${tag} class="hub-team-goal-row${hasProfile ? '' : ' is-static'}"${hasProfile ? ` onclick="openPlayerProfile('${player.id}')"` : ''}><span>${escapeHtml(player.name)}</span><b>${player.goals}</b><i>⚽</i></${tag}>`;
+      }).join('') : '<div class="hub-team-goal-empty">Sin goleadores cargados</div>'}</div>
     </section>`;
   });
   return `<div class="hub-team-goal-sheets">${sheets.join('')}</div>`;
@@ -82,7 +86,7 @@ function hubLeaderRow(icon, label, item, value, meta) {
   const name = item?.p?.name || 'A definir';
   return `<div class="hub-leader">
     <div class="hub-leader-icon">${icon}</div>
-    <div class="hub-leader-copy"><div class="hub-leader-label">${label}</div><div class="hub-leader-name">${name}</div></div>
+    <div class="hub-leader-copy"><div class="hub-leader-label">${escapeHtml(label)}</div><div class="hub-leader-name">${escapeHtml(name)}</div></div>
     <div><div class="hub-leader-value">${value}</div><div class="hub-leader-meta">${meta}</div></div>
   </div>`;
 }
@@ -167,14 +171,14 @@ function hubFixturePlayerHTML(matchPlayer) {
   const pos = matchPlayer.pos || matchPlayer.effPos || getEffectivePosition(source) || 'MED';
   const ovr = matchPlayer.ovr || getOverall(source) || 60;
   const record = matchPlayer.isGuest ? null : getPlayerRecord(matchPlayer.id);
-  const photo = current?.photo || matchPlayer.photo;
+  const photo = safePhotoUrl(current?.photo || matchPlayer.photo);
   const avatar = photo
-    ? `<img class="fixture-avatar" src="${photo}" alt="">`
+    ? `<img class="fixture-avatar" src="${escapeHtml(photo)}" alt="">`
     : `<div class="fixture-avatar fixture-avatar-ph">${posEmoji(pos) || '👤'}</div>`;
   const metrics = record
     ? `<div class="fixture-player-metrics"><span class="fixture-player-metric"><b>${ovr}</b>OVR</span><span class="fixture-player-metric"><b>${record.pj}</b>PJ</span><span class="fixture-player-metric goal"><b>${record.goalPj ? (record.goals / record.goalPj).toFixed(2) : '—'}</b>G/P</span></div>`
     : `<span class="fixture-player-guest">INVITADO</span>`;
-  return `<div class="fixture-player">${avatar}<div style="min-width:0"><div class="fixture-player-name">${matchPlayer.name}</div><div class="fixture-player-pos">${POS_LABELS[pos] || pos}</div></div>${metrics}</div>`;
+  return `<div class="fixture-player">${avatar}<div style="min-width:0"><div class="fixture-player-name">${escapeHtml(matchPlayer.name)}</div><div class="fixture-player-pos">${escapeHtml(POS_LABELS[pos] || pos)}</div></div>${metrics}</div>`;
 }
 
 function hubFixtureTeamHTML(m, team, index) {
@@ -182,7 +186,7 @@ function hubFixtureTeamHTML(m, team, index) {
   const rated = players.map(p => ({ p, ovr: p.ovr || getOverall(state.players.find(x => x.id === p.id) || p) || 60 }));
   const avgOvr = rated.length ? Math.round(rated.reduce((sum, x) => sum + x.ovr, 0) / rated.length) : '—';
   const figure = rated.slice().sort((a,b) => b.ovr - a.ovr || a.p.name.localeCompare(b.p.name))[0];
-  return `<section class="fixture-team"><div class="fixture-team-head"><div class="fixture-team-name">${TEAM_EMOJIS[index] || '⚪'} Equipo ${TEAM_NAMES[index] || index + 1}</div><div class="fixture-ovr">OVR ${avgOvr}</div></div><div class="fixture-figure"><span>⭐ FIGURA</span><b>${figure ? `${figure.p.name} · ${figure.ovr}` : 'Plantel por confirmar'}</b></div><div class="fixture-players">${players.length ? players.map(hubFixturePlayerHTML).join('') : '<div class="text-muted" style="padding:8px">Sin jugadores asignados</div>'}</div></section>`;
+  return `<section class="fixture-team"><div class="fixture-team-head"><div class="fixture-team-name">${TEAM_EMOJIS[index] || '⚪'} Equipo ${TEAM_NAMES[index] || index + 1}</div><div class="fixture-ovr">OVR ${avgOvr}</div></div><div class="fixture-figure"><span>⭐ FIGURA</span><b>${figure ? `${escapeHtml(figure.p.name)} · ${figure.ovr}` : 'Plantel por confirmar'}</b></div><div class="fixture-players">${players.length ? players.map(hubFixturePlayerHTML).join('') : '<div class="text-muted" style="padding:8px">Sin jugadores asignados</div>'}</div></section>`;
 }
 
 function hubFixtureHTML(m) {
@@ -237,8 +241,8 @@ function renderHub() {
       ? `<div class="hub-last-match hub-last-match-three">${teams.map((team, i) => `<div class="hub-team"><div class="hub-team-name">${TEAM_EMOJIS[i] || '⚪'} Equipo ${TEAM_NAMES[i] || i + 1}</div><div class="hub-score-single">${scores[i] || 0}</div><div class="hub-team-sub">${hubTeamPlayers(latest, i)}</div></div>`).join('')}</div>`
       : `<div class="hub-last-match"><div class="hub-team"><div class="hub-team-name">${TEAM_EMOJIS[0] || '⚪'} Equipo ${TEAM_NAMES[0] || 1}</div><div class="hub-team-sub">${hubTeamPlayers(latest, 0)}</div></div><div class="hub-score-wrap"><div class="hub-score">${matchHasGoals(latest) ? matchScoreStr(latest) : '—'}</div><div class="hub-result">${hubResultText(latest)}</div></div><div class="hub-team"><div class="hub-team-name">Equipo ${TEAM_NAMES[1] || 2} ${TEAM_EMOJIS[1] || '⚪'}</div><div class="hub-team-sub">${hubTeamPlayers(latest, 1)}</div></div></div>`;
     const meta = [`<span class="hub-meta-chip">📅 <strong>${formatMatchDate(latest)}</strong></span>`];
-    if (mvp) meta.push(`<span class="hub-meta-chip">⭐ MVP <strong>${mvp}</strong></span>`);
-    if (scorers.length) meta.push(`<span class="hub-meta-chip">⚽ ${scorers.map(s => `${s.name} ${s.goals}`).join(' · ')}</span>`);
+    if (mvp) meta.push(`<span class="hub-meta-chip">⭐ MVP <strong>${escapeHtml(mvp)}</strong></span>`);
+    if (scorers.length) meta.push(`<span class="hub-meta-chip">⚽ ${scorers.map(s => `${escapeHtml(s.name)} ${s.goals}`).join(' · ')}</span>`);
     lastMatchHTML = `${scoreVisual}<div class="hub-match-meta">${meta.join('')}<div class="hub-match-actions"><button class="hub-mini-btn" onclick="switchTab('partidos')">Ver historial</button><button class="hub-mini-btn" onclick="shareMatchResult('${latest.id}')">Compartir</button></div></div>`;
   }
 

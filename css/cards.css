@@ -20,13 +20,14 @@
 
   display:grid;
   grid-template-columns:44% 56%;
-  /* 13% cabecera · 40% foto+datos · nombre · stats · resto para la punta */
-  /* alineado a las líneas que trae dibujadas el escudo: 53%, 62% y 85% */
-  grid-template-rows:15% 38% 10% 22% 1fr;
+  /* OVR/foto · nombre · atributos · banda de rendimiento. Cada dato tiene
+     una celda propia y la punta del marco queda libre. */
+  grid-template-rows:15% 37% 10% 21% 17%;
   align-items:stretch;
   transition:transform .26s cubic-bezier(.16,1,.3,1);
 }
 .fifa-card:hover,#tab-jugadores .fifa-card:hover{transform:translateY(-7px)}
+.fifa-card:focus-visible{outline:3px solid var(--cyan,#62d8ff);outline-offset:3px;transform:translateY(-4px)}
 
 /* El tier elige el escudo */
 .fifa-card.gold,#tab-jugadores .fifa-card.gold{background-image:url('../assets/cards/gold.webp')}
@@ -85,9 +86,13 @@
 .fifa-card-name{
   grid-column:1/-1;grid-row:3;align-self:center;
   font-family:'Bebas Neue',sans-serif;font-size:8cqw;
-  letter-spacing:.07em;line-height:1;color:#1c1305;text-align:center;
-  padding:0 11%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  letter-spacing:.055em;line-height:.9;color:#1c1305;text-align:center;
+  padding:0 11%;white-space:normal;overflow:hidden;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  max-height:1.8em;
 }
+.fifa-card-name.is-long{font-size:6.8cqw;letter-spacing:.035em}
+.fifa-card-name.is-very-long{font-size:5.8cqw;letter-spacing:.02em}
 .fifa-card-stats{
   grid-column:1/-1;grid-row:4;position:relative;
   display:grid;grid-template-columns:1fr 1fr;gap:1px 0;
@@ -96,7 +101,7 @@
 .fifa-card-stats::before{content:'';position:absolute;left:50%;top:1px;bottom:1px;width:1px;background:rgba(0,0,0,.24)}
 .fifa-card-stat{
   display:flex;align-items:baseline;justify-content:center;gap:1.8cqw;
-  font-size:4.1cqw;font-weight:800;color:#2a1d06;line-height:1.42;border-radius:0;
+  font-size:4.1cqw;font-weight:800;color:#2a1d06;line-height:1.3;border-radius:0;
 }
 .fifa-card-stat span:first-child{font-family:'Bebas Neue',sans-serif;font-size:7cqw;color:#140d02;min-width:2.4em;text-align:right}
 .fifa-card-stat.best,.fifa-card.rare .fifa-card-stat.best,
@@ -104,11 +109,17 @@
 .fifa-card.card-top-scorer .fifa-card-stat.best{background:none}
 .fifa-card-stat.best span:first-child{color:#000;font-size:7.4cqw}
 
-/* --- Récord y distintivos: fila baja, lejos de la punta --- */
+/* --- Récord y distintivos: banda completa, lejos de foto y atributos --- */
+.fifa-meta{
+  grid-column:1/-1;grid-row:5;align-self:start;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+  gap:2cqw;height:9cqw;margin:1.2cqw 15% 0 11%;min-width:0;
+}
 .fifa-card-record{
-  align-self:stretch;margin:0;padding:1cqw 2cqw;border-radius:5px;
+  grid-column:1;display:flex;align-items:center;justify-content:center;
+  height:8.4cqw;margin:0;padding:0 1.5cqw;border-radius:99px;min-width:0;
   background:rgba(0,0,0,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);
-  font-size:3.5cqw;font-weight:700;color:#1c1305;text-align:center;
+  font-size:3.35cqw;font-weight:800;color:#1c1305;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 /* El escudo ya identifica MVP, goleador y racha, y el récord muestra ⭐ y ⚽.
@@ -185,37 +196,26 @@
   .fifa-card,.fifa-card:hover,#tab-jugadores .fifa-card:hover{transition:none;transform:none}
 }
 
-/* Si el jugadores.js viejo todavía está cacheado, el récord y las medallas
-   llegan como hijos directos de la carta. Sin posición explícita se
-   autocolocaban en la corona. Estas dos reglas los mantienen en su lugar
-   hasta que el JS nuevo se propague. */
-.fifa-card > .fifa-card-record{
-  grid-column:1;grid-row:2;align-self:end;justify-self:start;
-  margin:0 0 13cqw 27%;width:auto}
-.fifa-card > .fifa-card-medals{
-  grid-column:1;grid-row:2;align-self:end;justify-self:start;margin:0 0 4% 27%;padding:0}
-
-.fifa-meta{display:flex;flex-direction:column;align-items:flex-start;gap:1.6cqw;width:100%}
-
-/* ===== MEDALLAS — MVPs y goles ======================================
-   Antes iban dentro de la franja de récord y se salían por la punta.
-   Ahora viven en la columna izquierda, debajo del OVR, donde el
-   escudo es ancho. Cada una es un disco con su número.
+/* ===== MEDALLAS — MVPs, goles y asistencias =========================
+   Comparten una banda de ancho completo; incluso las tres juntas caben
+   en la carta móvil sin tocar el retrato.
    ==================================================================== */
 .fifa-card-medals{
-  display:flex;gap:2cqw;padding:0;position:relative;z-index:3;
+  grid-column:2;display:flex;align-items:center;justify-content:flex-end;
+  gap:1cqw;padding:0;position:relative;z-index:3;white-space:nowrap;
 }
 .fifa-medal{
-  display:inline-flex;align-items:center;justify-content:center;gap:.8cqw;
-  min-width:11cqw;height:8.6cqw;padding:0 1.6cqw;border-radius:99px;
+  display:inline-flex;align-items:center;justify-content:center;gap:.55cqw;
+  min-width:8.8cqw;height:8.4cqw;padding:0 .8cqw;border-radius:99px;
   background:rgba(0,0,0,.34);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);
   line-height:1;
 }
-.fifa-medal i{font-style:normal;font-size:5cqw}
-.fifa-medal b{font-family:'Bebas Neue',sans-serif;font-size:6cqw;color:#fff}
+.fifa-medal i{font-style:normal;font-size:3.7cqw}
+.fifa-medal b{font-family:'Bebas Neue',sans-serif;font-size:4.8cqw;color:#fff;font-variant-numeric:tabular-nums}
 .fifa-medal.is-mvp{background:rgba(120,84,0,.5)}
 .fifa-medal.is-mvp i{color:#ffd257}
 .fifa-medal.is-goal{background:rgba(0,0,0,.4)}
+.fifa-medal.is-assist{background:rgba(70,34,128,.56)}
 /* sobre escudos claros el disco se invierte para no perder contraste */
 .fifa-card.silver .fifa-medal,.fifa-card.gold .fifa-medal,
 .fifa-card.card-hot .fifa-medal,.fifa-card.card-mvp .fifa-medal{
@@ -224,6 +224,48 @@
 .fifa-card.card-hot .fifa-medal b,.fifa-card.card-mvp .fifa-medal b{color:#14100a}
 .fifa-card.card-hot .fifa-medal.is-mvp,.fifa-card.card-mvp .fifa-medal.is-mvp,
 .fifa-card.silver .fifa-medal.is-mvp,.fifa-card.gold .fifa-medal.is-mvp{background:rgba(255,205,80,.55)}
+.fifa-card.silver .fifa-medal.is-assist,.fifa-card.gold .fifa-medal.is-assist,
+.fifa-card.card-hot .fifa-medal.is-assist,.fifa-card.card-mvp .fifa-medal.is-assist{background:rgba(205,185,255,.72)}
+
+/* Las versiones reducidas priorizan lo que sí puede leerse. Los podios ya
+   muestran la métrica afuera; las miniaturas no intentan meter seis stats. */
+.fifa-card.card-podium,.fifa-card.card-thumbnail,
+.hub-live-card-frame .fifa-card,
+.leaderboard-card-visual .fifa-card,
+.leaderboard-list-card-visual .fifa-card{grid-template-rows:15% 37% 10% 21% 17%}
+.fifa-card.card-podium .fifa-meta,.fifa-card.card-podium .fifa-card-stats,
+.fifa-card.card-thumbnail .fifa-meta,.fifa-card.card-thumbnail .fifa-card-stats,
+.hub-live-card-frame .fifa-meta,
+.hub-live-card-frame .fifa-card-stats,
+.leaderboard-card-visual .fifa-meta,
+.leaderboard-card-visual .fifa-card-stats,
+.leaderboard-list-card-visual .fifa-card-stats{display:none}
+.fifa-card.card-podium .fifa-card-name,
+.hub-live-card-frame .fifa-card-name,
+.leaderboard-card-visual .fifa-card-name{grid-row:3;font-size:8.5cqw;padding-inline:12%}
+.fifa-card.card-podium .fifa-card-name.is-long,
+.hub-live-card-frame .fifa-card-name.is-long,
+.leaderboard-card-visual .fifa-card-name.is-long{font-size:7cqw;letter-spacing:.03em}
+.fifa-card.card-podium .fifa-card-name.is-very-long,
+.hub-live-card-frame .fifa-card-name.is-very-long,
+.leaderboard-card-visual .fifa-card-name.is-very-long{font-size:5.8cqw;letter-spacing:.015em}
+.fifa-card.card-thumbnail .fifa-card-name,
+.leaderboard-list-card-visual .fifa-card-name{display:none}
+.fifa-card.card-podium .fifa-card-pos,
+.hub-live-card-frame .fifa-card-pos{min-width:0;width:100%}
+.fifa-card.card-podium .fifa-card-tier,
+.hub-live-card-frame .fifa-card-tier{display:none}
+.fifa-card.card-podium .fifa-card-portrait,
+.hub-live-card-frame .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.3),0 3px 7px rgba(0,0,0,.38)}
+.fifa-card.card-thumbnail .fifa-top,.fifa-card.card-thumbnail .fifa-card-portrait,
+.leaderboard-list-card-visual .fifa-top,
+.leaderboard-list-card-visual .fifa-card-portrait{grid-row:2}
+.fifa-card.card-thumbnail .fifa-card-pos,
+.leaderboard-list-card-visual .fifa-card-pos{min-width:0;width:100%}
+.fifa-card.card-thumbnail .fifa-card-tier,
+.leaderboard-list-card-visual .fifa-card-tier{display:none}
+.fifa-card.card-thumbnail .fifa-card-portrait,
+.leaderboard-list-card-visual .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.3),0 3px 7px rgba(0,0,0,.38)}
 
 
 /* ===== LEYENDA DE MARCOS =============================================
@@ -277,3 +319,25 @@
 .fifa-card .fifa-card-portrait.is-placeholder{padding:0}
 .fifa-card .fifa-card-portrait img{transform:none}
 .frame-key b{font-weight:800;letter-spacing:.04em}
+.fifa-card{animation-fill-mode:none}
+
+@supports not (font-size:1cqw){
+  .hub-live-card-frame .fifa-card-overall,.leaderboard-list-card-visual .fifa-card-overall{font-size:17px}
+  .hub-live-card-frame .fifa-card-pos,.leaderboard-list-card-visual .fifa-card-pos{font-size:8px;padding-top:2px;margin-top:2px}
+  .hub-live-card-frame .fifa-card-name{font-size:10px}
+  .leaderboard-list-card-visual .fifa-card-portrait,.hub-live-card-frame .fifa-card-portrait{margin-right:11%;margin-left:4%}
+}
+
+/* Ficha del jugador: métricas fluidas, sin chips largos que se corten. */
+.profile-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:7px;margin-top:13px;text-align:left}
+.profile-metric{min-width:0;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:rgba(5,14,25,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.profile-metric>span{display:block;font-size:9px;font-weight:800;letter-spacing:.55px;text-transform:uppercase;color:var(--muted)}
+.profile-metric>b{display:block;margin-top:3px;font:24px/1 'Bebas Neue',sans-serif;color:var(--text);font-variant-numeric:tabular-nums}
+.profile-metric>small{display:block;margin-top:3px;font-size:9.5px;line-height:1.25;color:var(--muted)}
+.profile-metric.is-record{border-color:rgba(240,192,64,.34)}
+.profile-metric.is-record>b{color:var(--gold)}
+.profile-metric.is-goal{border-color:rgba(34,197,94,.34)}
+.profile-metric.is-goal>b{color:var(--green)}
+.profile-metric.is-assist{border-color:rgba(167,139,250,.42)}
+.profile-metric.is-assist>b{color:#c4b5fd}
+.profile-form{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:10px;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.45px;text-transform:uppercase}

@@ -46,7 +46,9 @@ function statsPlayers(ms) {
 function pickTop(arr, cmp) { return arr.length ? arr.slice().sort(cmp)[0] : null; }
 function pct(x) { return Math.round(x*100) + '%'; }
 function goalsPerGame(record) { return record.goalPj ? record.goals / record.goalPj : 0; }
+function assistsPerGame(record) { return record.assistPj ? record.assists / record.assistPj : 0; }
 function goalAverageMinimum(ms) { return Math.max(3, Math.ceil(goalTrackedMatches(ms).length * .30)); }
+function assistAverageMinimum(ms) { return Math.max(1, Math.ceil(assistTrackedMatches(ms).length * .30)); }
 
 function statFormDots(playerId, ms) {
   const form = getPlayerForm(playerId, ms);
@@ -77,7 +79,7 @@ function playerDashboardHTML(ms, player) {
   return `<div class="admin-section player-hero">
     <div class="player-hero-head">
       <div>
-        <div class="player-hero-name">${player.name}</div>
+        <div class="player-hero-name">${escapeHtml(player.name)}</div>
         <div class="player-hero-sub">Expediente individual · ${periodLabel} · ${rec.pj} de ${ms.length} partidos del grupo</div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="openPlayerProfile('${player.id}')">Ver carta</button>
@@ -88,7 +90,7 @@ function playerDashboardHTML(ms, player) {
       <div class="stat-chip"><b>${rec.ppp.toFixed(2)}</b><span>Pts / PJ</span></div>
       <div class="stat-chip"><b style="color:var(--green)">⚽ ${rec.goals}</b><span>Goles</span></div>
       <div class="stat-chip"><b style="color:var(--green)">${gpp.toFixed(2)}</b><span>Goles / PJ registrado</span></div>
-      ${rec.assistPj ? `<div class="stat-chip"><b style="color:#a78bfa">🎯 ${rec.assists}</b><span>Asistencias · desde registro</span></div>` : ''}
+      ${rec.assistPj ? `<div class="stat-chip"><b style="color:#c4b5fd">🎯 ${rec.assists}</b><span>Asistencias</span></div><div class="stat-chip"><b style="color:#67e8f9">${assistsPerGame(rec).toFixed(2)}</b><span>Asist. / PJ registrado</span></div>` : ''}
       <div class="stat-chip"><b style="color:#60a5fa">${pct(presentismo)}</b><span>Presente</span></div>
     </div>
     <div class="form-line"><span>Forma reciente</span>${statFormDots(player.id, ms)}${streak >= 2 ? `<span style="margin-left:5px;color:var(--green)">🔥 ${streak}V seguidas</span>` : ''}</div>
@@ -112,7 +114,7 @@ function playerHeadToHeadHTML(ms, player) {
     })
     .sort((a,b) => b.games-a.games || b.ppp-a.ppp || a.other.localeCompare(b.other));
 
-  if (!rows.length) return `<div class="admin-section"><h3>⚔️ Cruces directos</h3><p class="sec-note">Todavía no hay cruces de ${player.name} contra otros jugadores en este período.</p></div>`;
+  if (!rows.length) return `<div class="admin-section"><h3>⚔️ Cruces directos</h3><p class="sec-note">Todavía no hay cruces de ${escapeHtml(player.name)} contra otros jugadores en este período.</p></div>`;
 
   const children = rows.filter(x=>x.tag==='child');
   const parents = rows.filter(x=>x.tag==='parent');
@@ -123,13 +125,13 @@ function playerHeadToHeadHTML(ms, player) {
   const badge = row => row.tag === 'child' ? '👨‍👦' : row.tag === 'parent' ? '🍼' : '⚔️';
 
   return `<div class="admin-section">
-    <h3>⚔️ ${player.name} vs todos</h3>
-    <p class="sec-note">Solo cuenta cuando estuvieron en equipos distintos. V-E-D está siempre visto desde ${player.name}.</p>
+    <h3>⚔️ ${escapeHtml(player.name)} vs todos</h3>
+    <p class="sec-note">Solo cuenta cuando estuvieron en equipos distintos. V-E-D está siempre visto desde ${escapeHtml(player.name)}.</p>
     ${summary ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${summary}</div>` : ''}
     <div class="table-scroll"><table class="mini-table">
       <thead><tr><th>Rival</th><th>Cruces</th><th>V-E-D</th><th>%V</th><th>Pts/PJ</th></tr></thead>
-      <tbody>${rows.map(r => `<tr onclick="openPlayerProfile('${r.other}')">
-        <td><span class="h2h-badge">${badge(r)}</span>${playerNameById(r.other)}</td>
+      <tbody>${rows.map(r => `<tr class="stats-open-player" data-stats-player-id="${escapeHtml(r.other)}" role="button" tabindex="0">
+        <td><span class="h2h-badge">${badge(r)}</span>${escapeHtml(playerNameById(r.other))}</td>
         <td>${r.games}</td>
         <td class="h2h-record" style="color:${r.w>r.l?'var(--green)':r.w<r.l?'var(--red)':'var(--gold)'}">${r.w}-${r.d}-${r.l}</td>
         <td style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${pct(r.wr)}</td>
@@ -153,12 +155,12 @@ function playerPartnersHTML(ms, player) {
   const best = rows.filter(r=>r.pj>=2).slice().sort((a,b)=>b.wr-a.wr||b.pj-a.pj)[0];
   const worst = rows.filter(r=>r.pj>=2).slice().sort((a,b)=>a.wr-b.wr||b.pj-a.pj)[0];
   return `<div class="admin-section">
-    <h3>🤝 Sociedades de ${player.name}</h3>
+    <h3>🤝 Sociedades de ${escapeHtml(player.name)}</h3>
     <p class="sec-note">Rendimiento cuando jugaron en el mismo equipo.</p>
-    ${best ? `<div class="fact-row"><span class="fact-emoji">✨</span><div><div class="fact-label">Mejor socio</div><div class="fact-val">${playerNameById(best.other)} · ${best.w}V ${best.d}E ${best.l}D (${pct(best.wr)})</div></div></div>` : ''}
-    ${worst && worst.other!==best?.other ? `<div class="fact-row"><span class="fact-emoji">🧊</span><div><div class="fact-label">Sociedad más difícil</div><div class="fact-val">${playerNameById(worst.other)} · ${worst.w}V ${worst.d}E ${worst.l}D (${pct(worst.wr)})</div></div></div>` : ''}
+    ${best ? `<div class="fact-row"><span class="fact-emoji">✨</span><div><div class="fact-label">Mejor socio</div><div class="fact-val">${escapeHtml(playerNameById(best.other))} · ${best.w}V ${best.d}E ${best.l}D (${pct(best.wr)})</div></div></div>` : ''}
+    ${worst && worst.other!==best?.other ? `<div class="fact-row"><span class="fact-emoji">🧊</span><div><div class="fact-label">Sociedad más difícil</div><div class="fact-val">${escapeHtml(playerNameById(worst.other))} · ${worst.w}V ${worst.d}E ${worst.l}D (${pct(worst.wr)})</div></div></div>` : ''}
     <div class="table-scroll" style="margin-top:8px"><table class="mini-table"><thead><tr><th>Compañero</th><th>PJ</th><th>V-E-D</th><th>%V</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr onclick="openPlayerProfile('${r.other}')"><td>🤝 ${playerNameById(r.other)}</td><td>${r.pj}</td><td class="h2h-record" style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${r.w}-${r.d}-${r.l}</td><td>${pct(r.wr)}</td></tr>`).join('')}</tbody>
+      <tbody>${rows.map(r=>`<tr class="stats-open-player" data-stats-player-id="${escapeHtml(r.other)}" role="button" tabindex="0"><td>🤝 ${escapeHtml(playerNameById(r.other))}</td><td>${r.pj}</td><td class="h2h-record" style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${r.w}-${r.d}-${r.l}</td><td>${pct(r.wr)}</td></tr>`).join('')}</tbody>
     </table></div>
   </div>`;
 }
@@ -191,7 +193,7 @@ function renderStats() {
     <label class="stats-filter-label" for="stats-player-select">👤 Ver</label>
     <select id="stats-player-select" class="stats-filter-select" onchange="setStatsPlayer(this.value)">
       <option value="all" ${statsPlayerId==='all'?'selected':''}>🏟️ Estadísticas de todo el grupo</option>
-      ${state.players.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}" ${p.id===statsPlayerId?'selected':''}>${p.name}</option>`).join('')}
+      ${state.players.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${escapeHtml(p.id)}" ${p.id===statsPlayerId?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}
     </select>
   </div>`;
 
@@ -210,6 +212,7 @@ function renderStats() {
     html += playerPartnersHTML(ms, selectedPlayer);
   } else {
     html += panoramaHTML(ms, players);
+    html += asistenciasHTML(ms);
     html += factsHTML(ms, players);
     html += paternidadesHTML(ms);
     html += rendimientoHTML(ms, players);
@@ -220,6 +223,15 @@ function renderStats() {
   }
 
   el.innerHTML = html;
+  el.querySelectorAll('.stats-open-player[data-stats-player-id]').forEach(row => {
+    const open = () => openPlayerProfile(row.dataset.statsPlayerId);
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      open();
+    });
+  });
 }
 
 // --- 1. Panorama del ciclo ---
@@ -228,6 +240,8 @@ function panoramaHTML(ms, players) {
   const routs = ms.filter(m => m.result.margin === 3).length;
   const trackedGoals = goalTrackedMatches(ms);
   const goles = trackedGoals.reduce((a,m) => a + matchTotalGoals(m), 0);
+  const trackedAssists = assistTrackedMatches(ms);
+  const asistencias = trackedAssists.reduce((total, match) => total + matchAssisters(match).reduce((sum, item) => sum + item.assists, 0), 0);
   const colorWins = [0,0,0];
   ms.forEach(m => { if (m.result.winner !== 'draw') colorWins[m.result.winner]++; });
   const ultimo = ms[0];
@@ -242,6 +256,10 @@ function panoramaHTML(ms, players) {
   if (trackedGoals.length) {
     chips.push(['⚽', goles, 'Goles']);
     chips.push(['📊', (goles/trackedGoals.length).toFixed(1), 'Goles/partido reg.']);
+  }
+  if (trackedAssists.length) {
+    chips.push(['🎯', asistencias, 'Asistencias']);
+    chips.push(['🧠', (asistencias/trackedAssists.length).toFixed(1), 'Asist./partido reg.']);
   }
 
   // Partidos por mes (últimos 8 meses con actividad)
@@ -283,7 +301,82 @@ function panoramaHTML(ms, players) {
   </div>`;
 }
 
-// --- 2. Goleadores ---
+// --- 2. Asistencias ---
+function statsPlayerAvatar(p, cls) {
+  const url = safePhotoUrl(p.photo);
+  return url
+    ? `<img class="assist-avatar ${cls || ''}" src="${escapeHtml(url)}" alt="${escapeHtml(p.name)}">`
+    : `<span class="assist-avatar assist-avatar-ph ${cls || ''}" aria-hidden="true">${escapeHtml((p.name || '?').trim().charAt(0).toUpperCase())}</span>`;
+}
+
+function asistenciasHTML(ms) {
+  const tracked = assistTrackedMatches(ms);
+  if (!tracked.length) return '';
+
+  const events = tracked.flatMap(getGoalEvents);
+  const total = events.filter(event => event.assistType === 'player' && event.assistPlayerId).length;
+  const individual = events.filter(event => event.assistType === 'individual').length;
+  const rebounds = events.filter(event => event.assistType === 'rebound').length;
+  // Incluye también invitados o exintegrantes que sobreviven en la foto del
+  // partido. Así el total, el líder y los porcentajes siempre reconcilian.
+  const people = new Map(state.players.map(player => [player.id, player]));
+  tracked.forEach(match => (match.teams || []).forEach(team => (team.players || []).forEach(player => {
+    if (player?.id && !people.has(player.id)) people.set(player.id, player);
+  })));
+  const assistEventsByPlayer = new Map();
+  tracked.forEach(match => matchAssisters(match).forEach(item => {
+    const current = assistEventsByPlayer.get(item.id) || { assists:0, matches:new Set(), name:item.name };
+    current.assists += item.assists;
+    current.matches.add(match.id);
+    assistEventsByPlayer.set(item.id, current);
+    if (!people.has(item.id)) people.set(item.id, { id:item.id, name:item.name || 'Jugador histórico', username:item.name || 'Histórico', photo:'' });
+  }));
+  const rows = [...assistEventsByPlayer.entries()]
+    .map(([id, info]) => {
+      const record = recordIn(ms, id);
+      return { p:people.get(id), ...record, assists:info.assists, assistPj:Math.max(record.assistPj, info.matches.size) };
+    })
+    .sort((a,b) => b.assists-a.assists || assistsPerGame(b)-assistsPerGame(a) || b.assistPj-a.assistPj || a.p.name.localeCompare(b.p.name));
+  const withAssists = rows.filter(row => row.assists > 0);
+  const leader = withAssists[0];
+  const minAvg = assistAverageMinimum(ms);
+  const efficient = pickTop(withAssists.filter(row => row.p.id !== leader?.p.id && row.assistPj >= minAvg), (a,b) => assistsPerGame(b)-assistsPerGame(a) || b.assists-a.assists);
+  const trackingStart = formatMatchDate(tracked[tracked.length - 1]);
+
+  if (!total) {
+    return `<section class="admin-section assists-module is-empty">
+      <div class="assists-module-head"><div><span>ÚLTIMO PASE · ${tracked.length} PJ REGISTRADOS</span><h3>🎯 ASISTENCIAS</h3></div><b>0</b></div>
+      <p class="sec-note">Todavía no hay pases de gol registrados. Se contabilizaron ${individual} jugada${individual===1?'':'s'} individual${individual===1?'':'es'} y ${rebounds} rebote${rebounds===1?'':'s'} sin otorgar asistencias.</p>
+    </section>`;
+  }
+
+  return `<section class="admin-section assists-module">
+    <div class="assists-module-head">
+      <div><span>VISIÓN DE JUEGO · ${tracked.length} PJ REGISTRADOS</span><h3>🎯 ASISTENCIAS</h3></div>
+      <div class="assists-total"><b>${total}</b><small>PASES<br>DE GOL</small></div>
+    </div>
+    <div class="assists-featured">
+      <article class="assist-feature is-leader">${statsPlayerAvatar(leader.p, 'assist-feature-avatar')}<div><span>👑 MÁXIMO ASISTIDOR</span><strong>${escapeHtml(leader.p.name)}</strong><small>${leader.assistPj} PJ con registro</small></div><b>${leader.assists}<small>AST</small></b></article>
+      ${efficient ? `<article class="assist-feature is-average">${statsPlayerAvatar(efficient.p, 'assist-feature-avatar')}<div><span>✨ EFICIENCIA DESTACADA</span><strong>${escapeHtml(efficient.p.name)}</strong><small>mejor A/PJ sin repetir líder · mínimo ${minAvg} PJ</small></div><b>${assistsPerGame(efficient).toFixed(2)}<small>A/PJ</small></b></article>` : ''}
+    </div>
+    <div class="assists-list-head"><span>JUGADOR</span><span>AST</span><span>A/PJ</span><span>PART.</span></div>
+    <div class="assists-list">${withAssists.slice(0,10).map((row,index) => {
+      const share = Math.round(row.assists / Math.max(1,total) * 100);
+      const hasProfile = state.players.some(player => player.id === row.p.id);
+      const openTag = hasProfile ? 'button' : 'div';
+      const action = hasProfile ? `type="button" onclick="openPlayerProfile('${row.p.id}')"` : `aria-label="${escapeHtml(row.p.name)} · invitado o jugador histórico"`;
+      return `<${openTag} class="assist-list-row${hasProfile ? '' : ' is-historical'}" ${action}>
+        <span class="assist-player"><i>${index===0?'🥇':String(index+1).padStart(2,'0')}</i>${statsPlayerAvatar(row.p)}<span><b>${escapeHtml(row.p.name)}</b><small>${row.assistPj} PJ registrados${hasProfile?'':' · invitado/histórico'}</small></span></span>
+        <strong>${row.assists}</strong><em>${assistsPerGame(row).toFixed(2)}</em>
+        <span class="assist-share"><i><b style="width:${share}%"></b></i><small>${share}%</small></span>
+      </${openTag}>`;
+    }).join('')}</div>
+    <div class="assists-breakdown"><span>⚡ ${individual} individuales</span><span>🥅 ${rebounds} rebotes</span></div>
+    <p class="sec-note assists-note">Cuenta solamente partidos con todas sus jugadas completas desde ${trackingStart}; los históricos sin detalle no se convierten en ceros.</p>
+  </section>`;
+}
+
+// --- 3. Goleadores ---
 function goleadoresHTML(ms, players) {
   const trackedGoals = goalTrackedMatches(ms);
   const goles = trackedGoals.reduce((a,m) => a + matchTotalGoals(m), 0);
@@ -324,14 +417,14 @@ function goleadoresHTML(ms, players) {
 
   const filas = conGoles.slice(0, 10).map((x,i) => `
     <div class="bar-row" onclick="openPlayerProfile('${x.p.id}')" style="cursor:pointer">
-      <span class="bar-name">${i===0?'🥇 ':''}${x.p.name}</span>
+      <span class="bar-name">${i===0?'🥇 ':''}${escapeHtml(x.p.name)}</span>
       <div class="bar-track"><div class="bar-fill green" style="width:${Math.round(x.goals/max*100)}%"></div></div>
       <span class="bar-val" style="color:var(--green)">${x.goals}</span>
       <span class="bar-meta">${x.goalPj} PJ reg. · ${goalsPerGame(x).toFixed(2)} G/PJ</span>
     </div>`).join('');
 
   const extras = [];
-  if (bestSolo) extras.push(`🎯 Mejor marca individual: <b>${bestSolo.name}</b> con ${bestSolo.goals} en un partido (${formatMatchDate(bestSolo.m)})`);
+  if (bestSolo) extras.push(`🎯 Mejor marca individual: <b>${escapeHtml(bestSolo.name)}</b> con ${bestSolo.goals} en un partido (${formatMatchDate(bestSolo.m)})`);
   if (bestMatch) extras.push(`🔥 Partido más goleado: ${matchScoreStr(bestMatch)} el ${formatMatchDate(bestMatch)}`);
   if (sinAutor) extras.push(`⚪ Goles sin autor asignado: ${sinAutor}`);
 
@@ -342,7 +435,7 @@ function goleadoresHTML(ms, players) {
       : `<div class="scorer-avatar scorer-avatar-ph ${cls}" aria-hidden="true">👤</div>`;
   };
   const maxGpp = goalsPerGame(maxGoleador);
-  const effective = efectivo || maxGoleador;
+  const effectivePlayer = efectivo?.p || { name:'A definir', photo:'' };
 
   return `<section class="admin-section scorers-module">
     <div class="scorers-module-head">
@@ -352,18 +445,18 @@ function goleadoresHTML(ms, players) {
     <div class="scorers-featured">
       <article class="scorer-feature scorer-feature-gold">
         <div class="scorer-feature-ribbon">🥇 BOTÍN DE ORO</div>
-        <div class="scorer-feature-main">${scorerAvatar(maxGoleador.p,'scorer-feature-avatar')}<div class="scorer-feature-copy"><strong>${maxGoleador.p.name}</strong><span>Máximo goleador del club</span></div><div class="scorer-feature-number"><b>${maxGoleador.goals}</b><small>GOLES</small></div></div>
+        <div class="scorer-feature-main">${scorerAvatar(maxGoleador.p,'scorer-feature-avatar')}<div class="scorer-feature-copy"><strong>${escapeHtml(maxGoleador.p.name)}</strong><span>Máximo goleador del club</span></div><div class="scorer-feature-number"><b>${maxGoleador.goals}</b><small>GOLES</small></div></div>
         <div class="scorer-feature-stats"><span><b>${maxGpp.toFixed(2)}</b> G/PJ</span><span><b>${maxGoleador.goalPj}</b> PJ REG.</span><span><b>${Math.round(maxGoleador.goals / Math.max(1,goles) * 100)}%</b> DEL TOTAL</span></div>
       </article>
       <article class="scorer-feature scorer-feature-ice">
         <div class="scorer-feature-ribbon">🚀 MEJOR PROMEDIO</div>
-        <div class="scorer-feature-main">${scorerAvatar(effective,'scorer-feature-avatar')}<div class="scorer-feature-copy"><strong>${efectivo ? efectivo.p.name : 'A definir'}</strong><span>${efectivo ? `mínimo ${minGpp} PJ con registro` : `necesita ${minGpp} PJ registrados`}</span></div><div class="scorer-feature-number"><b>${efectivo ? goalsPerGame(efectivo).toFixed(2) : '—'}</b><small>G/PJ</small></div></div>
+        <div class="scorer-feature-main">${scorerAvatar(effectivePlayer,'scorer-feature-avatar')}<div class="scorer-feature-copy"><strong>${efectivo ? escapeHtml(efectivo.p.name) : 'A definir'}</strong><span>${efectivo ? `mínimo ${minGpp} PJ con registro` : `necesita ${minGpp} PJ registrados`}</span></div><div class="scorer-feature-number"><b>${efectivo ? goalsPerGame(efectivo).toFixed(2) : '—'}</b><small>G/PJ</small></div></div>
         <div class="scorer-feature-stats"><span><b>${efectivo ? efectivo.goals : '—'}</b> GOLES</span><span><b>${efectivo ? efectivo.goalPj : '—'}</b> PJ REG.</span><span><b>${efectivo ? Math.round(goalsPerGame(efectivo)*10)/10 : '—'}</b> MEDIA</span></div>
       </article>
     </div>
     <div class="scorers-list-head"><span>JUGADOR</span><span>GOLES</span><span>G/PJ</span><span>PARTICIPACIÓN</span></div>
     <div class="scorers-list">${conGoles.slice(0,10).map((x,i) => `<div class="scorer-list-row" onclick="openPlayerProfile('${x.p.id}')">
-      <div class="scorer-list-player"><span class="scorer-rank">${i===0?'🥇':String(i+1).padStart(2,'0')}</span>${scorerAvatar(x.p)}<span class="scorer-list-name">${x.p.name}<small>${x.goalPj} PJ con planilla</small></span></div>
+      <div class="scorer-list-player"><span class="scorer-rank">${i===0?'🥇':String(i+1).padStart(2,'0')}</span>${scorerAvatar(x.p)}<span class="scorer-list-name">${escapeHtml(x.p.name)}<small>${x.goalPj} PJ con planilla</small></span></div>
       <div class="scorer-list-goals"><b>${x.goals}</b><span>G</span></div>
       <div class="scorer-list-gpp"><b>${goalsPerGame(x).toFixed(2)}</b><span>G/PJ</span></div>
       <div class="scorer-list-share"><div class="scorer-list-track"><i style="width:${Math.round(x.goals/max*100)}%"></i></div><span>${Math.round(x.goals / Math.max(1,goles) * 100)}%</span></div>
@@ -455,8 +548,8 @@ function factsHTML(ms, players) {
       <div class="fact-row">
         <span class="fact-emoji">${e}</span>
         <div style="flex:1;min-width:0">
-          <div class="fact-label">${l}</div>
-          <div class="fact-val">${v}</div>
+          <div class="fact-label">${escapeHtml(l)}</div>
+          <div class="fact-val">${escapeHtml(v)}</div>
         </div>
       </div>`).join('')}
   </div>`;
@@ -466,25 +559,27 @@ function factsHTML(ms, players) {
 function rendimientoHTML(ms, players) {
   const rows = players.slice().sort((a,b) => b.ppp - a.ppp || b.pj - a.pj);
   const hayGoles = players.some(x => x.goals > 0);
+  const hayAsistencias = players.some(x => x.assistPj > 0);
   return `<div class="admin-section">
     <h3>📋 Rendimiento vs cotización</h3>
     <p class="sec-note">Ordenado por puntos por partido. El OVR viene de los votos; los puntos, de la cancha.</p>
-    <table class="mini-table">
+    <div class="table-scroll"><table class="mini-table performance-table">
       <thead><tr>
-        <th>Jugador</th><th>PJ</th><th>%V</th><th>Pts/PJ</th>${hayGoles?'<th>⚽</th>':''}<th>⭐</th><th>OVR</th>
+        <th>Jugador</th><th>PJ</th><th>%V</th><th>Pts/PJ</th>${hayGoles?'<th title="Goles">⚽</th>':''}${hayAsistencias?'<th title="Asistencias">🎯</th>':''}<th>⭐</th><th>OVR</th>
       </tr></thead>
       <tbody>
       ${rows.map(x => `<tr onclick="openPlayerProfile('${x.p.id}')">
-        <td>${x.p.name}</td>
+        <td>${escapeHtml(x.p.name)}</td>
         <td>${x.pj}</td>
         <td style="color:${x.wr>=.6?'var(--green)':x.wr>=.4?'var(--gold)':'var(--red)'}">${pct(x.wr)}</td>
         <td style="font-family:'Bebas Neue',sans-serif;font-size:16px">${x.ppp.toFixed(2)}</td>
         ${hayGoles?`<td style="color:${x.goals?'var(--green)':'var(--muted)'}">${x.goals||'-'}</td>`:''}
+        ${hayAsistencias?`<td style="color:${x.assists?'#c4b5fd':'var(--muted)'}">${x.assistPj ? x.assists : '—'}</td>`:''}
         <td style="color:${x.mvps?'var(--gold)':'var(--muted)'}">${x.mvps||'-'}</td>
         <td style="color:var(--muted)">${x.ovr}</td>
       </tr>`).join('')}
       </tbody>
-    </table>
+    </table></div>
   </div>`;
 }
 
@@ -506,7 +601,7 @@ function duplasHTML(ms) {
   const row = (d, i, medal) => `
     <div class="duo-row">
       <span class="duo-rank">${medal && i===0 ? medal : i+1}</span>
-      <span class="duo-names">${playerNameById(d.a)} + ${playerNameById(d.b)}</span>
+      <span class="duo-names">${escapeHtml(playerNameById(d.a))} + ${escapeHtml(playerNameById(d.b))}</span>
       <span class="duo-rec">${d.w}V ${d.d}E ${d.l}D</span>
       <span class="duo-pct" style="color:${d.wr>=.6?'var(--green)':d.wr>=.4?'var(--gold)':'var(--red)'}">${pct(d.wr)}</span>
     </div>`;
@@ -524,7 +619,7 @@ function duplasHTML(ms) {
     ${masJuntos.map(d => `
       <div class="duo-row">
         <span class="duo-rank">🔗</span>
-        <span class="duo-names">${playerNameById(d.a)} + ${playerNameById(d.b)}</span>
+        <span class="duo-names">${escapeHtml(playerNameById(d.a))} + ${escapeHtml(playerNameById(d.b))}</span>
         <span class="duo-pct" style="color:var(--gold)">${d.pj}</span>
       </div>`).join('')}
   </div>`;
@@ -594,13 +689,13 @@ function paternidadesHTML(ms) {
         ${babySVG(40)}
         <div style="flex:1;min-width:0">
           <div class="pater-tag">${paternidadNivel(d.diff)}</div>
-          <div class="fact-val"><b style="color:var(--green)">${playerNameById(d.padre)}</b> tiene de hijo a <b>${playerNameById(d.hijo)}</b> 🍼</div>
+          <div class="fact-val"><b style="color:var(--green)">${escapeHtml(playerNameById(d.padre))}</b> tiene de hijo a <b>${escapeHtml(playerNameById(d.hijo))}</b> 🍼</div>
           <div class="pater-detail">${d.games} cruce${d.games===1?'':'s'}${d.draws?` · ${d.draws} empate${d.draws===1?'':'s'}`:''}</div>
         </div>
         <span class="pater-score">${d.pw}–${d.hw}</span>
       </div>`).join('')}
     <div class="pater-kings">
-      ${reyes.map(([id, n], i) => `<span class="chip" style="${i===0?'color:var(--gold);border-color:rgba(240,192,64,.45)':''}">${i===0?'👑':'👨‍👦'} ${playerNameById(id)} · ${n} hijo${n===1?'':'s'}</span>`).join('')}
+      ${reyes.map(([id, n], i) => `<span class="chip" style="${i===0?'color:var(--gold);border-color:rgba(240,192,64,.45)':''}">${i===0?'👑':'👨‍👦'} ${escapeHtml(playerNameById(id))} · ${n} hijo${n===1?'':'s'}</span>`).join('')}
     </div>
   </div>`;
 }
@@ -623,9 +718,9 @@ function rivalidadesHTML(ms) {
     const domA = r.aw > r.bw, domB = r.bw > r.aw;
     return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="flex:1;text-align:right;font-weight:${domA?'700':'500'};font-size:13.5px;color:${domA?'var(--green)':'var(--text)'}">${playerNameById(r.a)}</span>
+        <span style="flex:1;text-align:right;font-weight:${domA?'700':'500'};font-size:13.5px;color:${domA?'var(--green)':'var(--text)'}">${escapeHtml(playerNameById(r.a))}</span>
         <span style="font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;background:var(--bg3);border-radius:8px;padding:2px 10px;white-space:nowrap">${r.aw} – ${r.bw}</span>
-        <span style="flex:1;font-weight:${domB?'700':'500'};font-size:13.5px;color:${domB?'var(--green)':'var(--text)'}">${playerNameById(r.b)}</span>
+        <span style="flex:1;font-weight:${domB?'700':'500'};font-size:13.5px;color:${domB?'var(--green)':'var(--text)'}">${escapeHtml(playerNameById(r.b))}</span>
       </div>
       <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:3px">${r.games} cruce${r.games===1?'':'s'}${r.draws?` · ${r.draws} empate${r.draws===1?'':'s'}`:''}</div>
     </div>`;
@@ -650,7 +745,7 @@ function presentismoHTML(ms, players) {
     <p class="sec-note">Partidos jugados sobre los ${total} del período</p>
     ${rows.map(x => `
       <div class="bar-row" onclick="openPlayerProfile('${x.p.id}')" style="cursor:pointer">
-        <span class="bar-name">${x.p.name}</span>
+        <span class="bar-name">${escapeHtml(x.p.name)}</span>
         <div class="bar-track"><div class="bar-fill blue" style="width:${Math.round(x.pj/total*100)}%"></div></div>
         <span class="bar-val" style="color:#60a5fa">${x.pj}/${total}</span>
       </div>`).join('')}
@@ -696,8 +791,8 @@ function votacionHTML() {
       <div class="fact-row">
         <span class="fact-emoji">${e}</span>
         <div style="flex:1;min-width:0">
-          <div class="fact-label">${l}</div>
-          <div class="fact-val">${v}</div>
+          <div class="fact-label">${escapeHtml(l)}</div>
+          <div class="fact-val">${escapeHtml(v)}</div>
         </div>
       </div>`).join('')}
   </div>`;

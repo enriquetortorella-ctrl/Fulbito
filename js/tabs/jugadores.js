@@ -48,6 +48,7 @@ function renderPlayers() {
     if (rosterSort === 'name') return a.p.name.localeCompare(b.p.name) || a.index-b.index;
     if (rosterSort === 'performance') return b.ppp-a.ppp || b.rec.pj-a.rec.pj || b.ovr-a.ovr;
     if (rosterSort === 'goals') return b.rec.goals-a.rec.goals || b.rec.pj-a.rec.pj || b.ovr-a.ovr;
+    if (rosterSort === 'assists') return b.rec.assists-a.rec.assists || b.rec.assistPj-a.rec.assistPj || b.ovr-a.ovr;
     return b.ovr-a.ovr || a.p.name.localeCompare(b.p.name);
   });
 
@@ -102,18 +103,22 @@ function cardStatsHTML(stats, player) {
   ).join('');
 }
 
-function getCardHighlights(entries) {
-  const rankedByGoals = entries.filter(x => x.rec.goals > 0);
-  const maxGoals = rankedByGoals.length ? Math.max(...rankedByGoals.map(x => x.rec.goals)) : 0;
-  const topScorerIds = new Set(rankedByGoals.filter(x => x.rec.goals === maxGoals).map(x => x.p.id));
-  const latestMvpMatch = matches
+function getCardHighlights(entries, scope) {
+  const scopedMatches = Array.isArray(scope) ? scope : matches;
+  // Acepta tanto `{p, rec}` (Plantel/Inicio) como filas planas de los
+  // rankings temporales (`{p, goals, ...}`), sin recalcular datos históricos.
+  const recordOf = entry => entry.rec || entry;
+  const rankedByGoals = entries.filter(entry => (recordOf(entry).goals || 0) > 0);
+  const maxGoals = rankedByGoals.length ? Math.max(...rankedByGoals.map(entry => recordOf(entry).goals || 0)) : 0;
+  const topScorerIds = new Set(rankedByGoals.filter(entry => (recordOf(entry).goals || 0) === maxGoals).map(entry => entry.p.id));
+  const latestMvpMatch = scopedMatches
     .filter(m => isPlayed(m) && m.result?.mvp)
     .slice()
     .sort((a,b) => `${b.match_date||''}|${b.created_at||''}`.localeCompare(`${a.match_date||''}|${a.created_at||''}`))[0];
   return {
     topScorerIds,
     latestMvpId: latestMvpMatch?.result?.mvp || null,
-    forms: new Map(entries.map(x => [x.p.id, getPlayerForm(x.p.id)]))
+    forms: new Map(entries.map(x => [x.p.id, getPlayerForm(x.p.id, scopedMatches)]))
   };
 }
 
@@ -126,7 +131,8 @@ function cardSpotlightsHTML(p, highlights) {
   return badges.length ? `<div class="card-spotlights">${badges.join('')}</div>` : '';
 }
 
-function renderFifaCard(p, highlights) {
+function renderFifaCard(p, highlights, variant, recordOverride) {
+  highlights = highlights || { topScorerIds:new Set(), latestMvpId:null, forms:new Map() };
   const ovr = getOverall(p) || 60;
   const tier = getCardTier(ovr);
   const pos = getEffectivePosition(p);
@@ -136,12 +142,15 @@ function renderFifaCard(p, highlights) {
     ? `<div class="fifa-card-portrait"><img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(p.name)}"></div>`
     : `<div class="fifa-card-portrait is-placeholder" aria-hidden="true">⚽</div>`;
 
-  const rec = getPlayerRecord(p.id);
-  // MVPs y goles salen de la franja: van en medallas propias, que entran
-  // donde el escudo tiene lugar. La franja queda solo con el récord.
+  const rec = recordOverride || getPlayerRecord(p.id);
+  const cardName = String(p.username || p.name || 'Jugador').toUpperCase();
+  const nameClass = cardName.length > 17 ? ' is-very-long' : cardName.length > 11 ? ' is-long' : '';
+  // La banda inferior es de ancho completo: récord, MVP, goles y asistencias
+  // nunca compiten por espacio con la foto ni con el OVR.
   const medals = [
-    rec.mvps > 0 ? `<span class="fifa-medal is-mvp" title="${rec.mvps} MVP"><i>★</i><b>${rec.mvps}</b></span>` : '',
-    rec.goals > 0 ? `<span class="fifa-medal is-goal" title="${rec.goals} goles"><i>⚽</i><b>${rec.goals}</b></span>` : '',
+    rec.mvps > 0 ? `<span class="fifa-medal is-mvp" title="${rec.mvps} MVP" aria-label="${rec.mvps} MVP"><i>★</i><b>${rec.mvps}</b></span>` : '',
+    rec.goals > 0 ? `<span class="fifa-medal is-goal" title="${rec.goals} gol${rec.goals===1?'':'es'}" aria-label="${rec.goals} gol${rec.goals===1?'':'es'}"><i>⚽</i><b>${rec.goals}</b></span>` : '',
+    rec.assists > 0 ? `<span class="fifa-medal is-assist" title="${rec.assists} asistencia${rec.assists===1?'':'s'}" aria-label="${rec.assists} asistencia${rec.assists===1?'':'s'}"><i>🎯</i><b>${rec.assists}</b></span>` : '',
   ].filter(Boolean).join('');
   const medalsHTML = medals ? `<div class="fifa-card-medals">${medals}</div>` : '';
   const recHTML = rec.pj > 0
@@ -152,7 +161,8 @@ function renderFifaCard(p, highlights) {
   const isTopScorer = highlights.topScorerIds.has(p.id);
   const isLatestMvp = highlights.latestMvpId === p.id;
   const spotlights = cardSpotlightsHTML(p, highlights);
-  const cardClasses = [tier.cls, isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
+  const densityClass = variant === 'thumbnail' ? 'card-thumbnail' : variant === 'podium' ? 'card-podium' : 'card-full';
+  const cardClasses = [tier.cls, densityClass, isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
   // La etiqueta bajo la posición explica el marco. Mismo orden de prioridad
   // que los fondos en cards.css: racha < goleador < MVP.
   const frameLabel = isLatestMvp ? 'MVP'
@@ -160,7 +170,7 @@ function renderFifaCard(p, highlights) {
     : isHot ? `RACHA ${form.streak}V`
     : tier.label;
 
-  return `<div class="fifa-card ${cardClasses}" onclick="openPlayerProfile('${p.id}')">
+  return `<div class="fifa-card ${cardClasses}" role="button" tabindex="0" aria-label="Ver ficha de ${escapeHtml(p.name)}" onclick="event.stopPropagation();openPlayerProfile('${p.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openPlayerProfile('${p.id}')}">
     <span class="fifa-shine"></span>
     ${portrait}
     <div class="fifa-top">
@@ -169,11 +179,11 @@ function renderFifaCard(p, highlights) {
         <div class="fifa-card-pos">${pos}</div>
         <div class="fifa-card-tier">${frameLabel}</div>
       </div>
-      <div class="fifa-meta">${recHTML}${medalsHTML}</div>
     </div>
     <div class="fifa-divider"></div>
-    <div class="fifa-card-name">${escapeHtml(p.username.toUpperCase())}</div>
+    <div class="fifa-card-name${nameClass}" title="${escapeHtml(cardName)}">${escapeHtml(cardName)}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats, p)}</div>
+    <div class="fifa-meta">${recHTML}${medalsHTML}</div>
     ${spotlights}
   </div>`;
 }
@@ -211,17 +221,17 @@ function openPlayerProfile(id) {
     ? `<span style="display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle">${form.last5.map(x=>`<span class="form-dot ${x==='V'?'fd-v':x==='E'?'fd-e':'fd-d'}">${x}</span>`).join('')}</span>`
     : '';
   const recChip = rec.pj > 0
-    ? `<span class="chip" style="margin-top:8px;color:var(--gold);border-color:rgba(240,192,64,.4)">🏆 ${rec.pj} PJ · ${rec.w}V ${rec.d}E ${rec.l}D · ${rec.pts} pts${rec.mvps>0?` · ⭐${rec.mvps} MVP`:''}</span>${formDots}`
+    ? `<div class="profile-metric is-record"><span>🏆 Rendimiento</span><b>${rec.w}V · ${rec.d}E · ${rec.l}D</b><small>${rec.pj} PJ · ${rec.pts} pts${rec.mvps>0?` · ⭐ ${rec.mvps} MVP`:''}</small></div>`
     : '';
-  const goalChip = rec.goals > 0
-    ? `<span class="chip" style="margin-top:8px;color:var(--green);border-color:rgba(34,197,94,.4)">⚽ ${rec.goals} gol${rec.goals===1?'':'es'}${rec.goalPj?` · ${(rec.goals/rec.goalPj).toFixed(1)} por partido desde registro`:''}</span>`
+  const goalChip = rec.goalPj > 0
+    ? `<div class="profile-metric is-goal"><span>⚽ Goles</span><b>${rec.goals}</b><small>${(rec.goals/rec.goalPj).toFixed(2)} G/PJ · ${rec.goalPj} PJ registrados</small></div>`
     : '';
   const lastPlayerMatch = getPlayerMatchesChrono(p.id).slice(-1)[0];
   const lastMatchAssists = lastPlayerMatch && hasAssistsTracking(lastPlayerMatch)
     ? playerAssistTotal(p.id, [lastPlayerMatch])
     : null;
   const assistChip = rec.assistPj > 0
-    ? `<span class="chip" style="margin-top:8px;color:#a78bfa;border-color:rgba(167,139,250,.4)">🎯 ${rec.assists} asistencia${rec.assists===1?'':'s'} desde el registro${lastMatchAssists !== null ? ` · último partido: ${lastMatchAssists}` : ''}</span>`
+    ? `<div class="profile-metric is-assist"><span>🎯 Asistencias</span><b>${rec.assists}</b><small>${(rec.assists/rec.assistPj).toFixed(2)} A/PJ · ${rec.assistPj} PJ registrados${lastMatchAssists !== null ? ` · últ.: ${lastMatchAssists}` : ''}</small></div>`
     : '';
 
   // Sociedades y rivalidades del jugador
@@ -288,8 +298,8 @@ function openPlayerProfile(id) {
           <div style="display:flex;gap:10px;align-items:center;padding:5px 0">
             <span style="font-size:18px">${emoji}</span>
             <div>
-              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${label}</div>
-              <div style="font-size:12.5px;font-weight:600">${val}</div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${escapeHtml(label)}</div>
+              <div style="font-size:12.5px;font-weight:600">${escapeHtml(val)}</div>
             </div>
           </div>`).join('')}
       </div>`;
@@ -304,9 +314,8 @@ function openPlayerProfile(id) {
       <span style="display:block;color:var(--muted);font-size:13px">${tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
       ${usesGoalkeeperStats(p) ? '<span style="display:block;color:var(--cyan);font-size:12px;margin-top:4px">🧤 Estadísticas de arquero</span>' : ''}
       <span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">Posición secundaria: ${p.posSecondary||'-'}</span>
-      ${recChip}
-      ${goalChip}
-      ${assistChip}
+      ${(recChip || goalChip || assistChip) ? `<div class="profile-metrics">${recChip}${goalChip}${assistChip}</div>` : ''}
+      ${form.last5.length ? `<div class="profile-form"><span>Forma reciente</span>${formDots}</div>` : ''}
     </div>
     <div>${statBars}</div>
     ${socHTML}
@@ -340,11 +349,11 @@ function openEditProfile() {
     </div>
     <div class="form-group">
       <label>Nombre</label>
-      <input type="text" id="edit-name" value="${me.name}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;outline:none">
+      <input type="text" id="edit-name" value="${escapeHtml(me.name)}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;outline:none">
     </div>
     <div class="form-group">
       <label>Usuario</label>
-      <input type="text" id="edit-username" value="${me.username}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;outline:none">
+      <input type="text" id="edit-username" value="${escapeHtml(me.username)}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;outline:none">
     </div>
     <div class="form-group">
       <label>Posición principal</label>

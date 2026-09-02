@@ -2,7 +2,7 @@
 // Se mantiene separado del layout para poder rediseñarlo sin tocar resultados.
 function getHubPodium(rows, played) {
   const highlights = typeof getCardHighlights === 'function'
-    ? getCardHighlights(rows)
+    ? getCardHighlights(rows, played)
     : { topScorerIds: new Set(), latestMvpId: null, forms: new Map() };
   const latestMvpMatch = played.find(m => m.result?.mvp) || null;
   const latestMvp = latestMvpMatch
@@ -28,7 +28,7 @@ function hubLiveCard(label, item, value, unit, tone, highlights) {
   }
   return `<article class="hub-live-card ${tone}">
     <div class="hub-live-card-label">${label}</div>
-    <div class="hub-live-card-frame">${renderFifaCard(item.p, highlights)}</div>
+    <div class="hub-live-card-frame">${renderFifaCard(item.p, highlights, 'podium', item.rec || item)}</div>
     <div class="hub-live-card-metric"><b>${value}</b><span>${unit}</span></div>
   </article>`;
 }

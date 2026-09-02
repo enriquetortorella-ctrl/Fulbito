@@ -192,6 +192,10 @@ function applyGoalDelta(m, key, delta, removeEvent = false) {
 function addGoal(mid, key, delta) {
   const m = matches.find(x => x.id === mid);
   if (!m) return;
+  if (isPlayed(m) && !state.currentUser?.isAdmin) {
+    showToast('🔒 El partido ya fue cerrado. Solo un administrador puede corregir la planilla.');
+    return;
+  }
   if (delta > 0 && !key.startsWith('__t')) {
     openGoalAssistPicker(mid, key);
     return;
@@ -468,6 +472,7 @@ function renderGoles() {
   if (!m) { el.innerHTML = `<div class="empty-state">Elegí un partido</div>`; return; }
 
   const isAdmin = state.currentUser && state.currentUser.isAdmin;
+  const canEditScore = !isPlayed(m) || isAdmin;
   const teams = m.teams || [];
   const g = getGoals(m);
   const assistsByPlayer = Object.fromEntries(matchAssisters(m).map(item => [item.id, item.assists]));
@@ -496,7 +501,7 @@ function renderGoles() {
   if (isPlayed(m)) {
     const res = m.result;
     const txt = res.winner === 'draw' ? '🤝 Partido cerrado como empate' : `🏆 Partido cerrado — ganó Equipo ${TEAM_NAMES[res.winner]}`;
-    html += `<div style="background:rgba(240,192,64,.08);border:1px solid rgba(240,192,64,.35);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--gold);margin-bottom:12px;line-height:1.5">${txt}. Podés seguir corrigiendo goles: el resultado se actualiza solo.</div>`;
+    html += `<div style="background:rgba(240,192,64,.08);border:1px solid rgba(240,192,64,.35);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--gold);margin-bottom:12px;line-height:1.5">${txt}. ${isAdmin ? 'Como administrador, podés corregir la planilla y el resultado se actualizará solo.' : 'La planilla quedó bloqueada; un administrador puede corregirla.'}</div>`;
   }
 
   // Planillas por equipo
@@ -508,15 +513,16 @@ function renderGoles() {
         <span class="team-overall" id="gth-${i}">${tot} ${tot === 1 ? 'gol' : 'goles'}</span>
       </div>`;
     (t.players || []).forEach(p => {
-      html += goalRowHTML(m.id, p.id, `${p.name}${p.isGuest ? ' 👤' : ''}`, g[p.id] || 0, false, assistsByPlayer[p.id] || 0);
+      html += goalRowHTML(m.id, p.id, `${p.name}${p.isGuest ? ' 👤' : ''}`, g[p.id] || 0, false, assistsByPlayer[p.id] || 0, canEditScore);
     });
-    html += goalRowHTML(m.id, '__t' + i, '⚪ Sin autor / en contra', g['__t' + i] || 0, true, 0);
+    html += goalRowHTML(m.id, '__t' + i, '⚪ Sin autor / en contra', g['__t' + i] || 0, true, 0, canEditScore);
     html += `</div>`;
   });
 
   const goalEvents = getGoalEvents(m);
   if (goalEvents.length) {
-    html += `<section class="goal-event-log"><div class="goal-event-log-head"><span>🎯 DETALLE DE LOS GOLES</span><small>${goalEvents.length} registrado${goalEvents.length===1?'':'s'}</small></div><div class="goal-event-log-list">${goalEvents.slice().reverse().map((event, reverseIndex) => goalEventLineHTML(m, event, goalEvents.length - reverseIndex - 1)).join('')}</div></section>`;
+    const partial = !hasAssistsTracking(m);
+    html += `<section class="goal-event-log"><div class="goal-event-log-head"><span>🎯 DETALLE DE LOS GOLES</span><small>${goalEvents.length} registrado${goalEvents.length===1?'':'s'}${partial?' · parcial':''}</small></div>${partial?'<div class="assist-partial-note">⚠️ Este partido tiene goles sin detalle de asistencia. Lo visible es parcial y no entra en los promedios.</div>':''}<div class="goal-event-log-list">${goalEvents.slice().reverse().map((event, reverseIndex) => goalEventLineHTML(m, event, goalEvents.length - reverseIndex - 1)).join('')}</div></section>`;
   }
 
   html += `<button class="btn btn-ghost w-full" style="justify-content:center;margin-top:4px" onclick="shareMatchResult('${m.id}')">📲 Compartir marcador</button>`;
@@ -528,18 +534,20 @@ function renderGoles() {
     html += `<button class="btn btn-danger w-full" style="justify-content:center;margin-top:8px" onclick="resetGoals('${m.id}')">♻️ Reiniciar goles</button>`;
   }
 
-  html += `<div class="goal-hint">Al tocar <b>+</b>, elegí quién dio la asistencia, si fue una jugada individual o un rebote.<br>Cualquiera puede cargar desde su celular y la planilla se sincroniza con el resto.</div>`;
+  html += `<div class="goal-hint">${canEditScore ? 'Al tocar <b>+</b>, elegí quién dio la asistencia, si fue una jugada individual o un rebote.<br>Cualquiera puede cargar mientras el partido está abierto y la planilla se sincroniza con el resto.' : '🔒 El administrador ya cerró este partido. La planilla queda disponible en modo lectura.'}</div>`;
 
   el.innerHTML = html;
+  el.querySelectorAll('.goal-btn').forEach(button => button.addEventListener('click', () => {
+    addGoal(button.dataset.matchId, button.dataset.goalKey, Number(button.dataset.delta));
+  }));
 }
 
-function goalRowHTML(mid, key, name, n, extra, assists) {
+function goalRowHTML(mid, key, name, n, extra, assists, canEdit) {
   return `<div class="goal-row${extra ? ' extra' : ''}${n > 0 ? ' scored' : ''}">
     <span class="goal-name">${escapeHtml(name)}</span>
     ${assists ? `<span class="goal-assist-count" title="${assists} asistencia${assists===1?'':'s'} en este partido">🎯 ${assists}</span>` : ''}
-    <span class="goal-count${n ? '' : ' zero'}" id="gc-${key}">${n}</span>
-    <button class="goal-btn minus" data-match-id="${escapeHtml(mid)}" data-goal-key="${escapeHtml(key)}" onclick="addGoal('${mid}','${key}',-1)" aria-label="Restar gol a ${escapeHtml(name)}">−</button>
-    <button class="goal-btn plus" data-match-id="${escapeHtml(mid)}" data-goal-key="${escapeHtml(key)}" onclick="addGoal('${mid}','${key}',1)" aria-label="Sumar gol a ${escapeHtml(name)}">+</button>
+    <span class="goal-count${n ? '' : ' zero'}" id="gc-${escapeHtml(key)}">${n}</span>
+    ${canEdit ? `<button type="button" class="goal-btn minus" data-match-id="${escapeHtml(mid)}" data-goal-key="${escapeHtml(key)}" data-delta="-1" aria-label="Restar gol a ${escapeHtml(name)}">−</button><button type="button" class="goal-btn plus" data-match-id="${escapeHtml(mid)}" data-goal-key="${escapeHtml(key)}" data-delta="1" aria-label="Sumar gol a ${escapeHtml(name)}">+</button>` : '<span class="goal-locked" title="Partido cerrado" aria-label="Partido cerrado">🔒</span>'}
   </div>`;
 }
 

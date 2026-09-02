@@ -77,7 +77,7 @@ document.addEventListener('keydown', e => {
       cancelAppActionConfirmation();
       return;
     }
-    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
   }
 });
 

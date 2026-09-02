@@ -92,17 +92,31 @@
   <script src="../js/tabs/goles.js"></script>
   <script src="../js/sync.js"></script>
   <script>
+    if(new URLSearchParams(location.search).has('admin'))state.currentUser.isAdmin=true;
+    if(new URLSearchParams(location.search).has('closed'))matches[0].result.winner=0;
     renderGoles();
     if(new URLSearchParams(location.search).has('auto'))openGoalAssistPicker('m-assist-test','p-scorer');
+    if(new URLSearchParams(location.search).has('closed')){
+      window.__CLOSED_CHECKS__={locked:document.querySelectorAll('.goal-locked').length,editButtons:document.querySelectorAll('.goal-btn').length};
+      document.getElementById('harness-result').textContent=window.__CLOSED_CHECKS__.locked>0&&window.__CLOSED_CHECKS__.editButtons===0?'PASS CLOSED':'FAIL CLOSED';
+    }
     if(new URLSearchParams(location.search).has('statchecks')){
-      const sample = result => ({result});
-      document.getElementById('harness-result').textContent = JSON.stringify({
+      const sample = result => ({result,teams:[{players:[{id:'p1'},{id:'p2'}]}]});
+      window.__STATS_CHECKS__={
         empty_new_match:hasAssistsTracking(sample({goals:{},goalEvents:[],goalsTracked:true,assistsTracked:true})),
-        complete_match:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{assistType:'individual'}],goalsTracked:true,assistsTracked:true})),
-        historical_mixed:hasAssistsTracking(sample({goals:{p1:2},goalEvents:[{assistType:'individual'}],goalsTracked:true,assistsTracked:true})),
-        legacy_unknown:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{assistType:'unrecorded'}],goalsTracked:true,assistsTracked:true})),
-        unattributed_goal:hasAssistsTracking(sample({goals:{__t0:1},goalEvents:[],goalsTracked:true,assistsTracked:true}))
-      });
+        complete_match:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{id:'e1',scorerId:'p1',assistType:'individual',assistPlayerId:null}],goalsTracked:true,assistsTracked:true})),
+        historical_mixed:hasAssistsTracking(sample({goals:{p1:2},goalEvents:[{id:'e1',scorerId:'p1',assistType:'individual',assistPlayerId:null}],goalsTracked:true,assistsTracked:true})),
+        legacy_unknown:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{id:'e1',scorerId:'p1',assistType:'unrecorded',assistPlayerId:null}],goalsTracked:true,assistsTracked:true})),
+        wrong_scorer:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{id:'e1',scorerId:'p2',assistType:'individual',assistPlayerId:null}],goalsTracked:true,assistsTracked:true})),
+        duplicate_event:hasAssistsTracking(sample({goals:{p1:2},goalEvents:[{id:'e1',scorerId:'p1',assistType:'individual',assistPlayerId:null},{id:'e1',scorerId:'p1',assistType:'rebound',assistPlayerId:null}],goalsTracked:true,assistsTracked:true})),
+        self_assist:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{id:'e1',scorerId:'p1',assistType:'player',assistPlayerId:'p1'}],goalsTracked:true,assistsTracked:true})),
+        cross_team_assist:hasAssistsTracking({result:{goals:{p1:1},goalEvents:[{id:'e1',scorerId:'p1',assistType:'player',assistPlayerId:'p2'}],goalsTracked:true,assistsTracked:true},teams:[{players:[{id:'p1'}]},{players:[{id:'p2'}]}]}),
+        duplicate_assister:hasAssistsTracking({result:{goals:{p1:1},goalEvents:[{id:'e1',scorerId:'p1',assistType:'player',assistPlayerId:'p2'}],goalsTracked:true,assistsTracked:true},teams:[{players:[{id:'p1'},{id:'p2'}]},{players:[{id:'p2'}]}]}),
+        unattributed_goal:hasAssistsTracking(sample({goals:{__t0:1},goalEvents:[],goalsTracked:true,assistsTracked:true})),
+        malicious_goal_filtered:matchTotalGoals(sample({goals:{p1:'<img src=x onerror=alert(1)>',p2:3},goalsTracked:true}))===3,
+        numeric_string_normalized:matchTotalGoals(sample({goals:{p1:'2',p2:3},goalsTracked:true}))===5
+      };
+      document.getElementById('harness-result').textContent = JSON.stringify(window.__STATS_CHECKS__);
     }
   </script>
 </body>

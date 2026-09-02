@@ -48,6 +48,11 @@ begin
   if not found then
     raise exception 'Partido no encontrado' using errcode = '22023';
   end if;
+  if coalesce(v_match.result ->> 'winner', '') <> ''
+     and not public.fulbito_is_admin(p_club_id)
+     and not public.fulbito_is_platform_admin() then
+    raise exception 'El partido ya fue cerrado. Solo un administrador puede corregir la planilla' using errcode = '42501';
+  end if;
 
   select exists (
     select 1

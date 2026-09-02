@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Player cards and assists harness</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/base.css?v=59">
+  <link rel="stylesheet" href="../css/inicio.css?v=59">
+  <link rel="stylesheet" href="../css/jugadores.css?v=59">
+  <link rel="stylesheet" href="../css/stats.css?v=59">
+  <link rel="stylesheet" href="../css/responsive.css?v=59">
+  <link rel="stylesheet" href="../css/theme-aurora.css?v=59">
+  <link rel="stylesheet" href="../css/stats-matchcentre.css?v=59">
+  <link rel="stylesheet" href="../css/cards.css?v=59">
+  <link rel="stylesheet" href="../css/leaderboards.css?v=59">
+  <link rel="stylesheet" href="../css/inicio-matchcentre.css?v=59">
+  <link rel="stylesheet" href="../css/inicio-podium.css?v=59">
+  <style>
+    body{padding:0;background:#06101b;color:#eef5ff}
+    #screen-app{display:block;max-width:1180px;margin:auto}
+    .harness-title{margin:10px 0;font:28px 'Bebas Neue',sans-serif;color:#fff}
+    .harness-status{position:fixed;right:8px;top:8px;z-index:9999;padding:7px 10px;border-radius:8px;background:#102338;border:1px solid #385675;font:700 11px sans-serif}
+    .harness-status.ok{color:#b6f23d}.harness-status.fail{color:#ff7d86}
+    #tab-jugadores,#tab-stats,#tab-card-variants{display:block!important}
+    #players-grid{margin-top:10px}
+    .harness-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .harness-toolbar select{padding:7px;background:#0c1a2c;color:white;border:1px solid #385675;border-radius:7px}
+    .harness-variant-stack{display:grid;gap:14px}
+    .harness-variant-caption{margin:0 0 7px;font:20px 'Bebas Neue',sans-serif;color:#dceaff}
+    .harness-home-shell{width:100%;max-width:430px;margin:auto}
+    #screen-app .fifa-card{animation:none!important;transition:none!important}
+    .modal-overlay{display:none}.modal-overlay.open{display:flex}
+  </style>
+</head>
+<body>
+  <div id="harness-status" class="harness-status">RUNNING</div>
+  <div id="screen-app">
+    <section id="tab-jugadores" class="tab-content active">
+      <h1 class="harness-title">Cartas del plantel</h1>
+      <div class="harness-toolbar">
+        <span>Jugadores <b id="players-count"></b></span>
+        <span>OVR <b id="roster-avg-ovr"></b></span>
+        <span>Líder <b id="roster-leader"></b></span>
+        <span id="roster-visible-count"></span>
+        <select id="roster-sort" onchange="setRosterSort(this.value)"><option value="rating">OVR</option><option value="performance">Rendimiento</option><option value="goals">Goles</option><option value="assists">Asistencias</option><option value="name">A-Z</option></select>
+      </div>
+      <div class="players-grid" id="players-grid"></div>
+    </section>
+    <section id="tab-stats" class="tab-content active">
+      <h1 class="harness-title">Estadísticas</h1>
+      <div id="stats-content"></div>
+    </section>
+    <section id="tab-card-variants" class="tab-content active">
+      <h1 class="harness-title">Variantes reales de carta</h1>
+      <div class="harness-variant-stack">
+        <div>
+          <h2 class="harness-variant-caption">Inicio · Podio del club</h2>
+          <aside class="hub-live-podium harness-home-shell">
+            <div class="hub-panel-head">
+              <div><span>FORMA ACTUAL</span><h2>PODIO DEL CLUB</h2></div>
+              <button type="button" class="hub-panel-link">Stats ↗</button>
+            </div>
+            <div class="hub-live-cards" id="harness-home-cards"></div>
+          </aside>
+        </div>
+        <div>
+          <h2 class="harness-variant-caption">Ranking · Podio y miniaturas</h2>
+          <section class="leaderboard-page scorer-page">
+            <header class="leaderboard-page-head">
+              <div><span>RANKING OFENSIVO</span><h2>GOLEADORES</h2><p>Fixture visual del harness</p></div>
+              <div class="leaderboard-page-total"><b>4</b><span>Goles del líder</span></div>
+            </header>
+            <div class="leaderboard-podium scorer-podium" id="harness-leaderboard-podium"></div>
+            <div class="leaderboard-list-title"><span>Resto del ranking</span><b>3 jugadores</b></div>
+            <div class="leaderboard-list-grid" id="harness-thumbnail-grid"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="modal-overlay" id="modal-profile"><div class="modal"><button onclick="closeModal('modal-profile')">Cerrar</button><h2 id="modal-profile-title"></h2><div id="modal-profile-content"></div></div></div>
+  <script>
+    const STAT_LABELS={ritmo:'RIT',tiro:'TIR',pase:'PAS',defensa:'DEF',fisico:'FIS',ataque:'ATA',estirada:'EST',manos:'MAN',saque:'SAQ',reflejos:'REF',posicion:'POS',uno_contra_uno:'1V1'};
+    const fieldStats={ritmo:82,tiro:77,pase:86,defensa:71,fisico:79,ataque:84};
+    const keeperStats={estirada:79,manos:76,saque:70,reflejos:83,posicion:77,uno_contra_uno:81};
+    const players=[
+      {id:'p1',name:'Enrique Tortorella',username:'Titi',posPrimary:'DEF',ovr:81,stats:{...fieldStats,tiro:91},photo:'../assets/fulbito-icon.svg',ratings:{}},
+      {id:'p2',name:'Gonzalo Duarte',username:'Gonzalo Duarte',posPrimary:'MED',ovr:78,stats:{...fieldStats,pase:88},photo:'',ratings:{}},
+      {id:'p3',name:'Federico Salvareza Apellido Muy Largo',username:'Federico Salvareza Apellido Muy Largo',posPrimary:'DEL',ovr:75,stats:{...fieldStats,ataque:90},photo:'../assets/fulbito-icon.svg',ratings:{}},
+      {id:'p4',name:'Facundo Badie',username:'Facu',posPrimary:'MED',ovr:71,stats:{...fieldStats,defensa:75},photo:'',ratings:{}},
+      {id:'p5',name:'Arquero del Barrio',username:'Arquero de Prueba',posPrimary:'POR',ratingMode:'goalkeeper',ovr:69,stats:{...keeperStats},photo:'../assets/fulbito-icon.svg',ratings:{}},
+      {id:'p6',name:'Jugador Sin Usuario',posPrimary:'DEF',ovr:62,stats:{...fieldStats,ritmo:60},photo:'',ratings:{}}
+    ];
+    const guest={id:'guest-1',name:'Invitado Histórico',username:'Invitado',posPrimary:'MED',ovr:60,stats:fieldStats,isGuest:true};
+    const team=(name,list)=>({name,players:list});
+    const result=(winner,goals,events,mvp)=>({winner,margin:1,mvp,goals,goalEvents:events,goalsTracked:true,assistsTracked:true});
+    const event=(id,scorerId,assistType,assistPlayerId)=>({id,scorerId,assistType,assistPlayerId:assistPlayerId||null});
+    let matches=[
+      {id:'m3',match_date:'2026-09-05',created_at:'2026-09-05T22:00:00Z',teams:[team('A',[players[0],players[1],players[2]]),team('B',[players[3],players[4],players[5]])],result:result(0,{p1:2,p2:1,p4:1},[event('e31','p1','player','p2'),event('e32','p1','individual'),event('e33','p2','player','p3'),event('e34','p4','rebound')],'p1')},
+      {id:'m2',match_date:'2026-08-29',created_at:'2026-08-29T22:00:00Z',teams:[team('A',[players[0],players[3],players[5]]),team('B',[players[1],players[2],players[4]])],result:result(1,{p2:2,p3:1,p6:1},[event('e21','p2','player','p3'),event('e22','p2','player','p5'),event('e23','p3','individual'),event('e24','p6','rebound')],'p3')},
+      {id:'m1',match_date:'2026-08-22',created_at:'2026-08-22T22:00:00Z',teams:[team('A',[players[0],players[2],guest]),team('B',[players[1],players[3],players[5]])],result:result('draw',{p1:1,p2:1},[event('e11','p1','player','guest-1'),event('e12','p2','player','p4')],null)},
+      {id:'legacy',match_date:'2026-08-15',created_at:'2026-08-15T22:00:00Z',teams:[team('A',[players[0],players[1]]),team('B',[players[2],players[3]])],result:result(0,{p1:1},[event('old','p1','unrecorded')],null)}
+    ];
+    const state={players,currentUser:{id:'p1',name:'Enrique'},currentClub:{id:'test',name:'Club Test'}};
+    let rosterQuery='',rosterSort='rating';
+    function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    function safePhotoUrl(value){return value||''}
+    function getOverall(player){return player.ovr||60}
+    function getCardTier(ovr){return ovr>=80?{cls:'rare',label:'ICON'}:ovr>=72?{cls:'gold',label:'ORO'}:ovr>=65?{cls:'silver',label:'PLATA'}:{cls:'bronze',label:'BRONCE'}}
+    function getEffectivePosition(player){return player.posPrimary||'MED'}
+    function usesGoalkeeperStats(player){return player.posPrimary==='POR'&&player.ratingMode==='goalkeeper'}
+    function getRatingStats(player){return usesGoalkeeperStats(player)?['estirada','manos','saque','reflejos','posicion','uno_contra_uno']:['ritmo','tiro','pase','defensa','fisico','ataque']}
+    function getAvgStats(player){return player.stats||{}}
+    function statToFifa(value){return Number(value)||0}
+    function getStatValue(obj,key){return Number(obj?.[key])||0}
+    function getValidRatings(){return []}
+    function computeVoterBiases(){return {biases:{}}}
+    function formatMatchDate(match){return new Date(`${match.match_date}T12:00:00`).toLocaleDateString('es-AR')}
+    function daysSince(){return 1}
+    function openModal(id){document.getElementById(id)?.classList.add('open')}
+    function closeModal(id){document.getElementById(id)?.classList.remove('open')}
+    function refreshPlayers(){}
+    function showToast(){}
+  </script>
+  <script src="../js/stats-core.js?v=59"></script>
+  <script src="../js/tabs/jugadores.js?v=59"></script>
+  <script src="../js/tabs/stats.js?v=59"></script>
+  <script src="../js/tabs/goleadores.js?v=59"></script>
+  <script src="../js/tabs/inicio-podium.js?v=59"></script>
+  <script>
+    (async()=>{
+    renderPlayers();
+    renderStats();
+    const harnessRows=players.map(p=>({p,ovr:getOverall(p)||60,...getPlayerRecord(p.id)}));
+    const harnessPlayed=matches.filter(isPlayed);
+    const harnessHighlights=getCardHighlights(harnessRows,harnessPlayed);
+    const harnessRow=id=>harnessRows.find(row=>row.p.id===id);
+    const scorer=harnessRow('p2');
+    const latestMvp=harnessRow('p1');
+    const streak=harnessRow('p4');
+    document.getElementById('harness-home-cards').innerHTML=[
+      hubLiveCard('MÁXIMO GOLEADOR',scorer,scorer.goals,'GOLES','is-scorer',harnessHighlights),
+      hubLiveCard('ÚLTIMO MVP',latestMvp,'★','FIGURA','is-mvp',harnessHighlights),
+      hubLiveCard('MEJOR RACHA',streak,2,'VICTORIAS','is-streak',harnessHighlights)
+    ].join('');
+    document.getElementById('harness-leaderboard-podium').innerHTML=[
+      leaderboardCard(scorer,'1°','MÁXIMO GOLEADOR',scorer.goals,'GOLES',`${goalsPerGame(scorer).toFixed(2)} G/PJ`,harnessHighlights,'is-champion'),
+      leaderboardCard(streak,'2°','SEGUNDO GOLEADOR',streak.goals,'GOLES',`${goalsPerGame(streak).toFixed(2)} G/PJ`,harnessHighlights,'is-runner')
+    ].join('');
+    document.getElementById('harness-thumbnail-grid').innerHTML=['p3','p5','p6'].map((id,index)=>{
+      const row=harnessRow(id);
+      return `<article class="leaderboard-list-card">
+        <div class="leaderboard-list-rank">${index+3}</div>
+        <div class="leaderboard-list-card-visual">${renderFifaCard(row.p,harnessHighlights,'thumbnail',row)}</div>
+        <div class="leaderboard-list-copy"><b>${escapeHtml(row.p.name)}</b><span>${row.goalPj} PJ con planilla · fixture responsive</span></div>
+        <div class="leaderboard-list-metrics"><strong>${row.goals}</strong><span>GOLES</span><b>${goalsPerGame(row).toFixed(2)} G/PJ</b></div>
+      </article>`;
+    }).join('');
+
+    const nextPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const waitImage=image=>{
+      if(image.complete){
+        return typeof image.decode==='function' ? image.decode().catch(()=>{}) : Promise.resolve();
+      }
+      return new Promise(resolve=>{
+        image.addEventListener('load',resolve,{once:true});
+        image.addEventListener('error',resolve,{once:true});
+      }).then(()=>typeof image.decode==='function' ? image.decode().catch(()=>{}) : undefined);
+    };
+    const preloadCardFrames=()=>Promise.all(['bronze','silver','gold','icon','mvp','scorer','hot'].map(name=>{
+      const image=new Image();
+      image.src=`../assets/cards/${name}.webp`;
+      return waitImage(image);
+    }));
+
+      if(document.fonts?.ready)await document.fonts.ready.catch(()=>{});
+      await Promise.all([preloadCardFrames(),...Array.from(document.images,waitImage)]);
+      await nextPaint();
+      const issues=[];
+      const visible=element=>element&&getComputedStyle(element).display!=='none'&&element.getBoundingClientRect().width>0&&element.getBoundingClientRect().height>0;
+      const inside=(child,parent,pad=1)=>child.left>=parent.left-pad&&child.right<=parent.right+pad&&child.top>=parent.top-pad&&child.bottom<=parent.bottom+pad;
+      const intersects=(a,b,pad=.75)=>a.left<b.right-pad&&a.right>b.left+pad&&a.top<b.bottom-pad&&a.bottom>b.top+pad;
+      const checkContentBox=(element,label,tolerance=1)=>{
+        if(!visible(element))return;
+        if(element.scrollWidth>element.clientWidth+tolerance)issues.push(`${label}-horizontal-content-overflow-${element.scrollWidth}-${element.clientWidth}`);
+        // Las fuentes condensadas con line-height < 1 informan un scrollHeight
+        // mayor aunque la tinta visible quepa. Tolera esa métrica tipográfica,
+        // pero sigue detectando contenido que invade más de un tercio de línea.
+        const lineTolerance=Math.max(tolerance,4,(parseFloat(getComputedStyle(element).fontSize)||12)*.34);
+        if(element.scrollHeight>element.clientHeight+lineTolerance)issues.push(`${label}-vertical-content-overflow-${element.scrollHeight}-${element.clientHeight}`);
+      };
+      const checkCard=(card,label,variant)=>{
+        const cr=card.getBoundingClientRect();
+        ['.fifa-top','.fifa-card-portrait','.fifa-card-name','.fifa-card-stats','.fifa-meta'].forEach(selector=>{
+          const el=card.querySelector(selector);
+          if(visible(el)&&!inside(el.getBoundingClientRect(),cr,1.5))issues.push(`${label}-${selector}-outside-card`);
+        });
+        const top=card.querySelector('.fifa-top');
+        const portrait=card.querySelector('.fifa-card-portrait');
+        const name=card.querySelector('.fifa-card-name');
+        const stats=card.querySelector('.fifa-card-stats');
+        const meta=card.querySelector('.fifa-meta');
+        const record=card.querySelector('.fifa-card-record');
+        const medals=card.querySelector('.fifa-card-medals');
+        if(visible(top)&&visible(portrait)&&intersects(top.getBoundingClientRect(),portrait.getBoundingClientRect()))issues.push(`${label}-top-portrait-overlap`);
+        if(visible(name)&&visible(portrait)&&intersects(name.getBoundingClientRect(),portrait.getBoundingClientRect()))issues.push(`${label}-name-portrait-overlap`);
+        if(visible(stats)&&visible(meta)&&intersects(stats.getBoundingClientRect(),meta.getBoundingClientRect()))issues.push(`${label}-stats-meta-overlap`);
+        if(visible(record)&&visible(medals)&&intersects(record.getBoundingClientRect(),medals.getBoundingClientRect()))issues.push(`${label}-record-medals-overlap`);
+        if(Math.abs(cr.height/cr.width-1.499)>0.035)issues.push(`${label}-ratio-${(cr.height/cr.width).toFixed(3)}`);
+        ['.fifa-left','.fifa-card-overall','.fifa-card-pos','.fifa-card-tier','.fifa-card-name','.fifa-card-record','.fifa-card-medals'].forEach(selector=>checkContentBox(card.querySelector(selector),`${label}-${selector}`));
+        card.querySelectorAll('.fifa-card-stat').forEach((element,index)=>checkContentBox(element,`${label}-stat-${index}`));
+        if(variant==='full'){
+          if(!visible(name)||!visible(stats)||!visible(meta))issues.push(`${label}-full-density-missing`);
+        }else if(variant==='podium'){
+          if(!visible(name)||visible(stats)||visible(meta))issues.push(`${label}-podium-density-wrong`);
+        }else if(variant==='thumbnail'&&(visible(name)||visible(stats)||visible(meta))){
+          issues.push(`${label}-thumbnail-density-wrong`);
+        }
+      };
+      const fullCards=[...document.querySelectorAll('#players-grid .fifa-card')];
+      const homeCards=[...document.querySelectorAll('#harness-home-cards .fifa-card')];
+      const podiumCards=[...document.querySelectorAll('#harness-leaderboard-podium .fifa-card')];
+      const thumbnailCards=[...document.querySelectorAll('#harness-thumbnail-grid .fifa-card')];
+      fullCards.forEach((card,index)=>checkCard(card,`full-${index}`,'full'));
+      homeCards.forEach((card,index)=>checkCard(card,`home-${index}`,'podium'));
+      podiumCards.forEach((card,index)=>checkCard(card,`podium-${index}`,'podium'));
+      thumbnailCards.forEach((card,index)=>checkCard(card,`thumbnail-${index}`,'thumbnail'));
+      if(fullCards.length!==players.length)issues.push(`full-card-count-${fullCards.length}`);
+      if(homeCards.length!==3)issues.push(`home-card-count-${homeCards.length}`);
+      if(podiumCards.length!==2)issues.push(`podium-card-count-${podiumCards.length}`);
+      if(thumbnailCards.length!==3)issues.push(`thumbnail-card-count-${thumbnailCards.length}`);
+      document.querySelectorAll('#harness-home-cards .hub-live-card-frame').forEach((frame,index)=>{
+        const card=frame.querySelector('.fifa-card');
+        if(!card)return issues.push(`home-${index}-card-missing`);
+        const fr=frame.getBoundingClientRect(),cr=card.getBoundingClientRect();
+        if(Math.abs(fr.width-cr.width)>1||Math.abs(fr.height-cr.height)>1)issues.push(`home-${index}-frame-size-mismatch`);
+      });
+      document.querySelectorAll('#harness-leaderboard-podium .leaderboard-feature').forEach((feature,index)=>{
+        const card=feature.querySelector('.leaderboard-card-visual');
+        const name=feature.querySelector('.leaderboard-feature-name');
+        const metric=feature.querySelector('.leaderboard-feature-metric');
+        if(visible(card)&&visible(name)&&intersects(card.getBoundingClientRect(),name.getBoundingClientRect()))issues.push(`podium-${index}-external-name-overlap`);
+        if(visible(name)&&visible(metric)&&intersects(name.getBoundingClientRect(),metric.getBoundingClientRect()))issues.push(`podium-${index}-external-metric-overlap`);
+      });
+      document.querySelectorAll('#harness-thumbnail-grid .leaderboard-list-card').forEach((row,index)=>{
+        const visual=row.querySelector('.leaderboard-list-card-visual');
+        const copy=row.querySelector('.leaderboard-list-copy');
+        const metrics=row.querySelector('.leaderboard-list-metrics');
+        if(visible(visual)&&visible(copy)&&intersects(visual.getBoundingClientRect(),copy.getBoundingClientRect()))issues.push(`thumbnail-${index}-visual-copy-overlap`);
+        if(visible(copy)&&visible(metrics)&&intersects(copy.getBoundingClientRect(),metrics.getBoundingClientRect()))issues.push(`thumbnail-${index}-copy-metrics-overlap`);
+        checkContentBox(metrics,`thumbnail-${index}-external-metrics`);
+      });
+      ['#harness-home-cards','.leaderboard-page','#harness-leaderboard-podium','#harness-thumbnail-grid'].forEach(selector=>checkContentBox(document.querySelector(selector),`shell-${selector}`));
+      if(![...document.querySelectorAll('#players-grid .fifa-card')].some(card=>card.querySelectorAll('.fifa-medal').length===3))issues.push('three-metrics-missing');
+      if(!document.querySelector('.assists-module'))issues.push('assist-module-missing');
+      if(!document.querySelector('.performance-table th[title="Asistencias"]'))issues.push('assist-column-missing');
+      if(!document.querySelector('.assists-list')?.textContent.includes('Invitado Histórico'))issues.push('guest-assist-missing');
+      try {
+        const scopedRows=statsPlayers(matches.slice(0,2));
+        const scopedHighlights=getCardHighlights(scopedRows,matches.slice(0,2));
+        if(!scopedHighlights.topScorerIds.has('p2') || scopedHighlights.topScorerIds.has('p1'))issues.push('scoped-card-highlights-wrong');
+        const scopedP1=scopedRows.find(row=>row.p.id==='p1');
+        const scopedFixture=document.createElement('div');
+        scopedFixture.innerHTML=renderFifaCard(scopedP1.p,scopedHighlights,'podium',scopedP1);
+        if(scopedFixture.querySelector('.fifa-medal.is-goal b')?.textContent!==String(scopedP1.goals))issues.push('scoped-card-record-wrong');
+      } catch(error) { issues.push(`scoped-card-highlights-crash-${error.message}`); }
+      if(document.documentElement.scrollWidth>document.documentElement.clientWidth+1)issues.push(`page-horizontal-overflow-${document.documentElement.scrollWidth}`);
+      const result={ok:!issues.length,issues,cards:fullCards.length,assists:document.querySelector('.assists-total b')?.textContent||'0',viewport:[innerWidth,innerHeight],variants:{home:homeCards.length,podium:podiumCards.length,thumbnail:thumbnailCards.length}};
+      window.__HARNESS__=result;
+      const status=document.getElementById('harness-status');status.textContent=result.ok?'PASS':`FAIL ${issues.join(', ')}`;status.className=`harness-status ${result.ok?'ok':'fail'}`;
+    })().catch(error=>{
+      const result={ok:false,issues:[`harness-crash-${error.message}`],cards:0,assists:'0',viewport:[innerWidth,innerHeight],variants:{home:0,podium:0,thumbnail:0}};
+      window.__HARNESS__=result;
+      const status=document.getElementById('harness-status');status.textContent=`FAIL ${result.issues[0]}`;status.className='harness-status fail';
+    });
+  </script>
+</body>
+</html>

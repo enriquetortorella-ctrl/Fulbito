@@ -31,7 +31,7 @@ function addGuest() {
   document.getElementById('modal-guest-content').innerHTML = `
     <div class="form-group">
       <label>Nombre</label>
-      <input type="text" id="guest-name" placeholder="Ej: Rodrigo" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;outline:none">
+      <input type="text" id="guest-name" maxlength="48" autocomplete="off" placeholder="Ej: Rodrigo" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;outline:none">
     </div>
     <div class="form-group">
       <label>Posición</label>
@@ -77,6 +77,7 @@ function saveGuest() {
   errEl.style.display = 'none';
 
   if (!name) { errEl.textContent='Ingresá el nombre'; errEl.style.display='block'; return; }
+  if (name.length > 48 || /[<>\u0000-\u001F\u007F]/.test(name)) { errEl.textContent='Usá un nombre de hasta 48 caracteres, sin símbolos < o >'; errEl.style.display='block'; return; }
   if (!posSel) { errEl.textContent='Elegí una posición'; errEl.style.display='block'; return; }
 
   const pos = posSel.dataset.pos;
@@ -88,7 +89,7 @@ function saveGuest() {
   else if (pos==='MED') ovr = avg.pase*0.35 + avg.ritmo*0.2 + avg.defensa*0.15 + avg.tiro*0.15 + avg.fisico*0.15;
   else ovr = avg.tiro*0.4 + avg.ritmo*0.25 + avg.pase*0.15 + avg.fisico*0.15 + avg.defensa*0.05;
   const finalOvr = Object.keys(guestStats).length > 0
-    ? Math.round(50 + (ovr - 1) / 4 * 49)
+    ? Math.max(40, Math.min(99, Math.round(50 + (ovr - 1) / 4 * 49)))
     : 60;
 
   const guest = {
@@ -119,15 +120,17 @@ function renderGuestsList() {
     ${guests.map(g => `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
         <span style="font-size:18px">👤</span>
-        <span style="flex:1;font-weight:600">${g.name}</span>
-        <span style="font-size:12px;color:var(--muted)">OVR ${g.ovr}</span>
-        <select onchange="updateGuestPos('${g.id}',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:12px">
+        <span style="flex:1;font-weight:600">${escapeHtml(g.name)}</span>
+        <span style="font-size:12px;color:var(--muted)">OVR ${Number(g.ovr) || 60}</span>
+        <select class="guest-pos-select" data-guest-id="${escapeHtml(g.id)}" style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:12px">
           ${['POR','DEF','MED','DEL'].map(p=>`<option value="${p}"${g.effPos===p?' selected':''}>${p}</option>`).join('')}
         </select>
-        <button onclick="removeGuest('${g.id}')" style="background:none;border:none;cursor:pointer;font-size:16px">🗑️</button>
+        <button type="button" class="guest-remove-btn" data-guest-id="${escapeHtml(g.id)}" aria-label="Quitar a ${escapeHtml(g.name)}" style="background:none;border:none;cursor:pointer;font-size:16px">🗑️</button>
       </div>
     `).join('')}
   `;
+  el.querySelectorAll('.guest-pos-select').forEach(select => select.addEventListener('change', () => updateGuestPos(select.dataset.guestId, select.value)));
+  el.querySelectorAll('.guest-remove-btn').forEach(button => button.addEventListener('click', () => removeGuest(button.dataset.guestId)));
 }
 
 function updateGuestPos(id, pos) {
@@ -256,7 +259,7 @@ function renderBuiltTeams(teams) {
       const ovr = p.ovr || getOverall(p) || '?';
       html += `<div class="team-player-row" style="${editMode?'padding-right:8px':''}">
         <span class="team-player-pos-badge">${pos}</span>
-        <span class="team-player-name">${p.name}</span>
+        <span class="team-player-name">${escapeHtml(p.name)}</span>
         <span class="team-player-ovr">${ovr}</span>`;
 
       if (editMode && teams.length > 1) {

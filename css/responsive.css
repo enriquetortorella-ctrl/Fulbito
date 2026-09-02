@@ -8,7 +8,8 @@
   .roster-search{flex:1}
 }
 @media (max-width:640px){
-  #screen-app{padding:0 12px 30px}
+  #screen-app{padding:0 8px 26px}
+  #screen-app>.tab-content{padding:12px 4px!important}
   #screen-club{padding:16px}.club-box{padding:17px;border-radius:16px}.club-list{grid-template-columns:1fr}.club-intro{margin-bottom:18px}.club-intro h1{font-size:48px}.club-intro p{font-size:12px}.club-join{grid-template-columns:1fr}.club-join .btn{justify-content:center}
   .topbar{padding:11px 0}.topbar-user #topbar-username{display:none}
   .brand-crest{width:31px;height:36px}.topbar-logo{font-size:23px}.brand-caption{font-size:7px}
@@ -28,9 +29,19 @@
   .fifa-divider{margin:8px 0 5px}.fifa-card-name{font-size:14px;letter-spacing:.8px}.fifa-card-stats{width:90%;margin-top:7px}.fifa-card-stat{font-size:8px;gap:2px}.fifa-card-stat span:first-child{font-size:12px}.fifa-card-stat.best span:first-child{font-size:13px}.fifa-card-record{font-size:9px;padding:2px 7px;margin-top:8px}
 }
 @media (max-width:370px){
+  #screen-app{padding-left:5px;padding-right:5px}
+  #screen-app>.tab-content{padding-left:3px!important;padding-right:3px!important}
+  #screen-app>#tab-jugadores{padding-left:0!important;padding-right:0!important}
   .roster-hero p{max-width:165px}.roster-metric span{font-size:7px}.roster-metric b{font-size:19px}
   .fifa-card{padding:16px 8px 25px}.fifa-top{gap:7px}.fifa-card-photo{width:55px;height:55px}.fifa-card-overall{font-size:34px}.fifa-card-name{font-size:13px}.fifa-card-stats{width:94%}.fifa-card-record{font-size:8px;padding:2px 5px}
 }
+
+/* Los diálogos genéricos usan el alto visible real y respetan notch/barra.
+   El asistidor y Crest Studio tienen sus propias hojas móviles. */
+.modal-overlay:not(.crest-studio-overlay):not(.goal-assist-overlay){padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.modal:not(.crest-studio-modal):not(.goal-assist-modal){max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overscroll-behavior:contain}
+.modal-close{min-width:44px;min-height:44px}
+.modal-close:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;color:var(--text)}
 
 @media (prefers-reduced-motion: reduce){
   *{transition:none!important;animation:none!important}

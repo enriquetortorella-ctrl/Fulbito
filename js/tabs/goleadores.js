@@ -17,14 +17,15 @@ function scorerPeriodMatches() {
   return played.filter(match => (match.match_date || '').slice(0,4) === scorersPeriod);
 }
 
-function leaderboardHighlights() {
-  return getCardHighlights(state.players.map(p => ({ p, rec: getPlayerRecord(p.id) })));
+function leaderboardHighlights(entries, scope) {
+  const rows = entries || state.players.map(p => ({ p, rec: getPlayerRecord(p.id) }));
+  return getCardHighlights(rows, scope);
 }
 
 function leaderboardCard(item, rank, title, primary, primaryLabel, secondary, highlights, tone = '') {
   if (!item) return '';
   const card = typeof renderFifaCard === 'function'
-    ? renderFifaCard(item.p, highlights)
+    ? renderFifaCard(item.p, highlights, 'podium', item)
     : `<div class="leaderboard-card-fallback">${escapeHtml(item.p.name)}</div>`;
   return `<article class="leaderboard-feature ${tone}">
     <div class="leaderboard-rank-label">${rank} · ${title}</div>
@@ -57,14 +58,14 @@ function renderGoleadoresTab() {
     return;
   }
 
-  const highlights = leaderboardHighlights();
+  const highlights = leaderboardHighlights(rows, scope);
   const leader = rows[0];
   const runner = rows[1] || null;
   const rest = rows.slice(2);
   const share = row => Math.round(row.goals / Math.max(1, totalGoals) * 100);
   const cardRows = rest.map((row, index) => `<article class="leaderboard-list-card" onclick="openPlayerProfile('${row.p.id}')">
     <div class="leaderboard-list-rank">${index + 3}</div>
-    <div class="leaderboard-list-card-visual">${typeof renderFifaCard === 'function' ? renderFifaCard(row.p, highlights) : ''}</div>
+    <div class="leaderboard-list-card-visual">${typeof renderFifaCard === 'function' ? renderFifaCard(row.p, highlights, 'thumbnail', row) : ''}</div>
     <div class="leaderboard-list-copy"><b>${escapeHtml(row.p.name)}</b><span>${row.goalPj} PJ con planilla · ${share(row)}% de los goles</span></div>
     <div class="leaderboard-list-metrics"><strong>${row.goals}</strong><span>GOLES</span><b>${goalsPerGame(row).toFixed(2)} G/PJ</b></div>
   </article>`).join('');
