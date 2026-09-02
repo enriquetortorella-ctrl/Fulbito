@@ -41,9 +41,12 @@ function showApp() {
     if (!freshClub || !state.currentClub || freshClub.id !== state.currentClub.id) return;
     const sameIdentity = freshClub.name === state.currentClub.name && freshClub.crest === state.currentClub.crest;
     const sameInviteCode = !state.currentUser?.isAdmin || freshClub.inviteCode === state.currentClub.inviteCode;
-    if (sameIdentity && sameInviteCode) return;
+    const sameSchedule = freshClub.matchWeekday === state.currentClub.matchWeekday &&
+      freshClub.matchTime === state.currentClub.matchTime &&
+      freshClub.matchVenue === state.currentClub.matchVenue;
+    if (sameIdentity && sameInviteCode && sameSchedule) return;
     state.currentClub = { ...state.currentClub, ...freshClub };
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue });
     renderClubIdentity();
     renderHub();
     if (getActiveTabName() === 'admin') renderAdmin();

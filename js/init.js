@@ -205,7 +205,15 @@ async function init() {
     const sess = SESSION.get();
     const clubId = sess?.clubId || (sess ? LEGACY_CLUB_ID : null);
     if (sess && sess.clubName) {
-      const sessionClub = { id: clubId, name: safePlainText(sess.clubName, 50) || 'Mi club', crest: safeClubCrestUrl(sess.clubCrest), inviteCode: safePlainText(sess.clubInviteCode, 24) || null };
+      const sessionClub = mapClubBrand({
+        id: clubId,
+        name: safePlainText(sess.clubName, 50) || 'Mi club',
+        crest: safeClubCrestUrl(sess.clubCrest),
+        invite_code: safePlainText(sess.clubInviteCode, 24) || null,
+        match_weekday: sess.clubMatchWeekday,
+        match_time: sess.clubMatchTime,
+        match_venue: sess.clubMatchVenue
+      });
       const existingClub = state.clubs.find(club => club.id === clubId);
       if (existingClub) {
         if (sessionClub.inviteCode) existingClub.inviteCode = sessionClub.inviteCode;
