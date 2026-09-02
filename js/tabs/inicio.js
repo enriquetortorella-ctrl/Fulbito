@@ -139,7 +139,8 @@ function hubHeroMatchHTML(greeting, next) {
     return `<div><div class="hub-kicker"><span class="hub-live-dot"></span> MATCHDAY CENTRAL · EL FULBITO</div><h1>TODO EL FULBITO,<br><strong>EN UNA MIRADA.</strong></h1><p>Buenas, ${escapeHtml(greeting)}. Tu central para confirmar, competir y seguir la historia del club.</p></div>`;
   }
   const dateText = next.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-  return `<div class="hub-hero-match-copy"><div class="hub-kicker"><span class="hub-live-dot"></span> PRÓXIMO PARTIDO · ${escapeHtml(state.currentClub.name)}</div><h1><strong>${escapeHtml(dateText)}</strong></h1><div class="hub-hero-match-details"><span>🕒 ${escapeHtml(next.time)} HS</span><span>📍 ${escapeHtml(next.venue)}</span></div><div class="hub-match-countdown">⏱ ${clubMatchCountdown(next)}</div><p>Buenas, ${escapeHtml(greeting)}. Confirmá tu asistencia para que el plantel llegue listo al partido.</p></div>`;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(next.venue)}`;
+  return `<div class="hub-hero-match-copy"><div class="hub-kicker"><span class="hub-live-dot"></span> PRÓXIMO PARTIDO · ${escapeHtml(state.currentClub.name)}</div><h1><strong>${escapeHtml(dateText)}</strong></h1><div class="hub-hero-match-details"><span>🕒 ${escapeHtml(next.time)} HS</span><a class="hub-match-venue-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer" title="Abrir ${escapeHtml(next.venue)} en Google Maps">📍 ${escapeHtml(next.venue)} <i>↗</i></a></div><div class="hub-match-countdown">⏱ ${clubMatchCountdown(next)}</div><p>Buenas, ${escapeHtml(greeting)}. Confirmá tu asistencia para que el plantel llegue listo al partido.</p></div>`;
 }
 
 function hubOpenMatch() {
