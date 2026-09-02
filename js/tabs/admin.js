@@ -4,12 +4,30 @@ let clubBrandDraftCrest;
 let clubBrandDraftName = '';
 let clubBrandDraftClubId = null;
 let clubInviteEditorOpen = false;
+let pendingClubScheduleUpdate = null;
 
 function clubBrandPreviewHTML(crest, name) {
   const imageUrl = safeClubCrestUrl(crest);
   return imageUrl
     ? `<img src="${escapeHtml(imageUrl)}" alt="Escudo de ${escapeHtml(name)}">`
     : `<span>${escapeHtml(clubInitials(name))}</span>`;
+}
+
+function clubMatchScheduleEditorHTML(isSupport) {
+  const schedule = getClubSchedule();
+  if (isSupport) {
+    return `<div class="club-match-schedule is-readonly"><div><b>📅 Partido semanal</b><span>${schedule ? `${escapeHtml(clubNextMatchText())} · ${escapeHtml(schedule.venue)}` : 'Este club todavía no configuró un día, horario y sede.'}</span></div></div>`;
+  }
+  const weekdayOptions = CLUB_WEEKDAYS.map((label, value) => `<option value="${value}" ${schedule?.weekday === value ? 'selected' : ''}>${label.charAt(0).toUpperCase()}${label.slice(1)}</option>`).join('');
+  return `<div class="club-match-schedule">
+    <div class="club-match-schedule-head"><div><b>📅 Próximo partido</b><span>Se actualiza solo con la fecha de cada semana.</span></div></div>
+    <div class="club-match-schedule-fields">
+      <label>Día<select id="club-match-weekday"><option value="">Sin configurar</option>${weekdayOptions}</select></label>
+      <label>Hora<input id="club-match-time" type="time" value="${escapeHtml(schedule?.time || '')}"></label>
+      <label class="club-match-venue">Sede<input id="club-match-venue" maxlength="80" value="${escapeHtml(schedule?.venue || '')}" placeholder="Ej.: Stallion Adrogué"></label>
+    </div>
+    <div class="club-match-schedule-actions"><button class="btn btn-primary btn-sm" onclick="requestClubMatchScheduleSave()">💾 Guardar partido semanal</button>${schedule ? '<button class="btn btn-ghost btn-sm" onclick="clearClubMatchSchedule()">Quitar configuración</button>' : ''}</div>
+  </div>`;
 }
 
 function renderAdmin() {
@@ -39,7 +57,8 @@ function renderAdmin() {
           <div class="club-brand-actions"><button class="btn btn-primary btn-sm" onclick="saveClubIdentity()">💾 Guardar identidad</button><button class="btn btn-ghost btn-sm" onclick="clearClubCrest()">↺ Usar iniciales</button></div>
         </div>
       </div>
-      ${invite}`;
+      ${invite}
+      ${clubMatchScheduleEditorHTML(isSupport)}`;
   }
   const list = document.getElementById('admin-players-list');
   const myId = state.currentUser?.id;
@@ -214,7 +233,63 @@ function saveClubIdentity() {
 function cancelClubConfirmation() {
   pendingClubIdentityUpdate = null;
   pendingClubInviteCode = null;
+  pendingClubScheduleUpdate = null;
   closeModal('modal-club-confirm');
+}
+
+function requestClubMatchScheduleSave() {
+  if (!state.currentUser?.isAdmin || !state.currentClub) return;
+  const weekdayValue = document.getElementById('club-match-weekday')?.value ?? '';
+  const matchTime = document.getElementById('club-match-time')?.value || '';
+  const matchVenue = safePlainText(document.getElementById('club-match-venue')?.value || '', 80).trim();
+  const noSchedule = weekdayValue === '' && !matchTime && !matchVenue;
+  if (!noSchedule && (weekdayValue === '' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(matchTime) || matchVenue.length < 2)) {
+    showToast('⚠️ Para fijar el partido completá día, hora y sede.');
+    return;
+  }
+  pendingClubScheduleUpdate = noSchedule ? { weekday: null, time: null, venue: null } : { weekday: Number(weekdayValue), time: matchTime, venue: matchVenue };
+  const detail = noSchedule ? 'Se quitará el partido semanal configurado para este club.' : `${CLUB_WEEKDAYS[pendingClubScheduleUpdate.weekday].replace(/^./, c => c.toUpperCase())} · ${pendingClubScheduleUpdate.time} · ${pendingClubScheduleUpdate.venue}`;
+  document.getElementById('modal-club-confirm-content').innerHTML = `
+    <p style="color:var(--muted);line-height:1.5;margin-bottom:16px">Esta información se mostrará en el Inicio para todos los integrantes del club.</p>
+    <div style="padding:13px;border:1px solid rgba(182,242,61,.32);border-radius:10px;background:rgba(182,242,61,.08);margin-bottom:20px"><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Partido semanal</span><strong style="display:block;font-size:17px;margin-top:4px">${escapeHtml(detail)}</strong></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-ghost" onclick="cancelClubConfirmation()">Cancelar</button><button class="btn btn-primary" id="confirm-club-change" onclick="confirmClubMatchScheduleSave()">Guardar configuración</button></div>`;
+  openModal('modal-club-confirm');
+}
+
+function clearClubMatchSchedule() {
+  const weekday = document.getElementById('club-match-weekday');
+  const time = document.getElementById('club-match-time');
+  const venue = document.getElementById('club-match-venue');
+  if (weekday) weekday.value = '';
+  if (time) time.value = '';
+  if (venue) venue.value = '';
+  requestClubMatchScheduleSave();
+}
+
+async function confirmClubMatchScheduleSave() {
+  const update = pendingClubScheduleUpdate;
+  if (!update) { cancelClubConfirmation(); return; }
+  const button = document.getElementById('confirm-club-change');
+  if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
+  try {
+    const freshClub = await saveClubMatchSchedule(update.weekday, update.time, update.venue);
+    state.currentClub = { ...state.currentClub, ...freshClub };
+    const known = state.clubs.find(club => club.id === freshClub.id);
+    if (known) Object.assign(known, freshClub);
+    KNOWN_CLUBS.remember(state.currentClub);
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue });
+    pendingClubScheduleUpdate = null;
+    closeModal('modal-club-confirm');
+    renderHub();
+    renderAdmin();
+    showToast(update.weekday === null ? '✅ Partido semanal quitado' : '✅ Próximo partido configurado');
+  } catch (error) {
+    const message = error.message || 'No se pudo guardar el partido semanal.';
+    if (button) { button.disabled = false; button.textContent = 'Guardar configuración'; }
+    document.getElementById('club-confirm-error')?.remove();
+    document.getElementById('modal-club-confirm-content')?.insertAdjacentHTML('afterbegin', `<p id="club-confirm-error" style="color:#fda4af;line-height:1.4;margin-bottom:14px">❌ ${escapeHtml(message)}</p>`);
+    showToast(`❌ ${message}`);
+  }
 }
 
 async function confirmClubIdentitySave() {

@@ -96,6 +96,40 @@ function hubTodayISO() {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,10);
 }
 
+const CLUB_WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+function getClubSchedule(club = state.currentClub) {
+  const weekday = Number(club?.matchWeekday);
+  const time = String(club?.matchTime || '');
+  const venue = safePlainText(club?.matchVenue || '', 80).trim();
+  return Number.isInteger(weekday) && weekday >= 0 && weekday <= 6 && /^([01]\d|2[0-3]):[0-5]\d$/.test(time) && venue
+    ? { weekday, time, venue }
+    : null;
+}
+
+function getNextClubMatch(schedule = getClubSchedule()) {
+  if (!schedule) return null;
+  const [hours, minutes] = schedule.time.split(':').map(Number);
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(hours, minutes, 0, 0);
+  next.setDate(now.getDate() + ((schedule.weekday - now.getDay() + 7) % 7));
+  if (next.getTime() < now.getTime()) next.setDate(next.getDate() + 7);
+  return { ...schedule, date: next };
+}
+
+function clubNextMatchText(next = getNextClubMatch()) {
+  if (!next) return '';
+  const day = next.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return `${day.charAt(0).toUpperCase()}${day.slice(1)} · ${next.time}`;
+}
+
+function hubNextMatchHTML() {
+  const next = getNextClubMatch();
+  if (!next) return '';
+  return `<div class="hub-next-match"><span class="hub-next-match-icon">📍</span><div><small>PRÓXIMO PARTIDO</small><strong>${escapeHtml(clubNextMatchText(next))}</strong><em>${escapeHtml(next.venue)}</em></div></div>`;
+}
+
 function hubOpenMatch() {
   const today = hubTodayISO();
   return matches.filter(m => !isPlayed(m)).slice().sort((a,b) => {
@@ -188,6 +222,7 @@ function renderHub() {
   }
 
   const fixtureHTML = openMatch ? hubFixtureHTML(openMatch) : '';
+  const nextMatch = getNextClubMatch();
   const fallbackValue = '—';
   const quickThird = state.currentUser?.isAdmin
     ? `<button class="hub-quick" onclick="switchTab('equipos')"><div class="hub-quick-icon">🏆</div><div><b>Armar equipos</b><span>Equilibrar el próximo partido</span></div></button>`
@@ -195,7 +230,7 @@ function renderHub() {
 
   root.innerHTML = `<div class="hub-shell">
     <section class="hub-hero">
-      <div class="hub-hero-copy"><div><div class="hub-kicker"><span class="hub-live-dot"></span> MATCHDAY CENTRAL · EL FULBITO</div><h1>TODO EL FULBITO,<br><strong>EN UNA MIRADA.</strong></h1><p>Buenas, ${greeting}. Tu central para confirmar, competir y seguir la historia del club.</p></div><div class="hub-hero-actions"><button class="btn btn-primary btn-sm" onclick="switchTab('asistencia')">✅ Ver asistencia</button><button class="btn btn-ghost btn-sm" onclick="switchTab('partidos')">📜 Temporada</button></div></div>
+      <div class="hub-hero-copy"><div><div class="hub-kicker"><span class="hub-live-dot"></span> MATCHDAY CENTRAL · EL FULBITO</div><h1>TODO EL FULBITO,<br><strong>EN UNA MIRADA.</strong></h1><p>Buenas, ${greeting}. Tu central para confirmar, competir y seguir la historia del club.</p>${hubNextMatchHTML()}</div><div class="hub-hero-actions"><button class="btn btn-primary btn-sm" onclick="switchTab('asistencia')">✅ Ver asistencia</button><button class="btn btn-ghost btn-sm" onclick="switchTab('partidos')">📜 Temporada</button></div></div>
       <aside class="hub-attendance"><div class="hub-attendance-top"><div><div class="hub-panel-label">TU DISPONIBILIDAD</div><div class="hub-attendance-state ${attendance ? `is-${attendance}` : ''}">${attendanceState}</div><div class="hub-attendance-copy">${attendanceCopy}</div></div><div style="font-size:22px">${attendance === 'going' ? '✅' : attendance === 'notgoing' ? '❌' : '⚽'}</div></div><div class="hub-choice-row"><button class="hub-choice going${attendance === 'going' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','going')">✅ VOY</button><button class="hub-choice notgoing${attendance === 'notgoing' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','notgoing')">❌ NO VOY</button></div><div class="hub-attendance-meter"><div class="going"><b>${going}</b><span>Van</span></div><div class="no"><b>${notgoing}</b><span>No van</span></div><div><b>${pending}</b><span>Faltan</span></div></div></aside>
     </section>
     ${fixtureHTML}
@@ -220,7 +255,7 @@ function renderHub() {
         </div>
       </aside>
     </section>
-    <section class="hub-quick-grid"><button class="hub-quick" onclick="switchTab('asistencia')"><div class="hub-quick-icon">📣</div><div><b>Confirmar asistencia</b><span>Quién está para el sábado</span></div></button><button class="hub-quick" onclick="switchTab('jugadores')"><div class="hub-quick-icon">👥</div><div><b>Explorar plantel</b><span>${state.players.length} cartas del club</span></div></button>${quickThird}</section>
+    <section class="hub-quick-grid"><button class="hub-quick" onclick="switchTab('asistencia')"><div class="hub-quick-icon">📣</div><div><b>Confirmar asistencia</b><span>${nextMatch ? `Quién está para ${escapeHtml(clubNextMatchText(nextMatch).split(' · ')[0])}` : 'Quién está para el próximo partido'}</span></div></button><button class="hub-quick" onclick="switchTab('jugadores')"><div class="hub-quick-icon">👥</div><div><b>Explorar plantel</b><span>${state.players.length} cartas del club</span></div></button>${quickThird}</section>
   </div>`;
 }
 
