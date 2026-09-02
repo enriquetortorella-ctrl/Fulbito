@@ -124,10 +124,22 @@ function clubNextMatchText(next = getNextClubMatch()) {
   return `${day.charAt(0).toUpperCase()}${day.slice(1)} · ${next.time}`;
 }
 
-function hubNextMatchHTML() {
-  const next = getNextClubMatch();
+function clubMatchCountdown(next = getNextClubMatch()) {
   if (!next) return '';
-  return `<div class="hub-next-match"><span class="hub-next-match-icon">📍</span><div><small>PRÓXIMO PARTIDO</small><strong>${escapeHtml(clubNextMatchText(next))}</strong><em>${escapeHtml(next.venue)}</em></div></div>`;
+  const remaining = Math.max(0, next.date.getTime() - Date.now());
+  const hours = Math.ceil(remaining / 3600000);
+  if (hours <= 1) return 'ARRANCA EN MENOS DE UNA HORA';
+  if (hours < 24) return `FALTAN ${hours} HORAS`;
+  const days = Math.ceil(hours / 24);
+  return `FALTAN ${days} ${days === 1 ? 'DÍA' : 'DÍAS'}`;
+}
+
+function hubHeroMatchHTML(greeting, next) {
+  if (!next) {
+    return `<div><div class="hub-kicker"><span class="hub-live-dot"></span> MATCHDAY CENTRAL · EL FULBITO</div><h1>TODO EL FULBITO,<br><strong>EN UNA MIRADA.</strong></h1><p>Buenas, ${escapeHtml(greeting)}. Tu central para confirmar, competir y seguir la historia del club.</p></div>`;
+  }
+  const dateText = next.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return `<div class="hub-hero-match-copy"><div class="hub-kicker"><span class="hub-live-dot"></span> PRÓXIMO PARTIDO · ${escapeHtml(state.currentClub.name)}</div><h1><strong>${escapeHtml(dateText)}</strong></h1><div class="hub-hero-match-details"><span>🕒 ${escapeHtml(next.time)} HS</span><span>📍 ${escapeHtml(next.venue)}</span></div><div class="hub-match-countdown">⏱ ${clubMatchCountdown(next)}</div><p>Buenas, ${escapeHtml(greeting)}. Confirmá tu asistencia para que el plantel llegue listo al partido.</p></div>`;
 }
 
 function hubOpenMatch() {
@@ -229,8 +241,8 @@ function renderHub() {
     : `<button class="hub-quick" onclick="openEditProfile()"><div class="hub-quick-icon">🪪</div><div><b>Mi carta</b><span>Editar foto y posición</span></div></button>`;
 
   root.innerHTML = `<div class="hub-shell">
-    <section class="hub-hero">
-      <div class="hub-hero-copy"><div><div class="hub-kicker"><span class="hub-live-dot"></span> MATCHDAY CENTRAL · EL FULBITO</div><h1>TODO EL FULBITO,<br><strong>EN UNA MIRADA.</strong></h1><p>Buenas, ${greeting}. Tu central para confirmar, competir y seguir la historia del club.</p>${hubNextMatchHTML()}</div><div class="hub-hero-actions"><button class="btn btn-primary btn-sm" onclick="switchTab('asistencia')">✅ Ver asistencia</button><button class="btn btn-ghost btn-sm" onclick="switchTab('partidos')">📜 Temporada</button></div></div>
+    <section class="hub-hero${nextMatch ? ' is-matchday' : ''}">
+      <div class="hub-hero-copy">${hubHeroMatchHTML(greeting, nextMatch)}<div class="hub-hero-actions"><button class="btn btn-primary btn-sm" onclick="switchTab('asistencia')">✅ Ver asistencia</button><button class="btn btn-ghost btn-sm" onclick="switchTab('partidos')">📜 Temporada</button></div></div>
       <aside class="hub-attendance"><div class="hub-attendance-top"><div><div class="hub-panel-label">TU DISPONIBILIDAD</div><div class="hub-attendance-state ${attendance ? `is-${attendance}` : ''}">${attendanceState}</div><div class="hub-attendance-copy">${attendanceCopy}</div></div><div style="font-size:22px">${attendance === 'going' ? '✅' : attendance === 'notgoing' ? '❌' : '⚽'}</div></div><div class="hub-choice-row"><button class="hub-choice going${attendance === 'going' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','going')">✅ VOY</button><button class="hub-choice notgoing${attendance === 'notgoing' ? ' active' : ''}" onclick="setAttendance('${me?.id || ''}','notgoing')">❌ NO VOY</button></div><div class="hub-attendance-meter"><div class="going"><b>${going}</b><span>Van</span></div><div class="no"><b>${notgoing}</b><span>No van</span></div><div><b>${pending}</b><span>Faltan</span></div></div></aside>
     </section>
     ${fixtureHTML}
