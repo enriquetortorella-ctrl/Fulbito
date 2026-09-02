@@ -24,7 +24,8 @@ function clubMatchScheduleEditorHTML(isSupport) {
     <div class="club-match-schedule-fields">
       <label>Día<select id="club-match-weekday"><option value="">Sin configurar</option>${weekdayOptions}</select></label>
       <label>Hora<input id="club-match-time" type="time" value="${escapeHtml(schedule?.time || '')}"></label>
-      <label class="club-match-venue">Sede<input id="club-match-venue" maxlength="80" value="${escapeHtml(schedule?.venue || '')}" placeholder="Ej.: Stallion Adrogué"></label>
+      <label class="club-match-venue">Nombre de la cancha<input id="club-match-venue" maxlength="80" value="${escapeHtml(schedule?.venue || '')}" placeholder="Ej.: Stallion Adrogué"></label>
+      <label class="club-match-address">Dirección para Maps <small>No se muestra en Inicio.</small><input id="club-match-address" maxlength="140" value="${escapeHtml(schedule?.address || '')}" placeholder="Ej.: Av. Hipólito Yrigoyen 1234, Adrogué"></label>
     </div>
     <div class="club-match-schedule-actions"><button class="btn btn-primary btn-sm" onclick="requestClubMatchScheduleSave()">💾 Guardar partido semanal</button>${schedule ? '<button class="btn btn-ghost btn-sm" onclick="clearClubMatchSchedule()">Quitar configuración</button>' : ''}</div>
   </div>`;
@@ -242,12 +243,13 @@ function requestClubMatchScheduleSave() {
   const weekdayValue = document.getElementById('club-match-weekday')?.value ?? '';
   const matchTime = document.getElementById('club-match-time')?.value || '';
   const matchVenue = safePlainText(document.getElementById('club-match-venue')?.value || '', 80).trim();
-  const noSchedule = weekdayValue === '' && !matchTime && !matchVenue;
+  const matchAddress = safePlainText(document.getElementById('club-match-address')?.value || '', 140).trim();
+  const noSchedule = weekdayValue === '' && !matchTime && !matchVenue && !matchAddress;
   if (!noSchedule && (weekdayValue === '' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(matchTime) || matchVenue.length < 2)) {
     showToast('⚠️ Para fijar el partido completá día, hora y sede.');
     return;
   }
-  pendingClubScheduleUpdate = noSchedule ? { weekday: null, time: null, venue: null } : { weekday: Number(weekdayValue), time: matchTime, venue: matchVenue };
+  pendingClubScheduleUpdate = noSchedule ? { weekday: null, time: null, venue: null, address: null } : { weekday: Number(weekdayValue), time: matchTime, venue: matchVenue, address: matchAddress };
   const detail = noSchedule ? 'Se quitará el partido semanal configurado para este club.' : `${CLUB_WEEKDAYS[pendingClubScheduleUpdate.weekday].replace(/^./, c => c.toUpperCase())} · ${pendingClubScheduleUpdate.time} · ${pendingClubScheduleUpdate.venue}`;
   document.getElementById('modal-club-confirm-content').innerHTML = `
     <p style="color:var(--muted);line-height:1.5;margin-bottom:16px">Esta información se mostrará en el Inicio para todos los integrantes del club.</p>
@@ -260,9 +262,11 @@ function clearClubMatchSchedule() {
   const weekday = document.getElementById('club-match-weekday');
   const time = document.getElementById('club-match-time');
   const venue = document.getElementById('club-match-venue');
+  const address = document.getElementById('club-match-address');
   if (weekday) weekday.value = '';
   if (time) time.value = '';
   if (venue) venue.value = '';
+  if (address) address.value = '';
   requestClubMatchScheduleSave();
 }
 
@@ -272,12 +276,12 @@ async function confirmClubMatchScheduleSave() {
   const button = document.getElementById('confirm-club-change');
   if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
   try {
-    const freshClub = await saveClubMatchSchedule(update.weekday, update.time, update.venue);
+    const freshClub = await saveClubMatchSchedule(update.weekday, update.time, update.venue, update.address);
     state.currentClub = { ...state.currentClub, ...freshClub };
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
     KNOWN_CLUBS.remember(state.currentClub);
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
     pendingClubScheduleUpdate = null;
     closeModal('modal-club-confirm');
     renderHub();

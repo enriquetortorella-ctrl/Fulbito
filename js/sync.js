@@ -17,11 +17,12 @@ async function startSync() {
       freshClub.matchWeekday !== state.currentClub.matchWeekday ||
       freshClub.matchTime !== state.currentClub.matchTime ||
       freshClub.matchVenue !== state.currentClub.matchVenue ||
+      freshClub.matchAddress !== state.currentClub.matchAddress ||
       (state.currentUser?.isAdmin && freshClub.inviteCode !== state.currentClub.inviteCode)
     );
     if (clubChanged) {
       state.currentClub = { ...state.currentClub, ...freshClub };
-      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue });
+      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
       renderClubIdentity();
     }
     const tabName = getActiveTabName();

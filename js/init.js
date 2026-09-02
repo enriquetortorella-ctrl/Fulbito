@@ -212,7 +212,8 @@ async function init() {
         invite_code: safePlainText(sess.clubInviteCode, 24) || null,
         match_weekday: sess.clubMatchWeekday,
         match_time: sess.clubMatchTime,
-        match_venue: sess.clubMatchVenue
+        match_venue: sess.clubMatchVenue,
+        match_address: sess.clubMatchAddress
       });
       const existingClub = state.clubs.find(club => club.id === clubId);
       if (existingClub) {

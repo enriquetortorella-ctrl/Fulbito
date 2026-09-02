@@ -43,10 +43,11 @@ function showApp() {
     const sameInviteCode = !state.currentUser?.isAdmin || freshClub.inviteCode === state.currentClub.inviteCode;
     const sameSchedule = freshClub.matchWeekday === state.currentClub.matchWeekday &&
       freshClub.matchTime === state.currentClub.matchTime &&
-      freshClub.matchVenue === state.currentClub.matchVenue;
+      freshClub.matchVenue === state.currentClub.matchVenue &&
+      freshClub.matchAddress === state.currentClub.matchAddress;
     if (sameIdentity && sameInviteCode && sameSchedule) return;
     state.currentClub = { ...state.currentClub, ...freshClub };
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
     renderClubIdentity();
     renderHub();
     if (getActiveTabName() === 'admin') renderAdmin();

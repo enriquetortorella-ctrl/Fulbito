@@ -20,6 +20,7 @@ function mapClubBrand(data, fallback = {}) {
     ? String(data?.match_time ?? fallback.matchTime).slice(0, 5)
     : null;
   const matchVenue = safePlainText(data?.match_venue ?? fallback.matchVenue ?? '', 80).trim();
+  const matchAddress = safePlainText(data?.match_address ?? fallback.matchAddress ?? '', 140).trim();
   return {
     ...fallback,
     id: String(data?.id || fallback.id || ''),
@@ -28,7 +29,8 @@ function mapClubBrand(data, fallback = {}) {
     inviteCode: data?.invite_code ? safePlainText(data.invite_code, 24) : (fallback.inviteCode || null),
     matchWeekday,
     matchTime,
-    matchVenue: matchVenue || null
+    matchVenue: matchVenue || null,
+    matchAddress: matchAddress || null
   };
 }
 
@@ -62,13 +64,14 @@ async function updateClubInviteCode(inviteCode) {
   return mapClubBrand(data, state.currentClub);
 }
 
-async function saveClubMatchSchedule(matchWeekday, matchTime, matchVenue) {
+async function saveClubMatchSchedule(matchWeekday, matchTime, matchVenue, matchAddress) {
   if (!state.currentClub?.id) throw new Error('No hay club seleccionado');
   const data = await callRpc('fulbito_update_club_match_schedule', {
     p_club_id: state.currentClub.id,
     p_match_weekday: matchWeekday,
     p_match_time: matchTime || null,
-    p_match_venue: matchVenue || null
+    p_match_venue: matchVenue || null,
+    p_match_address: matchAddress || null
   });
   return mapClubBrand(data, state.currentClub);
 }

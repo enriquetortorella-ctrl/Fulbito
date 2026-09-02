@@ -102,44 +102,52 @@ function getClubSchedule(club = state.currentClub) {
   const weekday = Number(club?.matchWeekday);
   const time = String(club?.matchTime || '');
   const venue = safePlainText(club?.matchVenue || '', 80).trim();
+  const address = safePlainText(club?.matchAddress || '', 140).trim();
   return Number.isInteger(weekday) && weekday >= 0 && weekday <= 6 && /^([01]\d|2[0-3]):[0-5]\d$/.test(time) && venue
-    ? { weekday, time, venue }
+    ? { weekday, time, venue, address }
     : null;
 }
 
 function getNextClubMatch(schedule = getClubSchedule()) {
   if (!schedule) return null;
   const [hours, minutes] = schedule.time.split(':').map(Number);
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(hours, minutes, 0, 0);
-  next.setDate(now.getDate() + ((schedule.weekday - now.getDay() + 7) % 7));
-  if (next.getTime() < now.getTime()) next.setDate(next.getDate() + 7);
-  return { ...schedule, date: next };
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(new Date()).reduce((result, part) => {
+    if (part.type !== 'literal') result[part.type] = Number(part.value);
+    return result;
+  }, {});
+  const today = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  let daysUntil = (schedule.weekday - today.getUTCDay() + 7) % 7;
+  const timeAlreadyPassed = daysUntil === 0 && (parts.hour > hours || (parts.hour === hours && parts.minute >= minutes));
+  if (timeAlreadyPassed) daysUntil = 7;
+  const date = new Date(today);
+  date.setUTCDate(date.getUTCDate() + daysUntil);
+  // Mediodía UTC conserva la fecha argentina al formatearla y evita que un
+  // cambio de huso horario del teléfono mueva el partido al día anterior.
+  date.setUTCHours(12, 0, 0, 0);
+  return { ...schedule, date, daysUntil };
 }
 
 function clubNextMatchText(next = getNextClubMatch()) {
   if (!next) return '';
-  const day = next.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const day = next.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   return `${day.charAt(0).toUpperCase()}${day.slice(1)} · ${next.time}`;
 }
 
 function clubMatchCountdown(next = getNextClubMatch()) {
   if (!next) return '';
-  const remaining = Math.max(0, next.date.getTime() - Date.now());
-  const hours = Math.ceil(remaining / 3600000);
-  if (hours <= 1) return 'ARRANCA EN MENOS DE UNA HORA';
-  if (hours < 24) return `FALTAN ${hours} HORAS`;
-  const days = Math.ceil(hours / 24);
-  return `FALTAN ${days} ${days === 1 ? 'DÍA' : 'DÍAS'}`;
+  if (next.daysUntil > 0) return `FALTAN ${next.daysUntil} ${next.daysUntil === 1 ? 'DÍA' : 'DÍAS'}`;
+  return 'HOY SE JUEGA';
 }
 
 function hubHeroMatchHTML(greeting, next) {
   if (!next) {
     return `<div><div class="hub-kicker"><span class="hub-live-dot"></span> MATCHDAY CENTRAL · EL FULBITO</div><h1>TODO EL FULBITO,<br><strong>EN UNA MIRADA.</strong></h1><p>Buenas, ${escapeHtml(greeting)}. Tu central para confirmar, competir y seguir la historia del club.</p></div>`;
   }
-  const dateText = next.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(next.venue)}`;
+  const dateText = next.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(next.address || next.venue)}`;
   return `<div class="hub-hero-match-copy"><div class="hub-kicker"><span class="hub-live-dot"></span> PRÓXIMO PARTIDO · ${escapeHtml(state.currentClub.name)}</div><h1><strong>${escapeHtml(dateText)}</strong></h1><div class="hub-hero-match-details"><span>🕒 ${escapeHtml(next.time)} HS</span><a class="hub-match-venue-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer" title="Abrir ${escapeHtml(next.venue)} en Google Maps">📍 ${escapeHtml(next.venue)} <i>↗</i></a></div><div class="hub-match-countdown">⏱ ${clubMatchCountdown(next)}</div><p>Buenas, ${escapeHtml(greeting)}. Confirmá tu asistencia para que el plantel llegue listo al partido.</p></div>`;
 }
 
