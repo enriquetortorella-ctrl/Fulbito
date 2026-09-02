@@ -1,6 +1,7 @@
 // ADMIN
 // ============================================================
 let clubBrandDraftCrest;
+let clubBrandDraftDesign;
 let clubBrandDraftName = '';
 let clubBrandDraftClubId = null;
 let clubCrestDesignerOpen = false;
@@ -39,6 +40,7 @@ function renderAdmin() {
     if (clubBrandDraftClubId !== state.currentClub.id) {
       clubBrandDraftClubId = state.currentClub.id;
       clubBrandDraftCrest = undefined;
+      clubBrandDraftDesign = undefined;
       clubBrandDraftName = '';
       clubCrestDesignerOpen = false;
       clubCrestDesign = null;
@@ -59,10 +61,9 @@ function renderAdmin() {
           <input id="club-brand-name" maxlength="50" value="${escapeHtml(draftName)}" placeholder="Ej.: Los del Sábado" oninput="trackClubBrandName(this.value)">
           <label class="club-brand-upload" for="club-brand-crest-input">🖼️ Cambiar escudo <small>PNG, JPG o WEBP · se optimiza antes de guardar</small></label>
           <input id="club-brand-crest-input" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewClubCrest(this)">
-          <div class="club-brand-actions"><button class="btn btn-ghost btn-sm" onclick="toggleClubCrestDesigner()">🎨 Diseñar escudo</button><button class="btn btn-primary btn-sm" onclick="saveClubIdentity()">💾 Guardar identidad</button><button class="btn btn-ghost btn-sm" onclick="clearClubCrest()">↺ Usar iniciales</button></div>
+          <div class="club-brand-actions"><button type="button" class="btn btn-ghost btn-sm" id="open-crest-studio" aria-haspopup="dialog" aria-controls="modal-crest-designer" onclick="toggleClubCrestDesigner(true)">🎨 Abrir Crest Studio</button><button type="button" class="btn btn-primary btn-sm" onclick="saveClubIdentity()">💾 Guardar identidad</button><button type="button" class="btn btn-ghost btn-sm" onclick="clearClubCrest()">↺ Usar iniciales</button></div>
         </div>
       </div>
-      ${clubCrestDesignerOpen ? clubCrestDesignerHTML(draftName) : ''}
       ${invite}
       ${clubMatchScheduleEditorHTML(isSupport)}`;
   }
@@ -99,180 +100,6 @@ function trackClubBrandName(name) {
   clubBrandDraftName = safePlainText(name, 50);
   const crest = clubBrandDraftCrest === undefined ? state.currentClub?.crest : clubBrandDraftCrest;
   updateClubBrandPreview(crest, clubBrandDraftName || state.currentClub?.name || 'FC');
-}
-
-const CLUB_CREST_TEMPLATES = [
-  ['classic', 'Clásico'],
-  ['stripes', 'Rayas'],
-  ['diagonal', 'Diagonal'],
-  ['split', 'Mitad'],
-  ['chevron', 'Chevron'],
-  ['hoops', 'Aros']
-];
-const CLUB_CREST_EMBLEMS = [
-  ['monogram', 'Iniciales'],
-  ['star', 'Estrella'],
-  ['ball', 'Pelota'],
-  ['crown', 'Corona'],
-  ['bolt', 'Rayo']
-];
-
-function validCrestColor(value, fallback) {
-  const color = String(value || '').trim();
-  return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
-}
-
-function defaultClubCrestDesign(name) {
-  return {
-    template: 'classic',
-    primary: '#163f8c',
-    secondary: '#f3c746',
-    emblem: 'monogram',
-    initials: clubInitials(name)
-  };
-}
-
-function normalizedClubCrestDesign(design, fallbackName) {
-  const source = design || defaultClubCrestDesign(fallbackName);
-  const template = CLUB_CREST_TEMPLATES.some(([value]) => value === source.template) ? source.template : 'classic';
-  const emblem = CLUB_CREST_EMBLEMS.some(([value]) => value === source.emblem) ? source.emblem : 'monogram';
-  return {
-    template,
-    emblem,
-    primary: validCrestColor(source.primary, '#163f8c'),
-    secondary: validCrestColor(source.secondary, '#f3c746'),
-    initials: safePlainText(source.initials || clubInitials(fallbackName), 3).replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3) || 'FC'
-  };
-}
-
-function clubCrestDesignerHTML(name) {
-  const design = normalizedClubCrestDesign(clubCrestDesign, name);
-  clubCrestDesign = design;
-  const templateChoices = CLUB_CREST_TEMPLATES.map(([value, label]) => `<button type="button" class="club-crest-template ${design.template === value ? 'selected' : ''}" data-crest-template="${value}" onclick="selectClubCrestTemplate('${value}')"><span class="crest-mini crest-mini-${value}"></span>${label}</button>`).join('');
-  const emblemChoices = CLUB_CREST_EMBLEMS.map(([value, label]) => `<button type="button" class="club-crest-emblem ${design.emblem === value ? 'selected' : ''}" data-crest-emblem="${value}" onclick="selectClubCrestEmblem('${value}')">${clubCrestEmblemGlyph(value)}<span>${label}</span></button>`).join('');
-  return `<section class="club-crest-designer" aria-label="Diseñador de escudo">
-    <div class="club-crest-designer-head"><div><b>🎨 Diseñá el escudo</b><span>Elegí un molde, colores y emblema. Se aplica a la vista previa hasta que guardes la identidad.</span></div><button class="btn-icon" type="button" title="Cerrar diseñador" onclick="toggleClubCrestDesigner(false)">✕</button></div>
-    <div class="club-crest-designer-grid">
-      <div class="club-crest-live"><div class="club-crest-live-frame" id="club-crest-designer-preview"></div><small>Vista previa</small></div>
-      <div class="club-crest-controls">
-        <fieldset><legend>Molde</legend><div class="club-crest-choice-grid">${templateChoices}</div></fieldset>
-        <fieldset><legend>Colores</legend><div class="club-crest-colors"><label>Principal<input id="club-crest-primary" type="color" value="${design.primary}" oninput="updateClubCrestDesign()"></label><label>Detalle<input id="club-crest-secondary" type="color" value="${design.secondary}" oninput="updateClubCrestDesign()"></label><label>Iniciales<input id="club-crest-initials" maxlength="3" value="${escapeHtml(design.initials)}" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);updateClubCrestDesign()"></label></div></fieldset>
-        <fieldset><legend>Emblema</legend><div class="club-crest-emblem-grid">${emblemChoices}</div></fieldset>
-      </div>
-    </div>
-    <div class="club-crest-designer-actions"><button type="button" class="btn btn-primary btn-sm" onclick="applyClubCrestDesign()">✓ Usar este escudo</button><button type="button" class="btn btn-ghost btn-sm" onclick="resetClubCrestDesign()">↺ Reiniciar diseño</button></div>
-  </section>`;
-}
-
-function clubCrestEmblemGlyph(emblem) {
-  return ({ monogram: 'FC', star: '★', ball: '⚽', crown: '♛', bolt: 'ϟ' })[emblem] || 'FC';
-}
-
-function toggleClubCrestDesigner(forceOpen) {
-  const next = typeof forceOpen === 'boolean' ? forceOpen : !clubCrestDesignerOpen;
-  clubCrestDesignerOpen = next;
-  if (next && !clubCrestDesign) clubCrestDesign = defaultClubCrestDesign(clubBrandDraftName || state.currentClub?.name || 'FC');
-  renderAdmin();
-  if (next) updateClubCrestDesign();
-}
-
-function readClubCrestDesignInputs() {
-  const fallbackName = clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC';
-  const design = normalizedClubCrestDesign(clubCrestDesign, fallbackName);
-  const primary = document.getElementById('club-crest-primary')?.value;
-  const secondary = document.getElementById('club-crest-secondary')?.value;
-  const initials = document.getElementById('club-crest-initials')?.value;
-  return normalizedClubCrestDesign({ ...design, primary, secondary, initials }, fallbackName);
-}
-
-function selectClubCrestTemplate(template) {
-  clubCrestDesign = { ...readClubCrestDesignInputs(), template };
-  updateClubCrestDesign();
-}
-
-function selectClubCrestEmblem(emblem) {
-  clubCrestDesign = { ...readClubCrestDesignInputs(), emblem };
-  updateClubCrestDesign();
-}
-
-function updateClubCrestDesign() {
-  if (!clubCrestDesignerOpen) return;
-  clubCrestDesign = readClubCrestDesignInputs();
-  const preview = document.getElementById('club-crest-designer-preview');
-  if (preview) preview.innerHTML = clubCrestDesignSvg(clubCrestDesign);
-  document.querySelectorAll('[data-crest-template]').forEach(button => button.classList.toggle('selected', button.dataset.crestTemplate === clubCrestDesign.template));
-  document.querySelectorAll('[data-crest-emblem]').forEach(button => button.classList.toggle('selected', button.dataset.crestEmblem === clubCrestDesign.emblem));
-}
-
-function clubCrestDesignSvg(rawDesign) {
-  const design = normalizedClubCrestDesign(rawDesign, state.currentClub?.name || 'FC');
-  const { primary, secondary, template, emblem, initials } = design;
-  const shapes = {
-    classic: 'M160 10 L294 54 L274 278 Q258 365 160 414 Q62 365 46 278 L26 54 Z',
-    stripes: 'M160 12 L294 57 L278 273 Q265 358 160 412 Q55 358 42 273 L26 57 Z',
-    diagonal: 'M160 18 C239 18 292 69 292 148 L276 263 Q262 353 160 412 Q58 353 44 263 L28 148 C28 69 81 18 160 18 Z',
-    split: 'M47 35 H273 V255 Q259 351 160 414 Q61 351 47 255 Z',
-    chevron: 'M160 10 L300 72 L268 282 Q251 365 160 414 Q69 365 52 282 L20 72 Z',
-    hoops: 'M160 17 A143 143 0 1 1 159.9 17 Z'
-  };
-  const clip = shapes[template] || shapes.classic;
-  const patterns = {
-    classic: `<path d="M0 0H320V430H0Z" fill="${primary}"/><path d="M118 0H202V430H118Z" fill="${secondary}"/>`,
-    stripes: `<path d="M0 0H320V430H0Z" fill="${primary}"/><path d="M45 0H88V430H45ZM138 0H181V430H138ZM231 0H274V430H231Z" fill="${secondary}"/>`,
-    diagonal: `<path d="M0 0H320V430H0Z" fill="${primary}"/><path d="M-48 286L260 -10H360L52 430H-48Z" fill="${secondary}"/>`,
-    split: `<path d="M0 0H160V430H0Z" fill="${primary}"/><path d="M160 0H320V430H160Z" fill="${secondary}"/>`,
-    chevron: `<path d="M0 0H320V430H0Z" fill="${primary}"/><path d="M0 0H320V92L160 260L0 92Z" fill="${secondary}"/>`,
-    hoops: `<path d="M0 0H320V430H0Z" fill="${primary}"/><path d="M0 62H320V122H0ZM0 205H320V265H0ZM0 348H320V408H0Z" fill="${secondary}"/>`
-  };
-  const glyph = emblem === 'monogram'
-    ? `<text x="160" y="244" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-size="104" letter-spacing="-8" fill="#fff">${escapeHtml(initials)}</text>`
-    : emblem === 'star'
-      ? '<path d="M160 112L184 168L245 173L198 213L213 274L160 242L107 274L122 213L75 173L136 168Z" fill="#fff"/>'
-      : emblem === 'ball'
-        ? '<circle cx="160" cy="205" r="72" fill="#fff"/><path d="M160 153l28 20-11 34h-34l-11-34zm-49 16l32 4m66 0l32-4m-110 77l27-17m75 0l27 17m-128-18l-9 33m111-33l9 33" fill="none" stroke="#101826" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>'
-        : emblem === 'crown'
-          ? '<path d="M78 259L94 150L136 192L160 122L184 192L226 150L242 259Z" fill="#fff"/><path d="M77 278H243" stroke="#fff" stroke-width="25"/>'
-          : '<path d="M185 106L101 236H154L133 321L222 184H168Z" fill="#fff"/>';
-  return `<svg viewBox="0 0 320 430" role="img" aria-label="Vista previa del escudo" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="crestShape"><path d="${clip}"/></clipPath><filter id="crestShadow" x="-30%" y="-20%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="8" flood-opacity=".34"/></filter></defs><g filter="url(#crestShadow)"><path d="${clip}" fill="#101622" stroke="${secondary}" stroke-width="14" stroke-linejoin="round"/><g clip-path="url(#crestShape)">${patterns[template]}</g><path d="${clip}" fill="none" stroke="rgba(255,255,255,.65)" stroke-width="3" stroke-linejoin="round"/><g>${glyph}</g><path d="M88 310H232" stroke="${secondary}" stroke-width="8" stroke-linecap="round"/></g></svg>`;
-}
-
-async function makeDesignedClubCrest(rawDesign) {
-  const svg = clubCrestDesignSvg(rawDesign);
-  const image = await new Promise((resolve, reject) => {
-    const candidate = new Image();
-    candidate.onload = () => resolve(candidate);
-    candidate.onerror = () => reject(new Error('No pudimos generar el escudo.'));
-    candidate.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  });
-  const canvas = document.createElement('canvas');
-  canvas.width = 320;
-  canvas.height = 430;
-  const context = canvas.getContext('2d', { alpha: true });
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/webp', .9);
-}
-
-async function applyClubCrestDesign() {
-  const button = document.querySelector('.club-crest-designer-actions .btn-primary');
-  clubCrestDesign = readClubCrestDesignInputs();
-  if (button) { button.disabled = true; button.textContent = 'Diseñando…'; }
-  try {
-    clubBrandDraftCrest = await makeDesignedClubCrest(clubCrestDesign);
-    const name = clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC';
-    updateClubBrandPreview(clubBrandDraftCrest, name);
-    clubCrestDesignerOpen = false;
-    renderAdmin();
-    showToast('✅ Escudo diseñado. Guardá la identidad para publicarlo.');
-  } catch (error) {
-    if (button) { button.disabled = false; button.textContent = '✓ Usar este escudo'; }
-    showToast(`❌ ${error.message || 'No pudimos generar el escudo.'}`);
-  }
-}
-
-function resetClubCrestDesign() {
-  clubCrestDesign = defaultClubCrestDesign(clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC');
-  renderAdmin();
-  updateClubCrestDesign();
 }
 
 function removeNeutralBackgroundConnectedToEdge(context, width, height) {
@@ -372,6 +199,7 @@ async function previewClubCrest(input) {
   try {
     input.disabled = true;
     clubBrandDraftCrest = await optimizeClubCrest(file);
+    clubBrandDraftDesign = null;
     updateClubBrandPreview(clubBrandDraftCrest, clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub.name);
     showToast('✅ Escudo listo para guardar');
   } catch (error) {
@@ -384,6 +212,7 @@ async function previewClubCrest(input) {
 
 function clearClubCrest() {
   clubBrandDraftCrest = null;
+  clubBrandDraftDesign = null;
   const fileInput = document.getElementById('club-brand-crest-input');
   if (fileInput) fileInput.value = '';
   updateClubBrandPreview(null, clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC');
@@ -402,7 +231,8 @@ function saveClubIdentity() {
     return;
   }
   const crest = clubBrandDraftCrest === undefined ? state.currentClub.crest : clubBrandDraftCrest;
-  pendingClubIdentityUpdate = { name: nextName, crest };
+  const crestDesign = clubBrandDraftDesign === undefined ? state.currentClub.crestDesign : clubBrandDraftDesign;
+  pendingClubIdentityUpdate = { name: nextName, crest, crestDesign };
   document.getElementById('modal-club-confirm-content').innerHTML = `
     <p style="color:var(--muted);line-height:1.5;margin-bottom:16px">Esta identidad será visible para todos los integrantes del club.</p>
     <div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.035);margin-bottom:20px"><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Nuevo nombre</span><strong style="display:block;font-size:17px;margin-top:4px">${escapeHtml(nextName)}</strong>${crest !== state.currentClub.crest ? '<span style="display:block;color:var(--lime);font-size:12px;margin-top:7px">✓ También se actualizará el escudo.</span>' : ''}</div>
@@ -460,7 +290,7 @@ async function confirmClubMatchScheduleSave() {
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
     KNOWN_CLUBS.remember(state.currentClub);
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubCrestDesign: freshClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
     pendingClubScheduleUpdate = null;
     closeModal('modal-club-confirm');
     renderHub();
@@ -481,13 +311,14 @@ async function confirmClubIdentitySave() {
   const button = document.getElementById('confirm-club-change');
   if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
   try {
-    const freshClub = await saveClubBrand(update.name, update.crest);
+    const freshClub = await saveClubBrand(update.name, update.crest, update.crestDesign);
     state.currentClub = { ...state.currentClub, ...freshClub };
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
     KNOWN_CLUBS.remember(state.currentClub);
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubCrestDesign: freshClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null });
     clubBrandDraftCrest = undefined;
+    clubBrandDraftDesign = undefined;
     clubBrandDraftName = '';
     clubBrandDraftClubId = state.currentClub.id;
     pendingClubIdentityUpdate = null;
@@ -564,7 +395,7 @@ async function confirmClubInviteCodeSave() {
     state.currentClub = { ...state.currentClub, ...freshClub };
     const known = state.clubs.find(club => club.id === freshClub.id);
     if (known) Object.assign(known, freshClub);
-    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubInviteCode: nextCode });
+    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubCrestDesign: state.currentClub.crestDesign || null, clubInviteCode: nextCode });
     clubInviteEditorOpen = false;
     pendingClubInviteCode = null;
     closeModal('modal-club-confirm');

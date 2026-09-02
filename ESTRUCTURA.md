@@ -10,7 +10,7 @@ la topbar, las nav-tabs, los contenedores vacíos de cada pestaña y los `<scrip
 
 ---
 
-## CSS — `css/` (17 archivos)
+## CSS — `css/` (18 archivos)
 
 El orden de los `<link>` reproduce la cascada original. `theme-aurora.css` pisa
 reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
@@ -29,6 +29,7 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 | `partidos.css` | Historial de partidos |
 | `leaderboards.css` | Pestañas Goleadores y Posiciones: podios y tablas |
 | `admin.css` | Panel admin + formulario de registro |
+| `crest-designer.css` | Crest Studio: editor de escudos, escenario y responsive móvil |
 | `goles.css` | Planilla de goles en vivo |
 | `stats.css` | Stats ampliadas + paternidades |
 | `utils.css` | Helpers (toast, spinners, etc.) |
@@ -36,7 +37,7 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 | `theme-aurora.css` | Glassmorphism, Aurora Stadium, Command Deck, Colección |
 | `stats-matchcentre.css` | Goleadores / Match Centre |
 
-## JS — `js/` (22 archivos)
+## JS — `js/` (23 archivos)
 
 **Núcleo** (carga primero, en este orden):
 
@@ -59,7 +60,9 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 
 `inicio-podium.js` concentra las reglas del podio (MVP más reciente, goleador y racha sin repetir jugadores). `inicio.js` conserva el armado general de la pantalla.
 
-`supabase-club-branding.sql` agrega la identidad compartida de cada club: nombre y escudo. Debe ejecutarse después de las migraciones de seguridad; sus RPC sólo permiten que administradores (o soporte maestro) modifiquen su propio club.
+`crest-designer.js` se carga después de `tabs/admin.js` y contiene el editor por capas, el render SVG y la exportación WebP del escudo. Se mantiene separado para que el panel de administración no vuelva a concentrar toda la lógica visual.
+
+`supabase-club-branding.sql` agrega la identidad compartida de cada club: nombre y escudo. `supabase-club-crest-designer.sql` suma el diseño editable por capas. Sus RPC sólo permiten que administradores (o soporte maestro) modifiquen su propio club.
 
 **Cierre:** `sync.js` (auto-sync + atajos de teclado) y `boot.js` (arranque final).
 

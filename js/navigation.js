@@ -39,7 +39,9 @@ function showApp() {
   // hecho por otro admin aparezca incluso antes del siguiente auto-sync.
   loadClubBrand().then(freshClub => {
     if (!freshClub || !state.currentClub || freshClub.id !== state.currentClub.id) return;
-    const sameIdentity = freshClub.name === state.currentClub.name && freshClub.crest === state.currentClub.crest;
+    const sameIdentity = freshClub.name === state.currentClub.name &&
+      freshClub.crest === state.currentClub.crest &&
+      sameClubCrestDesign(freshClub.crestDesign, state.currentClub.crestDesign);
     const sameInviteCode = !state.currentUser?.isAdmin || freshClub.inviteCode === state.currentClub.inviteCode;
     const sameSchedule = freshClub.matchWeekday === state.currentClub.matchWeekday &&
       freshClub.matchTime === state.currentClub.matchTime &&
@@ -47,7 +49,7 @@ function showApp() {
       freshClub.matchAddress === state.currentClub.matchAddress;
     if (sameIdentity && sameInviteCode && sameSchedule) return;
     state.currentClub = { ...state.currentClub, ...freshClub };
-    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
+    SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubCrestDesign: freshClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
     renderClubIdentity();
     renderHub();
     if (getActiveTabName() === 'admin') renderAdmin();

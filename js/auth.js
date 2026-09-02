@@ -104,7 +104,7 @@ async function openAuthorizedPlayer(data) {
   state.supportMode = false;
   state.supportHome = null;
   state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, isPlatformAdmin: !!data.is_platform_admin, clubId: state.currentClub.id };
-  SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? state.currentClub.inviteCode || null : null });
+  SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubCrestDesign: state.currentClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? state.currentClub.inviteCode || null : null });
   state.players = await loadPlayers(state.currentClub.id);
   matches = await loadMatches(state.currentClub.id);
   showApp();

@@ -185,7 +185,7 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
       const mapped = mapPlayers([player])[0];
       state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, isPlatformAdmin: !!player.is_platform_admin, clubId: club.id };
       state.players = await loadPlayers(club.id);
-      SESSION.set({ ...state.currentUser, clubName: club.name, clubCrest: club.crest || null, clubInviteCode: mapped.isAdmin ? club.inviteCode || null : null });
+      SESSION.set({ ...state.currentUser, clubName: club.name, clubCrest: club.crest || null, clubCrestDesign: club.crestDesign || null, clubInviteCode: mapped.isAdmin ? club.inviteCode || null : null });
       showApp();
       return;
     }
@@ -209,6 +209,7 @@ async function init() {
         id: clubId,
         name: safePlainText(sess.clubName, 50) || 'Mi club',
         crest: safeClubCrestUrl(sess.clubCrest),
+        crest_design: safeClubCrestDesign(sess.clubCrestDesign),
         invite_code: safePlainText(sess.clubInviteCode, 24) || null,
         match_weekday: sess.clubMatchWeekday,
         match_time: sess.clubMatchTime,

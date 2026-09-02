@@ -14,6 +14,7 @@ async function startSync() {
     const clubChanged = freshClub && (
       freshClub.name !== state.currentClub.name ||
       freshClub.crest !== state.currentClub.crest ||
+      !sameClubCrestDesign(freshClub.crestDesign, state.currentClub.crestDesign) ||
       freshClub.matchWeekday !== state.currentClub.matchWeekday ||
       freshClub.matchTime !== state.currentClub.matchTime ||
       freshClub.matchVenue !== state.currentClub.matchVenue ||
@@ -22,7 +23,7 @@ async function startSync() {
     );
     if (clubChanged) {
       state.currentClub = { ...state.currentClub, ...freshClub };
-      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
+      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubCrestDesign: freshClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
       renderClubIdentity();
     }
     const tabName = getActiveTabName();

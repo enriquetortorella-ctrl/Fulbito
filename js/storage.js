@@ -8,25 +8,60 @@ function safeClubCrestUrl(value) {
   return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=\r\n]+$/i.test(src) && src.length <= 260000 ? src : '';
 }
 
+function safeClubCrestDesign(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const allowedKeys = ['version', 'shape', 'pattern', 'primary', 'secondary', 'accent', 'border', 'finish', 'emblem', 'initials', 'year', 'stars', 'emblemScale', 'emblemY', 'plate'];
+  const clean = {};
+  for (const key of allowedKeys) {
+    const item = value[key];
+    if (typeof item === 'string') clean[key] = safePlainText(item, 24);
+    else if (typeof item === 'number' && Number.isFinite(item)) clean[key] = item;
+    else if (typeof item === 'boolean') clean[key] = item;
+  }
+  try { return JSON.stringify(clean).length <= 3000 ? clean : null; } catch (_) { return null; }
+}
+
+function sameClubCrestDesign(first, second) {
+  try {
+    return JSON.stringify(safeClubCrestDesign(first)) === JSON.stringify(safeClubCrestDesign(second));
+  } catch (_) {
+    return false;
+  }
+}
+
+function hasClubBrandField(value, field) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, field);
+}
+
 function clubInitials(name) {
   const words = safePlainText(name, 50).trim().split(/\s+/).filter(Boolean);
   return (words.slice(0, 2).map(word => word[0]).join('') || 'FC').toUpperCase();
 }
 
 function mapClubBrand(data, fallback = {}) {
-  const weekday = Number(data?.match_weekday ?? fallback.matchWeekday);
+  const weekdaySource = hasClubBrandField(data, 'match_weekday') ? data.match_weekday : fallback.matchWeekday;
+  const timeSource = hasClubBrandField(data, 'match_time') ? data.match_time : fallback.matchTime;
+  const venueSource = hasClubBrandField(data, 'match_venue') ? data.match_venue : fallback.matchVenue;
+  const addressSource = hasClubBrandField(data, 'match_address') ? data.match_address : fallback.matchAddress;
+  const inviteSource = hasClubBrandField(data, 'invite_code') ? data.invite_code : fallback.inviteCode;
+  const weekday = weekdaySource === null || weekdaySource === undefined || weekdaySource === '' ? NaN : Number(weekdaySource);
   const matchWeekday = Number.isInteger(weekday) && weekday >= 0 && weekday <= 6 ? weekday : null;
-  const matchTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(data?.match_time ?? fallback.matchTime ?? ''))
-    ? String(data?.match_time ?? fallback.matchTime).slice(0, 5)
+  const matchTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(timeSource ?? ''))
+    ? String(timeSource).slice(0, 5)
     : null;
-  const matchVenue = safePlainText(data?.match_venue ?? fallback.matchVenue ?? '', 80).trim();
-  const matchAddress = safePlainText(data?.match_address ?? fallback.matchAddress ?? '', 140).trim();
+  const matchVenue = safePlainText(venueSource ?? '', 80).trim();
+  const matchAddress = safePlainText(addressSource ?? '', 140).trim();
+  // Un null explícito del servidor significa "borrar". Sólo se usa el fallback
+  // cuando el campo no vino en la respuesta (por ejemplo, listados públicos).
+  const crest = hasClubBrandField(data, 'crest') ? data.crest : fallback.crest;
+  const crestDesign = hasClubBrandField(data, 'crest_design') ? data.crest_design : fallback.crestDesign;
   return {
     ...fallback,
     id: String(data?.id || fallback.id || ''),
     name: safePlainText(data?.name || fallback.name || 'Mi club', 50) || 'Mi club',
-    crest: safeClubCrestUrl(data?.crest || fallback.crest),
-    inviteCode: data?.invite_code ? safePlainText(data.invite_code, 24) : (fallback.inviteCode || null),
+    crest: safeClubCrestUrl(crest),
+    crestDesign: safeClubCrestDesign(crestDesign),
+    inviteCode: inviteSource ? safePlainText(inviteSource, 24) : null,
     matchWeekday,
     matchTime,
     matchVenue: matchVenue || null,
@@ -45,13 +80,22 @@ async function loadClubBrand(clubId = state.currentClub?.id) {
   }
 }
 
-async function saveClubBrand(name, crest) {
+async function saveClubBrand(name, crest, crestDesign = null) {
   if (!state.currentClub?.id) throw new Error('No hay club seleccionado');
-  const data = await callRpc('fulbito_update_club_brand', {
-    p_club_id: state.currentClub.id,
-    p_name: name,
-    p_crest: crest || null
-  });
+  const params = { p_club_id: state.currentClub.id, p_name: name, p_crest: crest || null, p_crest_design: safeClubCrestDesign(crestDesign) };
+  let data;
+  try {
+    data = await callRpc('fulbito_update_club_brand', params);
+  } catch (error) {
+    // Compatibilidad durante el despliegue: la migración agrega el cuarto
+    // parámetro sin dejar fuera de servicio el guardado de identidad actual.
+    if (!/p_crest_design|schema cache|could not find|PGRST202/i.test(error?.message || '')) throw error;
+    if (safeClubCrestDesign(crestDesign)) {
+      throw new Error('Crest Studio todavía no está habilitado en el servidor. Actualizá la base antes de aplicar este escudo.');
+    }
+    const { p_crest_design, ...legacyParams } = params;
+    data = await callRpc('fulbito_update_club_brand', legacyParams);
+  }
   return mapClubBrand(data, state.currentClub);
 }
 

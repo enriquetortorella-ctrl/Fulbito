@@ -440,7 +440,7 @@ async function saveEditProfile() {
     Object.assign(me, saved);
     state.currentUser.name = saved.name;
     state.currentUser.username = saved.username;
-    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubInviteCode: state.currentUser.isAdmin ? state.currentClub.inviteCode || null : null });
+    SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubCrestDesign: state.currentClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? state.currentClub.inviteCode || null : null });
     closeModal('modal-edit-profile');
     showApp();
     showToast('✅ Perfil actualizado');
