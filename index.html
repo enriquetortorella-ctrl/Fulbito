@@ -484,6 +484,14 @@
   </div>
 </div>
 
+<!-- MODAL: ASISTENCIA DEL GOL -->
+<div class="modal-overlay goal-assist-overlay" id="modal-goal-assist" onclick="if(event.target===this) cancelGoalAssist()" onkeydown="handleGoalAssistKeydown(event)">
+  <div class="modal goal-assist-modal" role="dialog" aria-modal="true" aria-labelledby="goal-assist-title">
+    <button class="modal-close" onclick="cancelGoalAssist()" aria-label="Cancelar carga del gol">✕</button>
+    <div id="modal-goal-assist-content"></div>
+  </div>
+</div>
+
 <!-- MODAL: CREST STUDIO -->
 <div class="modal-overlay crest-studio-overlay" id="modal-crest-designer">
   <div class="modal crest-studio-modal" role="dialog" aria-modal="true" aria-labelledby="crest-studio-title">

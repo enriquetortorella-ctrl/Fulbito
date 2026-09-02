@@ -43,12 +43,17 @@ async function saveMatchFromTeams() {
     // La planilla sólo cuenta desde que alguien decide cargarla en Goles.
     // Así los clubes que sólo anotan quién ganó no alteran las estadísticas
     // de goles ni los promedios.
-    result: { winner: null, margin: null, mvp: null, goals: {}, goalsTracked: false },
+    result: { winner: null, margin: null, mvp: null, goals: {}, goalEvents: [], goalEventMutationIds: [], goalsTracked: false, assistsTracked: true },
     created_by: state.currentUser.id
   };
   matches.unshift(m);
   sortMatches();
-  upsertMatch(m);
+  const saved = await upsertMatch(m);
+  if (!saved) {
+    matches = matches.filter(item => item.id !== m.id);
+    renderHub();
+    return;
+  }
   renderHub();
   showToast('💾 Partido guardado — anotá los goles acá');
   openGolesFor(m.id);
@@ -114,13 +119,16 @@ function renderHistorial() {
       : `<span class="match-date">📅 ${formatMatchDate(m)}</span>`;
 
     const goals = getGoals(m);
+    const assistsByPlayer = Object.fromEntries(matchAssisters(m).map(item => [item.id, item.assists]));
     const teamsHTML = teams.map((t, i) => {
       const isWinner = res && res.winner === i;
       const names = (t.players||[]).map(p => {
         const mvpStar = res && res.mvp === p.id ? ' ⭐' : '';
         const gn = goals[p.id] || 0;
         const golTxt = gn > 0 ? ` <span style="color:var(--green);font-weight:700">${'⚽'.repeat(Math.min(gn,3))}${gn>3?'×'+gn:''}</span>` : '';
-        return (p.isGuest ? p.name+' 👤' : p.name) + mvpStar + golTxt;
+        const an = assistsByPlayer[p.id] || 0;
+        const assistTxt = an > 0 ? ` <span style="color:#c4b5fd;font-weight:700">🎯${an}</span>` : '';
+        return (p.isGuest ? p.name+' 👤' : p.name) + mvpStar + golTxt + assistTxt;
       }).join('<br>');
       const goalsTeam = hasGoals ? `<span class="match-score">${sc[i]}</span>` : '';
       return `<div class="match-team t${i}${isWinner?' winner':''}">
@@ -237,7 +245,7 @@ function renderResultModal() {
       <button class="btn btn-sm ${!resultTracksGoals?'btn-primary':'btn-ghost'}" onclick="setResultTracksGoals(false)">🏆 Solo ganador</button>
       <button class="btn btn-sm ${resultTracksGoals?'btn-primary':'btn-ghost'}" onclick="setResultTracksGoals(true)">⚽ Con planilla de goles</button>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:7px;line-height:1.4">${resultTracksGoals ? 'Este partido contará para goles y promedios. Podés completar o ajustar la planilla en Goles.' : 'Se guarda quién ganó y el MVP, sin marcador ni goles en las estadísticas.'}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:7px;line-height:1.4">${resultTracksGoals ? 'Este partido contará para goles, asistencias y promedios. Podés completar o ajustar la planilla en Goles.' : 'Se guarda quién ganó y el MVP, sin marcador, goles ni asistencias en las estadísticas.'}</div>
   </div>`;
 
   if (matchHasGoals(m)) {
@@ -291,11 +299,13 @@ function renderResultModal() {
 }
 
 async function saveMatchResult() {
+  await reconcilePendingGoalWrites();
   const m = matches.find(x => x.id === resultMatchId);
   if (!m) return;
   if (resultWinner === null) return;
   const goals = getGoals(m);
   m.result = {
+    ...(m.result || {}),
     winner: resultWinner,
     margin: resultTracksGoals && resultWinner !== 'draw' ? resultMargin : null,
     mvp: resultMvp || null,
@@ -321,6 +331,7 @@ async function shareMatchResult(id) {
   const hasGoals = matchHasGoals(m);
   const sc = matchScore(m);
   const goals = getGoals(m);
+  const assistsByPlayer = Object.fromEntries(matchAssisters(m).map(item => [item.id, item.assists]));
 
   let text = `⚽ EL FULBITO — ${formatMatchDate(m)}\n`;
   if (!res) text += hasGoals ? `⏳ En juego: ${matchScoreStr(m)}\n` : '⏳ Resultado pendiente\n';
@@ -334,7 +345,8 @@ async function shareMatchResult(id) {
     text += `\n${TEAM_EMOJIS[i]||'⚪'} EQUIPO ${TEAM_NAMES[i]}${hasGoals?` (${sc[i]})`:''}${res && res.winner===i ? ' 🏆' : ''}\n`;
     (t.players||[]).forEach(p => {
       const gn = goals[p.id] || 0;
-      text += `• ${p.name}${p.isGuest?' 👤':''}${gn?` ⚽${gn}`:''}${res && res.mvp===p.id ? ' ⭐MVP' : ''}\n`;
+      const an = assistsByPlayer[p.id] || 0;
+      text += `• ${p.name}${p.isGuest?' 👤':''}${gn?` ⚽${gn}`:''}${an?` 🎯${an} asist.`:''}${res && res.mvp===p.id ? ' ⭐MVP' : ''}\n`;
     });
     const sinAutor = goals['__t'+i] || 0;
     if (sinAutor) text += `• (sin autor) ⚽${sinAutor}\n`;

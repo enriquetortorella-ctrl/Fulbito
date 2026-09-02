@@ -279,12 +279,13 @@ async function upsertMatch(m) {
     return;
   }
   try {
-    await callRpc('fulbito_upsert_match', { p_club_id: clubId, p_match: {
+    const saved = await callRpc('fulbito_upsert_match', { p_club_id: clubId, p_match: {
       id: m.id,
       match_date: m.match_date,
       teams: m.teams,
       result: m.result || null
     }});
+    if (saved && saved.result && typeof saved.result === 'object') m.result = saved.result;
     return true;
   } catch (error) {
     console.error('upsertMatch:', error);

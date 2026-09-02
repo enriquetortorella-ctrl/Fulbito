@@ -16,7 +16,7 @@ function scopedMatches() {
 }
 
 function recordIn(ms, pid) {
-  let w=0, d=0, l=0, mvps=0, goals=0, goalPj=0, routs=0;
+  let w=0, d=0, l=0, mvps=0, goals=0, goalPj=0, assists=0, assistPj=0, routs=0;
   ms.forEach(m => {
     const ti = (m.teams||[]).findIndex(t => (t.players||[]).some(p => p.id === pid));
     if (ti === -1) return;
@@ -24,13 +24,17 @@ function recordIn(ms, pid) {
       goals += getGoals(m)[pid] || 0;
       goalPj++;
     }
+    if (hasAssistsTracking(m)) {
+      assists += playerAssistTotal(pid, [m]);
+      assistPj++;
+    }
     if (m.result.winner === 'draw') d++;
     else if (m.result.winner === ti) { w++; if (m.result.margin === 3) routs++; }
     else l++;
     if (m.result.mvp === pid) mvps++;
   });
   const pj = w+d+l;
-  return { w, d, l, pj, mvps, goals, goalPj, routs, pts: w*3+d, ppp: pj ? (w*3+d)/pj : 0, wr: pj ? w/pj : 0 };
+  return { w, d, l, pj, mvps, goals, goalPj, assists, assistPj, routs, pts: w*3+d, ppp: pj ? (w*3+d)/pj : 0, wr: pj ? w/pj : 0 };
 }
 
 function statsPlayers(ms) {
@@ -57,7 +61,8 @@ function playerLastMatch(playerId, ms) {
   const result = last.result.winner === 'draw' ? 'Empate' : last.result.winner === ti ? 'Victoria' : 'Derrota';
   const icon = result === 'Victoria' ? '✅' : result === 'Empate' ? '🤝' : '❌';
   const goals = getGoals(last)[playerId] || 0;
-  return `${icon} Último partido: <b>${result}</b> · ${formatMatchDate(last)}${goals ? ` · ⚽ ${goals}` : ''}${last.result.mvp===playerId ? ' · ⭐ MVP' : ''}`;
+  const assists = hasAssistsTracking(last) ? playerAssistTotal(playerId, [last]) : null;
+  return `${icon} Último partido: <b>${result}</b> · ${formatMatchDate(last)}${goals ? ` · ⚽ ${goals}` : ''}${assists !== null ? ` · 🎯 ${assists} asist.` : ''}${last.result.mvp===playerId ? ' · ⭐ MVP' : ''}`;
 }
 
 function playerDashboardHTML(ms, player) {
@@ -83,6 +88,7 @@ function playerDashboardHTML(ms, player) {
       <div class="stat-chip"><b>${rec.ppp.toFixed(2)}</b><span>Pts / PJ</span></div>
       <div class="stat-chip"><b style="color:var(--green)">⚽ ${rec.goals}</b><span>Goles</span></div>
       <div class="stat-chip"><b style="color:var(--green)">${gpp.toFixed(2)}</b><span>Goles / PJ registrado</span></div>
+      ${rec.assistPj ? `<div class="stat-chip"><b style="color:#a78bfa">🎯 ${rec.assists}</b><span>Asistencias · desde registro</span></div>` : ''}
       <div class="stat-chip"><b style="color:#60a5fa">${pct(presentismo)}</b><span>Presente</span></div>
     </div>
     <div class="form-line"><span>Forma reciente</span>${statFormDots(player.id, ms)}${streak >= 2 ? `<span style="margin-left:5px;color:var(--green)">🔥 ${streak}V seguidas</span>` : ''}</div>

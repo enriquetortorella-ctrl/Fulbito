@@ -10,7 +10,7 @@ la topbar, las nav-tabs, los contenedores vacíos de cada pestaña y los `<scrip
 
 ---
 
-## CSS — `css/` (18 archivos)
+## CSS — `css/`
 
 El orden de los `<link>` reproduce la cascada original. `theme-aurora.css` pisa
 reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
@@ -30,7 +30,7 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 | `leaderboards.css` | Pestañas Goleadores y Posiciones: podios y tablas |
 | `admin.css` | Panel admin + formulario de registro |
 | `crest-designer.css` | Crest Studio: editor de escudos, escenario y responsive móvil |
-| `goles.css` | Planilla de goles en vivo |
+| `goles.css` | Planilla de goles en vivo, selector de asistidor y detalle de cada gol |
 | `stats.css` | Stats ampliadas + paternidades |
 | `utils.css` | Helpers (toast, spinners, etc.) |
 | `responsive.css` | Media queries |
@@ -51,7 +51,7 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 | `navigation.js` | `switchTab()`, screens, `getMe()` |
 | `support.js` | Centro de soporte |
 | `ratings-normalize.js` | Normalización de votos por sesgo del votante |
-| `stats-core.js` | Cálculos compartidos: goles, récord, forma, MVP |
+| `stats-core.js` | Cálculos compartidos: goles, asistencias, récord, forma y MVP |
 | `render.js` | `renderAll()` — orquestador |
 
 **Pestañas** — `js/tabs/`. Una por pestaña; acá es donde vas a trabajar:
@@ -64,14 +64,17 @@ reglas anteriores a propósito: si lo movés de lugar, se rompe el tema.
 
 `supabase-club-branding.sql` agrega la identidad compartida de cada club: nombre y escudo. `supabase-club-crest-designer.sql` suma el diseño editable por capas. Sus RPC sólo permiten que administradores (o soporte maestro) modifiquen su propio club.
 
+`supabase-goal-assists.sql` agrega el registro atómico de cada gol con asistidor,
+jugada individual o rebote. Conserva `result.goals` para compatibilidad y guarda
+el detalle en `result.goalEvents`; debe ejecutarse después de `supabase-security.sql`.
+
 **Cierre:** `sync.js` (auto-sync + atajos de teclado) y `boot.js` (arranque final).
 
 ---
 
 ## PWA
 
-`service-worker.js` ahora cachea los 39 archivos del shell y subió a
-`fulbito-shell-v2`.
+La versión actual del shell es `fulbito-shell-v56`.
 
 **Cada vez que agregues o renombres un `.css` o `.js`:**
 1. Agregalo a `SHELL_FILES` en `service-worker.js`

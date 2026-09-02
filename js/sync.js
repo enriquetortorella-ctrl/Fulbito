@@ -1,16 +1,30 @@
 // AUTO SYNC — consulta protegida periódica. No se suscriben tablas públicas.
 // ============================================================
 let secureSyncTimer = null;
+let secureSyncGeneration = 0;
 
 async function startSync() {
   if (!state.currentClub?.id) return;
   stopSync();
+  const clubId = state.currentClub.id;
+  const syncGeneration = secureSyncGeneration;
   const sync = async () => {
-    if (!state.currentClub?.id || _goalSaveTimer) return;
-    const [freshPlayers, freshMatches, freshClub] = await Promise.all([loadPlayers(), loadMatches(), loadClubBrand()]);
+    if (secureSyncGeneration !== syncGeneration || state.currentClub?.id !== clubId || _goalSaveTimer || _goalWritesPending > 0) return;
+    const goalWriteGeneration = _goalWriteGeneration;
+    const goalReadGeneration = ++_goalReadGeneration;
+    const [freshPlayers, freshMatches, freshClub] = await Promise.all([
+      loadPlayers(clubId),
+      loadMatches(clubId),
+      loadClubBrand(clubId)
+    ]);
+    if (secureSyncGeneration !== syncGeneration ||
+        state.currentClub?.id !== clubId ||
+        goalWriteGeneration !== _goalWriteGeneration ||
+        goalReadGeneration !== _goalReadGeneration ||
+        _goalSaveTimer || _goalWritesPending > 0) return;
     if (!freshPlayers.length && state.players.length) return;
     state.players = freshPlayers;
-    matches = freshMatches;
+    if (freshMatches.length || !matches.length) matches = freshMatches;
     const clubChanged = freshClub && (
       freshClub.name !== state.currentClub.name ||
       freshClub.crest !== state.currentClub.crest ||
@@ -45,6 +59,7 @@ async function startSync() {
 }
 
 function stopSync() {
+  secureSyncGeneration++;
   if (secureSyncTimer) window.clearInterval(secureSyncTimer);
   secureSyncTimer = null;
 }
@@ -54,6 +69,10 @@ function stopSync() {
 // ============================================================
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (document.getElementById('modal-goal-assist')?.classList.contains('open')) {
+      cancelGoalAssist();
+      return;
+    }
     if (document.getElementById('modal-action-confirm')?.classList.contains('open')) {
       cancelAppActionConfirmation();
       return;

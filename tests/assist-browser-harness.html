@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Assist flow harness</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/jugadores.css">
+  <link rel="stylesheet" href="../css/goles.css">
+  <style>
+    body{padding:20px;background:#07101a;color:#eef5ff}
+    #harness-result{position:fixed;top:8px;right:8px;z-index:500;padding:8px 12px;border-radius:8px;background:#102238;font:12px sans-serif}
+  </style>
+</head>
+<body>
+  <div id="harness-result">READY</div>
+  <main id="goles-content"></main>
+  <div class="modal-overlay goal-assist-overlay" id="modal-goal-assist" onclick="if(event.target===this) cancelGoalAssist()" onkeydown="handleGoalAssistKeydown(event)">
+    <div class="modal goal-assist-modal" role="dialog" aria-modal="true" aria-labelledby="goal-assist-title">
+      <button class="modal-close" onclick="cancelGoalAssist()" aria-label="Cancelar carga del gol">✕</button>
+      <div id="modal-goal-assist-content"></div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <script>
+    const TEAM_NAMES = ['A','B','C'];
+    const TEAM_EMOJIS = ['🔵','🔴','🟣'];
+    const TEAM_CLASSES = ['team-a','team-b','team-c'];
+    const state = {currentClub:{id:'club-test',name:'Club Test'},currentUser:{id:'p-scorer',name:'Enrique',isAdmin:false}};
+    let matches = [{
+      id:'m-assist-test',match_date:'2026-09-05',
+      teams:[
+        {name:'A',players:[{id:'p-scorer',name:'Enrique Tortorella'},{id:'p-mate-1',name:'Tula Leandro'},{id:'guest_1',name:'Invitado Largo de Prueba',isGuest:true}]},
+        {name:'B',players:[{id:'p-rival',name:'Jugador Rival'}]}
+      ],
+      result:{winner:null,margin:null,mvp:null,goals:{},goalEvents:[],goalsTracked:true,assistsTracked:true}
+    }];
+    function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    function openModal(id){document.getElementById(id).classList.add('open');}
+    function closeModal(id){document.getElementById(id).classList.remove('open');}
+    function showToast(message){document.getElementById('harness-result').textContent=message;}
+    function switchTab(){}
+    function renderHub(){}
+    function renderPlayers(){}
+    function getGoals(m){return m?.result?.goals||{};}
+    function getGoalEvents(m){return Array.isArray(m?.result?.goalEvents)?m.result.goalEvents:[];}
+    function isPlayed(m){return m?.result?.winner!==null&&m?.result?.winner!==undefined;}
+    function teamGoals(m,index){const goals=getGoals(m);return (m.teams[index].players||[]).reduce((n,p)=>n+(goals[p.id]||0),goals['__t'+index]||0);}
+    function matchHasGoals(m){return Object.values(getGoals(m)).some(Number);}
+    function matchScoreStr(m){return m.teams.map((_,i)=>teamGoals(m,i)).join('–');}
+    function formatMatchDate(){return '05/09/2026';}
+    function matchPlayerName(m,id){for(const team of m.teams){const player=team.players.find(item=>item.id===id);if(player)return player.name;}return '¿?';}
+    function playerNameById(id){return matchPlayerName(matches[0],id);}
+    function matchAssisters(m){const totals={};getGoalEvents(m).forEach(event=>{if(event.assistType==='player'&&event.assistPlayerId)totals[event.assistPlayerId]=(totals[event.assistPlayerId]||0)+1;});return Object.entries(totals).map(([id,assists])=>({id,name:matchPlayerName(m,id),assists}));}
+    function matchScorers(m){return Object.entries(getGoals(m)).filter(([id,n])=>!id.startsWith('__t')&&n>0).map(([id,goals])=>({id,name:matchPlayerName(m,id),goals}));}
+    function marginLabel(){return '';}
+    let serverMatches = structured(matches);
+    async function loadMatches(){return structured(serverMatches);}
+    async function upsertMatch(){return true;}
+    async function confirmAppAction(){return false;}
+    function structured(value){return JSON.parse(JSON.stringify(value));}
+    let simulatedLostResponse = false;
+    async function callRpc(name,args){
+      if(name==='fulbito_record_goal_event'&&new URLSearchParams(location.search).has('fail'))throw new Error('Falla simulada de red');
+      const match=serverMatches.find(item=>item.id===(args.p_match_id||'m-assist-test'));
+      if(name==='fulbito_record_goal_event'){
+        if((match.result.goalEventMutationIds||[]).includes(args.p_event_id))return {id:match.id,result:structured(match.result)};
+        match.result.goalEventMutationIds=[...(match.result.goalEventMutationIds||[]),args.p_event_id];
+        if(args.p_delta===1){
+          match.result.goalEvents.push({id:args.p_event_id,scorerId:args.p_scorer_id,assistType:args.p_assist_type,assistPlayerId:args.p_assist_player_id});
+          match.result.goals[args.p_scorer_id]=(match.result.goals[args.p_scorer_id]||0)+1;
+        }else{
+          for(let i=match.result.goalEvents.length-1;i>=0;i--){if(match.result.goalEvents[i].scorerId===args.p_scorer_id){match.result.goalEvents.splice(i,1);break;}}
+          match.result.goals[args.p_scorer_id]=Math.max(0,(match.result.goals[args.p_scorer_id]||0)-1);
+          if(!match.result.goals[args.p_scorer_id])delete match.result.goals[args.p_scorer_id];
+        }
+        const query = new URLSearchParams(location.search);
+        const loseThisResponse = query.has('lost') || (query.has('lostminus') && args.p_delta === -1);
+        if(loseThisResponse&&!simulatedLostResponse){simulatedLostResponse=true;throw new Error('Respuesta simulada perdida');}
+        return {id:match.id,result:structured(match.result)};
+      }
+      if(name==='fulbito_record_goal'){
+        const key=args.p_goal_key;
+        const next=Math.max(0,(match.result.goals[key]||0)+args.p_delta);
+        if(next)match.result.goals[key]=next;else delete match.result.goals[key];
+        return {id:match.id,result:structured(match.result)};
+      }
+      return {id:match.id,result:structured(match.result)};
+    }
+  </script>
+  <script src="../js/stats-core.js"></script>
+  <script src="../js/tabs/goles.js"></script>
+  <script src="../js/sync.js"></script>
+  <script>
+    renderGoles();
+    if(new URLSearchParams(location.search).has('auto'))openGoalAssistPicker('m-assist-test','p-scorer');
+    if(new URLSearchParams(location.search).has('statchecks')){
+      const sample = result => ({result});
+      document.getElementById('harness-result').textContent = JSON.stringify({
+        empty_new_match:hasAssistsTracking(sample({goals:{},goalEvents:[],goalsTracked:true,assistsTracked:true})),
+        complete_match:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{assistType:'individual'}],goalsTracked:true,assistsTracked:true})),
+        historical_mixed:hasAssistsTracking(sample({goals:{p1:2},goalEvents:[{assistType:'individual'}],goalsTracked:true,assistsTracked:true})),
+        legacy_unknown:hasAssistsTracking(sample({goals:{p1:1},goalEvents:[{assistType:'unrecorded'}],goalsTracked:true,assistsTracked:true})),
+        unattributed_goal:hasAssistsTracking(sample({goals:{__t0:1},goalEvents:[],goalsTracked:true,assistsTracked:true}))
+      });
+    }
+  </script>
+</body>
+</html>

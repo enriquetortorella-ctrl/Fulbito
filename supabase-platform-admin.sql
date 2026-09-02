@@ -126,12 +126,19 @@ declare
   v_id text := p_match ->> 'id';
   v_date date;
   v_player_id text;
+  v_is_platform boolean := public.fulbito_is_platform_admin();
+  v_existing_result jsonb;
+  v_existing_found boolean := false;
+  v_incoming_result jsonb := p_match -> 'result';
+  v_trimmed_mutation_ids jsonb;
+  v_replace_goal_data boolean := false;
+  v_server_key text;
 begin
-  if not public.fulbito_is_admin(p_club_id) then
+  if not v_is_platform and not public.fulbito_is_admin(p_club_id) then
     raise exception 'Solo un administrador puede guardar partidos' using errcode = '42501';
   end if;
 
-  if public.fulbito_is_platform_admin() then
+  if v_is_platform then
     select * into v_actor from public.fulbito_players where auth_user_id = auth.uid() limit 1;
   else
     select * into v_actor from public.fulbito_players
@@ -141,10 +148,16 @@ begin
     raise exception 'No se pudo identificar al administrador' using errcode = '42501';
   end if;
 
-  if p_match is null or jsonb_typeof(p_match) <> 'object' or v_id !~ '^m[a-zA-Z0-9-]{4,80}$'
+  if p_match is null or jsonb_typeof(p_match) <> 'object'
+     or v_id is null or v_id !~ '^m[a-zA-Z0-9-]{4,80}$'
      or jsonb_typeof(p_match -> 'teams') <> 'array' or jsonb_array_length(p_match -> 'teams') not between 2 and 3
      or pg_column_size(p_match) > 200000 then
     raise exception 'El partido no tiene un formato válido' using errcode = '22023';
+  end if;
+  if v_incoming_result is null or v_incoming_result = 'null'::jsonb then
+    v_incoming_result := '{}'::jsonb;
+  elsif jsonb_typeof(v_incoming_result) <> 'object' then
+    raise exception 'El resultado del partido no tiene un formato válido' using errcode = '22023';
   end if;
   v_date := nullif(p_match ->> 'match_date', '')::date;
 
@@ -161,8 +174,84 @@ begin
     end if;
   end loop;
 
+  v_replace_goal_data := coalesce(
+    (v_incoming_result -> 'goalDataReplace') = 'true'::jsonb,
+    false
+  );
+  v_incoming_result := v_incoming_result - 'goalDataReplace';
+
+  -- Goles y asistencias permanecen bajo control del servidor. El reset puede
+  -- limpiar sus datos, pero conserva los IDs usados contra reintentos tardíos.
+  select result into v_existing_result
+    from public.fulbito_matches
+   where id = v_id and club_id = p_club_id
+   for update;
+  v_existing_found := found;
+
+  if v_existing_found then
+    if jsonb_typeof(v_existing_result) = 'object'
+       and v_existing_result ? 'goalEventMutationIds' then
+      v_incoming_result := jsonb_set(
+        v_incoming_result,
+        '{goalEventMutationIds}',
+        v_existing_result -> 'goalEventMutationIds',
+        true
+      );
+    else
+      v_incoming_result := v_incoming_result - 'goalEventMutationIds';
+    end if;
+  end if;
+
+  if v_existing_found and not v_replace_goal_data then
+    foreach v_server_key in array array['goals', 'goalEvents', 'assistsTracked'] loop
+      if jsonb_typeof(v_existing_result) = 'object'
+         and v_existing_result ? v_server_key then
+        v_incoming_result := jsonb_set(
+          v_incoming_result,
+          array[v_server_key],
+          v_existing_result -> v_server_key,
+          true
+        );
+      else
+        v_incoming_result := v_incoming_result - v_server_key;
+      end if;
+    end loop;
+  end if;
+
+  if jsonb_typeof(v_incoming_result) = 'object'
+     and v_incoming_result ? 'goalEventMutationIds' then
+    if jsonb_typeof(v_incoming_result -> 'goalEventMutationIds') <> 'array' then
+      raise exception 'El control de carga de goles no tiene un formato válido' using errcode = '22023';
+    end if;
+    if exists (
+      select 1
+        from jsonb_array_elements(v_incoming_result -> 'goalEventMutationIds')
+          as mutation(mutation_id)
+       where jsonb_typeof(mutation_id) <> 'string'
+          or mutation_id #>> '{}' !~ '^[a-zA-Z0-9._:-]{8,128}$'
+    ) then
+      raise exception 'El control de carga de goles contiene un identificador inválido' using errcode = '22023';
+    end if;
+    if jsonb_array_length(v_incoming_result -> 'goalEventMutationIds') > 200 then
+      select coalesce(jsonb_agg(mutation_id order by mutation_number), '[]'::jsonb)
+        into v_trimmed_mutation_ids
+        from jsonb_array_elements(v_incoming_result -> 'goalEventMutationIds') with ordinality
+          as mutation(mutation_id, mutation_number)
+       where mutation_number
+             > jsonb_array_length(v_incoming_result -> 'goalEventMutationIds') - 200;
+      v_incoming_result := jsonb_set(
+        v_incoming_result, '{goalEventMutationIds}', v_trimmed_mutation_ids, true
+      );
+    end if;
+  end if;
+
+  v_incoming_result := public.fulbito_recalculate_score_result(
+    v_incoming_result,
+    p_match -> 'teams'
+  );
+
   insert into public.fulbito_matches (id, match_date, teams, result, created_by, club_id)
-  values (v_id, v_date, p_match -> 'teams', p_match -> 'result', v_actor.id, p_club_id)
+  values (v_id, v_date, p_match -> 'teams', v_incoming_result, v_actor.id, p_club_id)
   on conflict (id) do update
     set match_date = excluded.match_date,
         teams = excluded.teams,

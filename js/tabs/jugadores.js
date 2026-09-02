@@ -216,6 +216,13 @@ function openPlayerProfile(id) {
   const goalChip = rec.goals > 0
     ? `<span class="chip" style="margin-top:8px;color:var(--green);border-color:rgba(34,197,94,.4)">⚽ ${rec.goals} gol${rec.goals===1?'':'es'}${rec.goalPj?` · ${(rec.goals/rec.goalPj).toFixed(1)} por partido desde registro`:''}</span>`
     : '';
+  const lastPlayerMatch = getPlayerMatchesChrono(p.id).slice(-1)[0];
+  const lastMatchAssists = lastPlayerMatch && hasAssistsTracking(lastPlayerMatch)
+    ? playerAssistTotal(p.id, [lastPlayerMatch])
+    : null;
+  const assistChip = rec.assistPj > 0
+    ? `<span class="chip" style="margin-top:8px;color:#a78bfa;border-color:rgba(167,139,250,.4)">🎯 ${rec.assists} asistencia${rec.assists===1?'':'s'} desde el registro${lastMatchAssists !== null ? ` · último partido: ${lastMatchAssists}` : ''}</span>`
+    : '';
 
   // Sociedades y rivalidades del jugador
   let socHTML = '';
@@ -299,6 +306,7 @@ function openPlayerProfile(id) {
       <span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">Posición secundaria: ${p.posSecondary||'-'}</span>
       ${recChip}
       ${goalChip}
+      ${assistChip}
     </div>
     <div>${statBars}</div>
     ${socHTML}

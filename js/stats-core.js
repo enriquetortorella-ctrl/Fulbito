@@ -8,6 +8,54 @@ function isPlayed(m) {
 
 function getGoals(m) { return (m && m.result && m.result.goals) || {}; }
 
+// Las asistencias se guardan como eventos individuales dentro del resultado.
+// Los partidos anteriores a esta función no tienen `goalEvents`: se mantienen
+// fuera de los promedios para no convertir datos desconocidos en ceros.
+function getGoalEvents(m) {
+  const events = m && m.result && m.result.goalEvents;
+  return Array.isArray(events) ? events.filter(event => event && typeof event === 'object') : [];
+}
+
+function hasAssistsTracking(m) {
+  if (!(m && m.result && hasGoalsTracking(m) && m.result.assistsTracked !== false && Array.isArray(m.result.goalEvents))) return false;
+  // Un celular con una versión anterior puede registrar el goleador sin el
+  // origen del gol. El detalle se muestra, pero ese partido no entra en los
+  // promedios de asistencias porque sus ceros no serían información real.
+  if (m.result.goalEvents.some(event => event && event.assistType === 'unrecorded')) return false;
+  // También cubre un partido histórico que ya tenía goles y recién después
+  // recibió su primer evento de asistencia: sólo se considera completo cuando
+  // cada gol con autor tiene su evento correspondiente.
+  const authoredGoals = Object.entries(getGoals(m)).reduce((total, [playerId, goals]) =>
+    playerId.startsWith('__t') ? total : total + Math.max(0, Number(goals) || 0), 0);
+  return m.result.goalEvents.length === authoredGoals;
+}
+
+function assistTrackedMatches(ms) {
+  return (ms || matches).filter(m => isPlayed(m) && hasAssistsTracking(m));
+}
+
+// Asistidores de un partido, ordenados por cantidad. Las jugadas individuales
+// y los rebotes quedan registrados en el evento, pero no suman una asistencia.
+function matchAssisters(m) {
+  const totals = {};
+  getGoalEvents(m).forEach(event => {
+    if (event.assistType !== 'player' || !event.assistPlayerId) return;
+    totals[event.assistPlayerId] = (totals[event.assistPlayerId] || 0) + 1;
+  });
+  return Object.entries(totals)
+    .map(([id, assists]) => ({ id, name: matchPlayerName(m, id), assists }))
+    .sort((a,b) => b.assists - a.assists || a.name.localeCompare(b.name));
+}
+
+function playerAssistTotal(playerId, ms) {
+  return (ms || matches).reduce((total, m) => {
+    if (!isPlayed(m) || !hasAssistsTracking(m)) return total;
+    return total + getGoalEvents(m).filter(event =>
+      event.assistType === 'player' && event.assistPlayerId === playerId
+    ).length;
+  }, 0);
+}
+
 // Desde que existe la planilla de goles, los partidos guardan esta marca dentro
 // de result. Para los ya creados, la presencia de `goals` es compatible con la
 // versión anterior de la planilla: incluye también los 0-0 registrados.
@@ -58,10 +106,10 @@ function matchPlayerName(m, id) {
 }
 
 // ============================================================
-// RÉCORD / FORMA / MVP / GOLES POR JUGADOR (calculado desde matches)
+// RÉCORD / FORMA / MVP / GOLES Y ASISTENCIAS POR JUGADOR
 // ============================================================
 function getPlayerRecord(playerId, year) {
-  let w=0, d=0, l=0, mvps=0, goals=0, goalPj=0;
+  let w=0, d=0, l=0, mvps=0, goals=0, goalPj=0, assists=0, assistPj=0;
   matches.forEach(m => {
     if (year && (m.match_date||'').slice(0,4) !== year) return;
     const teams = m.teams || [];
@@ -71,13 +119,17 @@ function getPlayerRecord(playerId, year) {
       goals += getGoals(m)[playerId] || 0;
       goalPj++;
     }
+    if (isPlayed(m) && hasAssistsTracking(m)) {
+      assists += playerAssistTotal(playerId, [m]);
+      assistPj++;
+    }
     if (!isPlayed(m)) return;
     if (m.result.winner === 'draw') d++;
     else if (m.result.winner === teamIdx) w++;
     else l++;
     if (m.result.mvp === playerId) mvps++;
   });
-  return { w, d, l, mvps, goals, goalPj, pj: w+d+l, pts: w*3 + d };
+  return { w, d, l, mvps, goals, goalPj, assists, assistPj, pj: w+d+l, pts: w*3 + d };
 }
 
 // Nombre de jugador por id (busca en plantel y, si fue borrado, en el historial)
