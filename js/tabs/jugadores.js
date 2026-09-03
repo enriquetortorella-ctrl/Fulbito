@@ -87,13 +87,7 @@ function getSelfOverall(p) {
   const stats = getSelfStats(p);
   const vals = getRatingStats(p).map(s => stats[s]).filter(v => v > 0);
   if (!vals.length) return null;
-  const pos = p.posPrimary || 'MED';
-  let ovr;
-  if (usesGoalkeeperStats(p)) ovr = stats.reflejos*0.3 + stats.manos*0.25 + stats.posicion*0.2 + stats.estirada*0.15 + stats.uno_contra_uno*0.1;
-  else if (pos==='POR') ovr = stats.ataque*0.4 + stats.ritmo*0.15 + stats.fisico*0.25 + stats.pase*0.1 + stats.defensa*0.1;
-  else if (pos==='DEF') ovr = stats.defensa*0.35 + stats.fisico*0.2 + stats.ritmo*0.2 + stats.pase*0.15 + stats.tiro*0.1;
-  else if (pos==='MED') ovr = stats.pase*0.35 + stats.ritmo*0.2 + stats.defensa*0.15 + stats.tiro*0.15 + stats.fisico*0.15;
-  else ovr = stats.tiro*0.4 + stats.ritmo*0.25 + stats.pase*0.15 + stats.fisico*0.15 + stats.defensa*0.05;
+  const ovr = getOverallAttributeScore(p, stats);
   return Math.round(50 + (ovr-1)/4 * 49);
 }
 
@@ -328,7 +322,7 @@ function openPlayerProfile(id) {
     <div style="text-align:center;margin-bottom:16px">
       <span style="font-family:'Bebas Neue',sans-serif;font-size:48px">${ovr ?? '—'}</span>
       <span style="display:block;color:var(--muted);font-size:13px">${ovr === null ? 'Sin calificar' : tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
-      ${usesGoalkeeperStats(p) ? '<span style="display:block;color:var(--cyan);font-size:12px;margin-top:4px">🧤 Estadísticas de arquero</span>' : ''}
+      ${usesGoalkeeperStats(p) ? '<span style="display:block;color:var(--cyan);font-size:12px;margin-top:4px">🧤 Estadísticas de arquero</span>' : '<span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">OVR de campo: los 6 atributos pesan igual. La posición no lo modifica.</span>'}
       <span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">Posición secundaria: ${p.posSecondary||'-'}</span>
       ${(recChip || goalChip || assistChip) ? `<div class="profile-metrics">${recChip}${goalChip}${assistChip}</div>` : ''}
       ${form.last5.length ? `<div class="profile-form"><span>Forma reciente</span>${formDots}</div>` : ''}

@@ -89,6 +89,16 @@ function getStatAverage(ratings, stat) {
   return vals.reduce((a,b)=>a+b,0) / vals.length;
 }
 
+function getOverallAttributeScore(player, averages) {
+  // El modo arquero se elige expresamente y conserva su fórmula específica.
+  // La posición de campo (declarada o inferida) nunca cambia el peso del voto.
+  if (usesGoalkeeperStats(player)) {
+    return averages.reflejos*0.3 + averages.manos*0.25 + averages.posicion*0.2
+      + averages.estirada*0.15 + averages.uno_contra_uno*0.1;
+  }
+  return FIELD_STATS.reduce((sum, stat) => sum + getStatValue(averages, stat), 0) / FIELD_STATS.length;
+}
+
 function getOverall(player) {
   const allRatings = getValidRatings(player);
   if (!allRatings.length) return null;
@@ -96,13 +106,7 @@ function getOverall(player) {
   const avg = {};
   getRatingStats(player).forEach(s => { avg[s] = getStatAverage(allRatings, s); });
 
-  const pos = getEffectivePosition(player);
-  let ovr;
-  if (usesGoalkeeperStats(player)) ovr = avg.reflejos*0.3 + avg.manos*0.25 + avg.posicion*0.2 + avg.estirada*0.15 + avg.uno_contra_uno*0.1;
-  else if (pos==='POR') ovr = avg.ataque*0.4 + avg.ritmo*0.15 + avg.fisico*0.25 + avg.pase*0.1 + avg.defensa*0.1;
-  else if (pos==='DEF') ovr = avg.defensa*0.35 + avg.fisico*0.2 + avg.ritmo*0.2 + avg.pase*0.15 + avg.tiro*0.1;
-  else if (pos==='MED') ovr = avg.pase*0.35 + avg.ritmo*0.2 + avg.defensa*0.15 + avg.tiro*0.15 + avg.fisico*0.15;
-  else ovr = avg.tiro*0.4 + avg.ritmo*0.25 + avg.pase*0.15 + avg.fisico*0.15 + avg.defensa*0.05;
+  const ovr = getOverallAttributeScore(player, avg);
 
   const n = allRatings.length;
   const PRIOR = 3;
