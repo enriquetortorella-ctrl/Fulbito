@@ -181,7 +181,12 @@
       </article>`;
     }).join('');
 
-    const nextPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    // Las pestañas de prueba en segundo plano pueden pausar requestAnimationFrame.
+    // Fuentes e imágenes ya están listas; la medición fuerza el layout si no hay frame.
+    const nextPaint=()=>new Promise(resolve=>{
+      const fallback=setTimeout(resolve,250);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(fallback);resolve()}));
+    });
     const waitImage=image=>{
       if(image.complete){
         return typeof image.decode==='function' ? image.decode().catch(()=>{}) : Promise.resolve();
