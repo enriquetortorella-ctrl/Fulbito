@@ -188,13 +188,13 @@
       requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(fallback);resolve()}));
     });
     const waitImage=image=>{
-      if(image.complete){
-        return typeof image.decode==='function' ? image.decode().catch(()=>{}) : Promise.resolve();
-      }
+      // load/complete alcanza para medir. decode() puede quedar suspendido
+      // en una pestaña oculta aunque el recurso ya se haya descargado.
+      if(image.complete)return Promise.resolve();
       return new Promise(resolve=>{
         image.addEventListener('load',resolve,{once:true});
         image.addEventListener('error',resolve,{once:true});
-      }).then(()=>typeof image.decode==='function' ? image.decode().catch(()=>{}) : undefined);
+      });
     };
     const preloadCardFrames=()=>Promise.all(['bronze','silver','gold','icon','mvp','scorer','hot'].map(name=>{
       const image=new Image();
