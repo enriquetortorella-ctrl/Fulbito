@@ -28,19 +28,20 @@ function recordIn(ms, pid) {
       assists += playerAssistTotal(pid, [m]);
       assistPj++;
     }
-    if (m.result.winner === 'draw') d++;
-    else if (m.result.winner === ti) { w++; if (m.result.margin === 3) routs++; }
-    else l++;
+    const outcome = teamMatchOutcome(m, ti);
+    if (outcome === 'draw') d++;
+    else if (outcome === 'win') { w++; if (m.result.margin === 3) routs++; }
+    else if (outcome === 'loss') l++;
     if (m.result.mvp === pid) mvps++;
   });
   const pj = w+d+l;
   return { w, d, l, pj, mvps, goals, goalPj, assists, assistPj, routs, pts: w*3+d, ppp: pj ? (w*3+d)/pj : 0, wr: pj ? w/pj : 0 };
 }
 
-function statsPlayers(ms) {
-  return state.players
-    .map(p => ({ p, ovr: getOverall(p) || 60, ...recordIn(ms, p.id) }))
-    .filter(x => x.pj > 0);
+function statsPlayers(ms, options = {}) {
+  const rows = statsPlayerPool(ms)
+    .map(p => ({ p, ovr: rankingPlayerOverall(p), ...recordIn(ms, p.id) }));
+  return rows.filter(row => row.pj > 0 || (options.includeZero && isCurrentRosterPlayer(row.p)));
 }
 
 function pickTop(arr, cmp) { return arr.length ? arr.slice().sort(cmp)[0] : null; }
@@ -60,7 +61,8 @@ function playerLastMatch(playerId, ms) {
   const last = getPlayerMatchesChrono(playerId, ms).slice(-1)[0];
   if (!last) return '';
   const ti = (last.teams||[]).findIndex(t => (t.players||[]).some(p => p.id === playerId));
-  const result = last.result.winner === 'draw' ? 'Empate' : last.result.winner === ti ? 'Victoria' : 'Derrota';
+  const outcome = teamMatchOutcome(last, ti);
+  const result = outcome === 'draw' ? 'Empate' : outcome === 'win' ? 'Victoria' : 'Derrota';
   const icon = result === 'Victoria' ? '✅' : result === 'Empate' ? '🤝' : '❌';
   const goals = getGoals(last)[playerId] || 0;
   const assists = hasAssistsTracking(last) ? playerAssistTotal(playerId, [last]) : null;
@@ -130,13 +132,16 @@ function playerHeadToHeadHTML(ms, player) {
     ${summary ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${summary}</div>` : ''}
     <div class="table-scroll"><table class="mini-table">
       <thead><tr><th>Rival</th><th>Cruces</th><th>V-E-D</th><th>%V</th><th>Pts/PJ</th></tr></thead>
-      <tbody>${rows.map(r => `<tr class="stats-open-player" data-stats-player-id="${escapeHtml(r.other)}" role="button" tabindex="0">
+      <tbody>${rows.map(r => {
+        const canOpen = isCurrentRosterPlayer(r.other);
+        return `<tr${canOpen ? ` class="stats-open-player" data-stats-player-id="${escapeHtml(r.other)}" role="button" tabindex="0" aria-label="Ver ficha de ${escapeHtml(playerNameById(r.other))}"` : ' class="is-historical"'}>
         <td><span class="h2h-badge">${badge(r)}</span>${escapeHtml(playerNameById(r.other))}</td>
         <td>${r.games}</td>
         <td class="h2h-record" style="color:${r.w>r.l?'var(--green)':r.w<r.l?'var(--red)':'var(--gold)'}">${r.w}-${r.d}-${r.l}</td>
         <td style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${pct(r.wr)}</td>
         <td>${r.ppp.toFixed(2)}</td>
-      </tr>`).join('')}</tbody>
+      </tr>`;
+      }).join('')}</tbody>
     </table></div>
   </div>`;
 }
@@ -160,7 +165,10 @@ function playerPartnersHTML(ms, player) {
     ${best ? `<div class="fact-row"><span class="fact-emoji">✨</span><div><div class="fact-label">Mejor socio</div><div class="fact-val">${escapeHtml(playerNameById(best.other))} · ${best.w}V ${best.d}E ${best.l}D (${pct(best.wr)})</div></div></div>` : ''}
     ${worst && worst.other!==best?.other ? `<div class="fact-row"><span class="fact-emoji">🧊</span><div><div class="fact-label">Sociedad más difícil</div><div class="fact-val">${escapeHtml(playerNameById(worst.other))} · ${worst.w}V ${worst.d}E ${worst.l}D (${pct(worst.wr)})</div></div></div>` : ''}
     <div class="table-scroll" style="margin-top:8px"><table class="mini-table"><thead><tr><th>Compañero</th><th>PJ</th><th>V-E-D</th><th>%V</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr class="stats-open-player" data-stats-player-id="${escapeHtml(r.other)}" role="button" tabindex="0"><td>🤝 ${escapeHtml(playerNameById(r.other))}</td><td>${r.pj}</td><td class="h2h-record" style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${r.w}-${r.d}-${r.l}</td><td>${pct(r.wr)}</td></tr>`).join('')}</tbody>
+      <tbody>${rows.map(r=>{
+        const canOpen = isCurrentRosterPlayer(r.other);
+        return `<tr${canOpen ? ` class="stats-open-player" data-stats-player-id="${escapeHtml(r.other)}" role="button" tabindex="0" aria-label="Ver ficha de ${escapeHtml(playerNameById(r.other))}"` : ' class="is-historical"'}><td>🤝 ${escapeHtml(playerNameById(r.other))}</td><td>${r.pj}</td><td class="h2h-record" style="color:${r.wr>=.6?'var(--green)':r.wr>=.4?'var(--gold)':'var(--red)'}">${r.w}-${r.d}-${r.l}</td><td>${pct(r.wr)}</td></tr>`;
+      }).join('')}</tbody>
     </table></div>
   </div>`;
 }
@@ -205,6 +213,7 @@ function renderStats() {
   }
 
   const players = statsPlayers(ms);
+  const attendancePlayers = statsPlayers(ms, { includeZero:true });
 
   if (selectedPlayer) {
     html += playerDashboardHTML(ms, selectedPlayer);
@@ -213,12 +222,12 @@ function renderStats() {
   } else {
     html += panoramaHTML(ms, players);
     html += asistenciasHTML(ms);
-    html += factsHTML(ms, players);
+    html += factsHTML(ms, players, attendancePlayers);
     html += paternidadesHTML(ms);
     html += rendimientoHTML(ms, players);
     html += duplasHTML(ms);
     html += rivalidadesHTML(ms);
-    html += presentismoHTML(ms, players);
+    html += presentismoHTML(ms, attendancePlayers);
     html += votacionHTML();
   }
 
@@ -243,9 +252,19 @@ function panoramaHTML(ms, players) {
   const trackedAssists = assistTrackedMatches(ms);
   const asistencias = trackedAssists.reduce((total, match) => total + matchAssisters(match).reduce((sum, item) => sum + item.assists, 0), 0);
   const colorWins = [0,0,0];
-  ms.forEach(m => { if (m.result.winner !== 'draw') colorWins[m.result.winner]++; });
+  ms.forEach(m => {
+    const winners = matchWinnerIndices(m);
+    if (winners.length === 1 && colorWins[winners[0]] !== undefined) colorWins[winners[0]]++;
+  });
   const ultimo = ms[0];
   const dias = daysSince(ultimo && ultimo.match_date);
+  const ultimoRelativo = dias === null
+    ? ''
+    : dias === 0
+      ? 'hoy'
+      : dias > 0
+        ? `hace ${dias} día${dias === 1 ? '' : 's'}`
+        : `en ${Math.abs(dias)} día${dias === -1 ? '' : 's'}`;
 
   const chips = [
     ['🎮', ms.length, 'Partidos'],
@@ -297,7 +316,7 @@ function panoramaHTML(ms, players) {
     </div>
     ${colorHTML}
     ${mesesHTML}
-    ${dias !== null ? `<div style="font-size:11px;color:var(--muted);margin-top:12px">⏳ Último partido: ${formatMatchDate(ultimo)} — hace ${dias} día${dias===1?'':'s'}</div>` : ''}
+    ${dias !== null ? `<div style="font-size:11px;color:var(--muted);margin-top:12px">⏳ Último partido: ${formatMatchDate(ultimo)} — ${ultimoRelativo}</div>` : ''}
   </div>`;
 }
 
@@ -317,27 +336,14 @@ function asistenciasHTML(ms) {
   const total = events.filter(event => event.assistType === 'player' && event.assistPlayerId).length;
   const individual = events.filter(event => event.assistType === 'individual').length;
   const rebounds = events.filter(event => event.assistType === 'rebound').length;
-  // Incluye también invitados o exintegrantes que sobreviven en la foto del
-  // partido. Así el total, el líder y los porcentajes siempre reconcilian.
-  const people = new Map(state.players.map(player => [player.id, player]));
-  tracked.forEach(match => (match.teams || []).forEach(team => (team.players || []).forEach(player => {
-    if (player?.id && !people.has(player.id)) people.set(player.id, player);
-  })));
-  const assistEventsByPlayer = new Map();
-  tracked.forEach(match => matchAssisters(match).forEach(item => {
-    const current = assistEventsByPlayer.get(item.id) || { assists:0, matches:new Set(), name:item.name };
-    current.assists += item.assists;
-    current.matches.add(match.id);
-    assistEventsByPlayer.set(item.id, current);
-    if (!people.has(item.id)) people.set(item.id, { id:item.id, name:item.name || 'Jugador histórico', username:item.name || 'Histórico', photo:'' });
-  }));
-  const rows = [...assistEventsByPlayer.entries()]
-    .map(([id, info]) => {
-      const record = recordIn(ms, id);
-      return { p:people.get(id), ...record, assists:info.assists, assistPj:Math.max(record.assistPj, info.matches.size) };
-    })
+  // El ranking personal usa el mismo universo que goles/posiciones: plantel
+  // actual + exjugadores registrados en snapshots, nunca invitados.
+  const rows = statsPlayers(ms)
+    .filter(row => row.assists > 0)
     .sort((a,b) => b.assists-a.assists || assistsPerGame(b)-assistsPerGame(a) || b.assistPj-a.assistPj || a.p.name.localeCompare(b.p.name));
-  const withAssists = rows.filter(row => row.assists > 0);
+  const withAssists = rows;
+  const rankedAssists = withAssists.reduce((sum, row) => sum + row.assists, 0);
+  const externalAssists = Math.max(0, total - rankedAssists);
   const leader = withAssists[0];
   const minAvg = assistAverageMinimum(ms);
   const efficient = pickTop(withAssists.filter(row => row.p.id !== leader?.p.id && row.assistPj >= minAvg), (a,b) => assistsPerGame(b)-assistsPerGame(a) || b.assists-a.assists);
@@ -356,23 +362,23 @@ function asistenciasHTML(ms) {
       <div class="assists-total"><b>${total}</b><small>PASES<br>DE GOL</small></div>
     </div>
     <div class="assists-featured">
-      <article class="assist-feature is-leader">${statsPlayerAvatar(leader.p, 'assist-feature-avatar')}<div><span>👑 MÁXIMO ASISTIDOR</span><strong>${escapeHtml(leader.p.name)}</strong><small>${leader.assistPj} PJ con registro</small></div><b>${leader.assists}<small>AST</small></b></article>
+      ${leader ? `<article class="assist-feature is-leader">${statsPlayerAvatar(leader.p, 'assist-feature-avatar')}<div><span>👑 MÁXIMO ASISTIDOR</span><strong>${escapeHtml(leader.p.name)}</strong><small>${leader.assistPj} PJ con registro${isCurrentRosterPlayer(leader.p) ? '' : ' · histórico'}</small></div><b>${leader.assists}<small>AST</small></b></article>` : `<article class="assist-feature is-leader"><div><span>👤 SIN FICHA DEL CLUB</span><strong>Asistencias de invitados</strong><small>No ingresan al ranking personal</small></div><b>${externalAssists}<small>AST</small></b></article>`}
       ${efficient ? `<article class="assist-feature is-average">${statsPlayerAvatar(efficient.p, 'assist-feature-avatar')}<div><span>✨ EFICIENCIA DESTACADA</span><strong>${escapeHtml(efficient.p.name)}</strong><small>mejor A/PJ sin repetir líder · mínimo ${minAvg} PJ</small></div><b>${assistsPerGame(efficient).toFixed(2)}<small>A/PJ</small></b></article>` : ''}
     </div>
     <div class="assists-list-head"><span>JUGADOR</span><span>AST</span><span>A/PJ</span><span>PART.</span></div>
-    <div class="assists-list">${withAssists.slice(0,10).map((row,index) => {
-      const share = Math.round(row.assists / Math.max(1,total) * 100);
-      const hasProfile = state.players.some(player => player.id === row.p.id);
+    <div class="assists-list">${withAssists.length ? withAssists.slice(0,10).map((row,index) => {
+      const share = Math.round(row.assists / Math.max(1,rankedAssists) * 100);
+      const hasProfile = isCurrentRosterPlayer(row.p);
       const openTag = hasProfile ? 'button' : 'div';
-      const action = hasProfile ? `type="button" onclick="openPlayerProfile('${row.p.id}')"` : `aria-label="${escapeHtml(row.p.name)} · invitado o jugador histórico"`;
+      const action = hasProfile ? `type="button" onclick="openPlayerProfile('${row.p.id}')"` : `aria-label="${escapeHtml(row.p.name)} · jugador histórico"`;
       return `<${openTag} class="assist-list-row${hasProfile ? '' : ' is-historical'}" ${action}>
-        <span class="assist-player"><i>${index===0?'🥇':String(index+1).padStart(2,'0')}</i>${statsPlayerAvatar(row.p)}<span><b>${escapeHtml(row.p.name)}</b><small>${row.assistPj} PJ registrados${hasProfile?'':' · invitado/histórico'}</small></span></span>
+        <span class="assist-player"><i>${index===0?'🥇':String(index+1).padStart(2,'0')}</i>${statsPlayerAvatar(row.p)}<span><b>${escapeHtml(row.p.name)}</b><small>${row.assistPj} PJ registrados${hasProfile?'':' · histórico'}</small></span></span>
         <strong>${row.assists}</strong><em>${assistsPerGame(row).toFixed(2)}</em>
         <span class="assist-share"><i><b style="width:${share}%"></b></i><small>${share}%</small></span>
       </${openTag}>`;
-    }).join('')}</div>
-    <div class="assists-breakdown"><span>⚡ ${individual} individuales</span><span>🥅 ${rebounds} rebotes</span></div>
-    <p class="sec-note assists-note">Cuenta solamente partidos con todas sus jugadas completas desde ${trackingStart}; los históricos sin detalle no se convierten en ceros.</p>
+    }).join('') : '<p class="sec-note">No hay asistencias atribuibles a jugadores actuales o históricos.</p>'}</div>
+    <div class="assists-breakdown"><span>⚡ ${individual} individuales</span><span>🥅 ${rebounds} rebotes</span>${externalAssists ? `<span>👤 ${externalAssists} de invitados/sin ficha</span>` : ''}</div>
+    <p class="sec-note assists-note">Cuenta solamente partidos con todas sus jugadas completas desde ${trackingStart}; los históricos sin detalle no se convierten en ceros. Los invitados se informan aparte y no alteran el ranking.</p>
   </section>`;
 }
 
@@ -396,6 +402,14 @@ function goleadoresHTML(ms, players) {
   }
 
   const conGoles = players.filter(x => x.goals > 0).sort((a,b) => b.goals - a.goals || goalsPerGame(b) - goalsPerGame(a));
+  const golesJugadores = conGoles.reduce((total, player) => total + player.goals, 0);
+  const rankedIds = new Set(players.map(player => player.p.id));
+  const golesFueraDelRanking = trackedGoals.reduce((total, match) => total + Object.entries(getGoals(match))
+    .filter(([id]) => !id.startsWith('__t') && !rankedIds.has(id))
+    .reduce((sum, [,value]) => sum + value, 0), 0);
+  if (!conGoles.length) {
+    return `<div class="admin-section"><h3>⚽ Goleadores</h3><p class="sec-note">Hay ${goles} goles registrados, pero ninguno pertenece a un jugador identificable del historial. ${golesFueraDelRanking ? `${golesFueraDelRanking} corresponden a invitados o registros sin ficha.` : ''}</p></div>`;
+  }
   const max = Math.max(1, ...conGoles.map(x => x.goals));
   const maxGoleador = conGoles[0];
   const efectivo = pickTop(conGoles.filter(x => x.goalPj >= minGpp), (a,b) => goalsPerGame(b) - goalsPerGame(a) || b.goals-a.goals || b.goalPj-a.goalPj);
@@ -416,7 +430,7 @@ function goleadoresHTML(ms, players) {
   }, 0);
 
   const filas = conGoles.slice(0, 10).map((x,i) => `
-    <div class="bar-row" onclick="openPlayerProfile('${x.p.id}')" style="cursor:pointer">
+    <div class="bar-row${isCurrentRosterPlayer(x.p) ? '' : ' is-historical'}"${isCurrentRosterPlayer(x.p) ? ` ${typeof profileRowAttributes === 'function' ? profileRowAttributes(x.p) : ''}` : ''}>
       <span class="bar-name">${i===0?'🥇 ':''}${escapeHtml(x.p.name)}</span>
       <div class="bar-track"><div class="bar-fill green" style="width:${Math.round(x.goals/max*100)}%"></div></div>
       <span class="bar-val" style="color:var(--green)">${x.goals}</span>
@@ -427,6 +441,7 @@ function goleadoresHTML(ms, players) {
   if (bestSolo) extras.push(`🎯 Mejor marca individual: <b>${escapeHtml(bestSolo.name)}</b> con ${bestSolo.goals} en un partido (${formatMatchDate(bestSolo.m)})`);
   if (bestMatch) extras.push(`🔥 Partido más goleado: ${matchScoreStr(bestMatch)} el ${formatMatchDate(bestMatch)}`);
   if (sinAutor) extras.push(`⚪ Goles sin autor asignado: ${sinAutor}`);
+  if (golesFueraDelRanking) extras.push(`👤 Goles de invitados o registros sin ficha: ${golesFueraDelRanking}`);
 
   const scorerAvatar = (p, cls='') => {
     const url = safePhotoUrl(p.photo);
@@ -440,13 +455,13 @@ function goleadoresHTML(ms, players) {
   return `<section class="admin-section scorers-module">
     <div class="scorers-module-head">
       <div class="scorers-heading"><div class="scorers-icon">🥇</div><div><div class="scorers-kicker">RANKING OFENSIVO · ${trackedGoals.length} PJ REGISTRADOS</div><h3>GOLEADORES</h3></div></div>
-      <div class="scorers-head-total"><b>${goles}</b><span>GOLES<br>REGISTRADOS</span></div>
+      <div class="scorers-head-total"><b>${golesJugadores}</b><span>GOLES DE<br>JUGADORES</span></div>
     </div>
     <div class="scorers-featured">
       <article class="scorer-feature scorer-feature-gold">
         <div class="scorer-feature-ribbon">🥇 BOTÍN DE ORO</div>
         <div class="scorer-feature-main">${scorerAvatar(maxGoleador.p,'scorer-feature-avatar')}<div class="scorer-feature-copy"><strong>${escapeHtml(maxGoleador.p.name)}</strong><span>Máximo goleador del club</span></div><div class="scorer-feature-number"><b>${maxGoleador.goals}</b><small>GOLES</small></div></div>
-        <div class="scorer-feature-stats"><span><b>${maxGpp.toFixed(2)}</b> G/PJ</span><span><b>${maxGoleador.goalPj}</b> PJ REG.</span><span><b>${Math.round(maxGoleador.goals / Math.max(1,goles) * 100)}%</b> DEL TOTAL</span></div>
+        <div class="scorer-feature-stats"><span><b>${maxGpp.toFixed(2)}</b> G/PJ</span><span><b>${maxGoleador.goalPj}</b> PJ REG.</span><span><b>${Math.round(maxGoleador.goals / Math.max(1,golesJugadores) * 100)}%</b> DEL TOTAL</span></div>
       </article>
       <article class="scorer-feature scorer-feature-ice">
         <div class="scorer-feature-ribbon">🚀 MEJOR PROMEDIO</div>
@@ -455,19 +470,19 @@ function goleadoresHTML(ms, players) {
       </article>
     </div>
     <div class="scorers-list-head"><span>JUGADOR</span><span>GOLES</span><span>G/PJ</span><span>PARTICIPACIÓN</span></div>
-    <div class="scorers-list">${conGoles.slice(0,10).map((x,i) => `<div class="scorer-list-row" onclick="openPlayerProfile('${x.p.id}')">
+    <div class="scorers-list">${conGoles.slice(0,10).map((x,i) => `<div class="scorer-list-row${isCurrentRosterPlayer(x.p) ? '' : ' is-historical'}"${isCurrentRosterPlayer(x.p) ? ` ${typeof profileRowAttributes === 'function' ? profileRowAttributes(x.p) : ''}` : ''}>
       <div class="scorer-list-player"><span class="scorer-rank">${i===0?'🥇':String(i+1).padStart(2,'0')}</span>${scorerAvatar(x.p)}<span class="scorer-list-name">${escapeHtml(x.p.name)}<small>${x.goalPj} PJ con planilla</small></span></div>
       <div class="scorer-list-goals"><b>${x.goals}</b><span>G</span></div>
       <div class="scorer-list-gpp"><b>${goalsPerGame(x).toFixed(2)}</b><span>G/PJ</span></div>
-      <div class="scorer-list-share"><div class="scorer-list-track"><i style="width:${Math.round(x.goals/max*100)}%"></i></div><span>${Math.round(x.goals / Math.max(1,goles) * 100)}%</span></div>
+      <div class="scorer-list-share"><div class="scorer-list-track"><i style="width:${Math.round(x.goals/max*100)}%"></i></div><span>${Math.round(x.goals / Math.max(1,golesJugadores) * 100)}%</span></div>
     </div>`).join('')}</div>
-    <p class="sec-note scorers-note">Datos desde que se registra la planilla de goles${trackingStart ? ` (${trackingStart})` : ''}. El promedio exige al menos ${minGpp} PJ registrados; los partidos históricos sin planilla no afectan esta métrica.</p>
+    <p class="sec-note scorers-note">Datos desde que se registra la planilla de goles${trackingStart ? ` (${trackingStart})` : ''}. La participación usa los ${golesJugadores} goles atribuibles a jugadores actuales o históricos; ${goles - golesJugadores} de invitados o sin autor se informan aparte. El promedio exige al menos ${minGpp} PJ registrados.</p>
     ${extras.length ? `<div class="scorers-extras">${extras.join('<br>')}</div>` : ''}
   </section>`;
 }
 
 // --- 3. Datos del ciclo (récords) ---
-function factsHTML(ms, players) {
+function factsHTML(ms, players, attendancePlayers = players) {
   const facts = [];
   const elig3 = players.filter(x => x.pj >= 3);
 
@@ -501,11 +516,14 @@ function factsHTML(ms, players) {
   const byDraws = pickTop(players.filter(x=>x.d>=2), (a,b)=>b.d-a.d);
   if (byDraws) facts.push(['🤝','Rey del empate', `${byDraws.p.name} — ${byDraws.d} empates`]);
 
-  const byPj = pickTop(players, (a,b)=>b.pj-a.pj);
+  const byPj = pickTop(attendancePlayers, (a,b)=>b.pj-a.pj);
   if (byPj) facts.push(['🎮','El más presente', `${byPj.p.name} — ${byPj.pj} de ${ms.length} partidos (${pct(byPj.pj/ms.length)})`]);
 
   if (ms.length >= 4) {
-    const byAusente = pickTop(players, (a,b)=>a.pj-b.pj);
+    // Sin fecha de alta/baja no es justo declarar "escurridizo" a alguien
+    // que ya dejó el club: este reconocimiento sí compara el plantel actual,
+    // incluyendo a quienes todavía tienen 0 PJ en el período.
+    const byAusente = pickTop(attendancePlayers.filter(x => isCurrentRosterPlayer(x.p)), (a,b)=>a.pj-b.pj);
     if (byAusente && byAusente.pj < ms.length) facts.push(['👻','El más escurridizo', `${byAusente.p.name} — solo ${byAusente.pj} de ${ms.length} partidos`]);
   }
 
@@ -529,10 +547,14 @@ function factsHTML(ms, players) {
   }
 
   // Rendimiento vs cotización (OVR normalizado contra pts por partido)
-  if (elig3.length >= 3) {
-    const ovrs = elig3.map(x=>x.ovr);
+  // La comparación OVR/rendimiento requiere una cotización actual; el OVR de
+  // un snapshot histórico se muestra en tablas, pero no se mezcla con votos
+  // actuales para elegir "joya" o "humo".
+  const ratedElig3 = elig3.filter(x => isCurrentRosterPlayer(x.p) && Number.isFinite(x.ovr));
+  if (ratedElig3.length >= 3) {
+    const ovrs = ratedElig3.map(x=>x.ovr);
     const minO = Math.min(...ovrs), maxO = Math.max(...ovrs);
-    const spread = elig3.map(x => ({
+    const spread = ratedElig3.map(x => ({
       x,
       diff: (x.ppp/3) - (maxO === minO ? .5 : (x.ovr-minO)/(maxO-minO))
     })).sort((a,b)=>b.diff-a.diff);
@@ -568,7 +590,7 @@ function rendimientoHTML(ms, players) {
         <th>Jugador</th><th>PJ</th><th>%V</th><th>Pts/PJ</th>${hayGoles?'<th title="Goles">⚽</th>':''}${hayAsistencias?'<th title="Asistencias">🎯</th>':''}<th>⭐</th><th>OVR</th>
       </tr></thead>
       <tbody>
-      ${rows.map(x => `<tr onclick="openPlayerProfile('${x.p.id}')">
+      ${rows.map(x => `<tr${isCurrentRosterPlayer(x.p) ? ` ${typeof profileRowAttributes === 'function' ? profileRowAttributes(x.p) : ''}` : ' class="is-historical"'}>
         <td>${escapeHtml(x.p.name)}</td>
         <td>${x.pj}</td>
         <td style="color:${x.wr>=.6?'var(--green)':x.wr>=.4?'var(--gold)':'var(--red)'}">${pct(x.wr)}</td>
@@ -576,7 +598,7 @@ function rendimientoHTML(ms, players) {
         ${hayGoles?`<td style="color:${x.goals?'var(--green)':'var(--muted)'}">${x.goals||'-'}</td>`:''}
         ${hayAsistencias?`<td style="color:${x.assists?'#c4b5fd':'var(--muted)'}">${x.assistPj ? x.assists : '—'}</td>`:''}
         <td style="color:${x.mvps?'var(--gold)':'var(--muted)'}">${x.mvps||'-'}</td>
-        <td style="color:var(--muted)">${x.ovr}</td>
+        <td style="color:var(--muted)">${Number.isFinite(x.ovr) ? x.ovr : '—'}</td>
       </tr>`).join('')}
       </tbody>
     </table></div>
@@ -744,7 +766,7 @@ function presentismoHTML(ms, players) {
     <h3>🎯 Presentismo</h3>
     <p class="sec-note">Partidos jugados sobre los ${total} del período</p>
     ${rows.map(x => `
-      <div class="bar-row" onclick="openPlayerProfile('${x.p.id}')" style="cursor:pointer">
+      <div class="bar-row${isCurrentRosterPlayer(x.p) ? '' : ' is-historical'}"${isCurrentRosterPlayer(x.p) ? ` ${typeof profileRowAttributes === 'function' ? profileRowAttributes(x.p) : ''}` : ''}>
         <span class="bar-name">${escapeHtml(x.p.name)}</span>
         <div class="bar-track"><div class="bar-fill blue" style="width:${Math.round(x.pj/total*100)}%"></div></div>
         <span class="bar-val" style="color:#60a5fa">${x.pj}/${total}</span>

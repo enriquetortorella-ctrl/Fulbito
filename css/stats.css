@@ -46,6 +46,8 @@
 .mini-table td:first-child{text-align:left;font-weight:600;white-space:normal}
 .mini-table tbody tr{cursor:pointer}
 .mini-table tbody tr:hover td{background:rgba(255,255,255,.03)}
+.mini-table tbody tr.is-historical{cursor:default}.mini-table tbody tr.is-historical:hover td{background:transparent}
+.mini-table tbody tr[role="button"]:focus-visible{outline:2px solid var(--cyan,#62d8ff);outline-offset:-2px}
 .performance-table{min-width:560px}
 .fact-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
 .fact-row:last-child{border-bottom:none}

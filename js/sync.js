@@ -9,42 +9,75 @@ async function startSync() {
   const clubId = state.currentClub.id;
   const syncGeneration = secureSyncGeneration;
   const sync = async () => {
-    if (secureSyncGeneration !== syncGeneration || state.currentClub?.id !== clubId || _goalSaveTimer || _goalWritesPending > 0) return;
+    if (secureSyncGeneration !== syncGeneration || state.currentClub?.id !== clubId || _goalSaveTimer || _goalWritesPending > 0 ||
+        (typeof _ratingWritesPending === 'number' && _ratingWritesPending > 0) ||
+        (typeof _appMutationsPending === 'number' && _appMutationsPending > 0)) return;
     const goalWriteGeneration = _goalWriteGeneration;
+    const ratingWriteGeneration = typeof _ratingWriteGeneration === 'number' ? _ratingWriteGeneration : null;
+    const appMutationBarrier = typeof captureAppMutationBarrier === 'function'
+      ? captureAppMutationBarrier()
+      : null;
     const goalReadGeneration = ++_goalReadGeneration;
-    const [freshPlayers, freshMatches, freshClub] = await Promise.all([
+    const accessRead = state.currentUser?.supportMode || typeof loadCurrentPlayerAccess !== 'function'
+      ? Promise.resolve(null)
+      : loadCurrentPlayerAccess(clubId);
+    const [freshPlayers, freshMatches, freshClub, accessSnapshot] = await Promise.all([
       loadPlayers(clubId),
       loadMatches(clubId),
-      loadClubBrand(clubId)
+      loadClubBrand(clubId),
+      accessRead
     ]);
     if (secureSyncGeneration !== syncGeneration ||
         state.currentClub?.id !== clubId ||
         goalWriteGeneration !== _goalWriteGeneration ||
+        (ratingWriteGeneration !== null && ratingWriteGeneration !== _ratingWriteGeneration) ||
+        (appMutationBarrier && typeof isAppMutationBarrierCurrent === 'function' &&
+          !isAppMutationBarrierCurrent(appMutationBarrier)) ||
         goalReadGeneration !== _goalReadGeneration ||
-        _goalSaveTimer || _goalWritesPending > 0) return;
-    if (!freshPlayers.length && state.players.length) return;
-    state.players = freshPlayers;
-    if (freshMatches.length || !matches.length) matches = freshMatches;
-    const clubChanged = freshClub && (
-      freshClub.name !== state.currentClub.name ||
-      freshClub.crest !== state.currentClub.crest ||
-      !sameClubCrestDesign(freshClub.crestDesign, state.currentClub.crestDesign) ||
-      freshClub.matchWeekday !== state.currentClub.matchWeekday ||
-      freshClub.matchTime !== state.currentClub.matchTime ||
-      freshClub.matchVenue !== state.currentClub.matchVenue ||
-      freshClub.matchAddress !== state.currentClub.matchAddress ||
-      (state.currentUser?.isAdmin && freshClub.inviteCode !== state.currentClub.inviteCode)
+        _goalSaveTimer || _goalWritesPending > 0 ||
+        (typeof _ratingWritesPending === 'number' && _ratingWritesPending > 0) ||
+        (typeof _appMutationsPending === 'number' && _appMutationsPending > 0)) return;
+    // Cada recurso se actualiza de manera independiente: una falla leyendo el
+    // plantel no debe impedir que lleguen partidos o cambios de identidad. Una
+    // lista vacía válida, en cambio, sí limpia el plantel mostrado.
+    if (freshPlayers !== null) state.players = freshPlayers;
+    if (typeof reconcileCurrentUserAccess === 'function' &&
+        !reconcileCurrentUserAccess(freshPlayers, accessSnapshot)) return;
+    if (freshMatches !== null) matches = freshMatches;
+    const nextClub = typeof clubSnapshotForCurrentContext === 'function'
+      ? clubSnapshotForCurrentContext(freshClub)
+      : (freshClub && state.currentUser?.supportMode && !freshClub.inviteCode && state.currentClub?.inviteCode
+        ? { ...freshClub, inviteCode: state.currentClub.inviteCode }
+        : freshClub);
+    const clubChanged = nextClub && (
+      nextClub.name !== state.currentClub.name ||
+      nextClub.crest !== state.currentClub.crest ||
+      !sameClubCrestDesign(nextClub.crestDesign, state.currentClub.crestDesign) ||
+      nextClub.matchWeekday !== state.currentClub.matchWeekday ||
+      nextClub.matchTime !== state.currentClub.matchTime ||
+      nextClub.matchVenue !== state.currentClub.matchVenue ||
+      nextClub.matchAddress !== state.currentClub.matchAddress ||
+      (state.currentUser?.isAdmin && nextClub.inviteCode !== state.currentClub.inviteCode)
     );
     if (clubChanged) {
-      state.currentClub = { ...state.currentClub, ...freshClub };
-      SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubCrestDesign: freshClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
+      state.currentClub = { ...state.currentClub, ...nextClub };
+      const shouldPersistSession = typeof shouldPersistCurrentSession === 'function'
+        ? shouldPersistCurrentSession()
+        : !state.currentUser?.supportMode;
+      if (shouldPersistSession) {
+        SESSION.set({ ...state.currentUser, clubName: nextClub.name, clubCrest: nextClub.crest || null, clubCrestDesign: nextClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? nextClub.inviteCode || null : null, clubMatchWeekday: nextClub.matchWeekday, clubMatchTime: nextClub.matchTime, clubMatchVenue: nextClub.matchVenue, clubMatchAddress: nextClub.matchAddress });
+      }
       renderClubIdentity();
     }
     const tabName = getActiveTabName();
     if (tabName==='inicio') renderHub();
     if (tabName==='jugadores') renderPlayers();
     if (tabName==='asistencia') renderAttendance();
-    if (tabName==='admin') renderAdmin();
+    if (tabName==='calificar') renderRate();
+    // No reemplazar los inputs del administrador a mitad de una edición. El
+    // estado remoto sí se actualiza y se renderizará al guardar/cancelar o al
+    // volver a abrir la pestaña.
+    if (tabName==='admin' && !(typeof isAdminEditingDraft === 'function' && isAdminEditingDraft())) renderAdmin();
     if (tabName==='partidos') renderPartidos();
     if (tabName==='goleadores') renderGoleadoresTab();
     if (tabName==='posiciones') renderRanking();
@@ -75,6 +108,22 @@ document.addEventListener('keydown', e => {
     }
     if (document.getElementById('modal-action-confirm')?.classList.contains('open')) {
       cancelAppActionConfirmation();
+      return;
+    }
+    if (document.getElementById('modal-club-confirm')?.classList.contains('open')) {
+      cancelClubConfirmation();
+      return;
+    }
+    if (document.getElementById('modal-admin-password')?.classList.contains('open')) {
+      cancelAdminPasswordDialog();
+      return;
+    }
+    if (document.getElementById('modal-delete-player')?.classList.contains('open')) {
+      cancelPlayerRemoval();
+      return;
+    }
+    if (document.getElementById('modal-crest-designer')?.classList.contains('open')) {
+      toggleClubCrestDesigner(false);
       return;
     }
     document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));

@@ -27,6 +27,8 @@
   transition:transform .26s cubic-bezier(.16,1,.3,1);
 }
 .fifa-card:hover,#tab-jugadores .fifa-card:hover{transform:translateY(-7px)}
+.fifa-card.is-historical{cursor:default}
+.fifa-card.is-historical:hover,#tab-jugadores .fifa-card.is-historical:hover{transform:none}
 .fifa-card:focus-visible{outline:3px solid var(--cyan,#62d8ff);outline-offset:3px;transform:translateY(-4px)}
 
 /* El tier elige el escudo */
@@ -227,19 +229,13 @@
 .fifa-card.silver .fifa-medal.is-assist,.fifa-card.gold .fifa-medal.is-assist,
 .fifa-card.card-hot .fifa-medal.is-assist,.fifa-card.card-mvp .fifa-medal.is-assist{background:rgba(205,185,255,.72)}
 
-/* Las versiones reducidas priorizan lo que sí puede leerse. Los podios ya
-   muestran la métrica afuera; las miniaturas no intentan meter seis stats. */
-.fifa-card.card-podium,.fifa-card.card-thumbnail,
-.hub-live-card-frame .fifa-card,
-.leaderboard-card-visual .fifa-card,
-.leaderboard-list-card-visual .fifa-card{grid-template-rows:15% 37% 10% 21% 17%}
-.fifa-card.card-podium .fifa-meta,.fifa-card.card-podium .fifa-card-stats,
-.fifa-card.card-thumbnail .fifa-meta,.fifa-card.card-thumbnail .fifa-card-stats,
-.hub-live-card-frame .fifa-meta,
-.hub-live-card-frame .fifa-card-stats,
-.leaderboard-card-visual .fifa-meta,
-.leaderboard-card-visual .fifa-card-stats,
-.leaderboard-list-card-visual .fifa-card-stats{display:none}
+/* El podio conserva la ficha completa. La métrica exterior explica por qué
+   fue destacado, pero no reemplaza sus atributos ni su récord. Sólo las
+   miniaturas del listado reducen densidad porque allí todos los datos viven
+   al costado de la carta. */
+.fifa-card.card-podium,.fifa-card.card-thumbnail{grid-template-rows:15% 37% 10% 21% 17%}
+.fifa-card.card-thumbnail .fifa-meta,
+.fifa-card.card-thumbnail .fifa-card-stats{display:none}
 .fifa-card.card-podium .fifa-card-name,
 .hub-live-card-frame .fifa-card-name,
 .leaderboard-card-visual .fifa-card-name{grid-row:3;font-size:8.5cqw;padding-inline:12%}
@@ -249,12 +245,13 @@
 .fifa-card.card-podium .fifa-card-name.is-very-long,
 .hub-live-card-frame .fifa-card-name.is-very-long,
 .leaderboard-card-visual .fifa-card-name.is-very-long{font-size:5.8cqw;letter-spacing:.015em}
+.fifa-card.card-podium .fifa-card-stat{font-size:4.8cqw;gap:1.25cqw}
+.fifa-card.card-podium .fifa-card-stat span:first-child{font-size:7.6cqw}
+.fifa-card.card-podium .fifa-card-stat.best span:first-child{font-size:7.9cqw}
 .fifa-card.card-thumbnail .fifa-card-name,
 .leaderboard-list-card-visual .fifa-card-name{display:none}
 .fifa-card.card-podium .fifa-card-pos,
 .hub-live-card-frame .fifa-card-pos{min-width:0;width:100%}
-.fifa-card.card-podium .fifa-card-tier,
-.hub-live-card-frame .fifa-card-tier{display:none}
 .fifa-card.card-podium .fifa-card-portrait,
 .hub-live-card-frame .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.3),0 3px 7px rgba(0,0,0,.38)}
 .fifa-card.card-thumbnail .fifa-top,.fifa-card.card-thumbnail .fifa-card-portrait,
@@ -266,6 +263,7 @@
 .leaderboard-list-card-visual .fifa-card-tier{display:none}
 .fifa-card.card-thumbnail .fifa-card-portrait,
 .leaderboard-list-card-visual .fifa-card-portrait{box-shadow:0 0 0 1px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.3),0 3px 7px rgba(0,0,0,.38)}
+.fifa-card-stat.is-missing span:first-child{opacity:.62}
 
 
 /* ===== LEYENDA DE MARCOS =============================================

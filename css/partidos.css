@@ -49,3 +49,14 @@
 .rank-pts b{font-family:'Bebas Neue',sans-serif;font-size:23px;color:var(--gold);display:block;line-height:1}
 .rank-pts span{font-size:9px;color:var(--muted);text-transform:uppercase}
 .rank-header{display:flex;align-items:center;gap:10px;padding:2px 14px 10px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+
+@media (max-width:480px){
+  .rank-header{display:none}
+  .rank-row{display:grid;grid-template-columns:28px minmax(0,1fr) 44px;align-items:start;gap:7px 8px;padding:10px}
+  .rank-pos{grid-column:1;grid-row:1;width:auto;align-self:center}
+  .rank-name{grid-column:2;grid-row:1;align-self:center;overflow:hidden;font-size:13px;line-height:1.2}
+  .rank-sub{gap:2px;margin-top:5px}
+  .rank-cells{grid-column:1/3;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(30px,1fr));gap:3px;padding:7px 0 0 36px;border-top:1px solid rgba(166,205,234,.12)}
+  .rank-cell{width:auto}
+  .rank-pts{grid-column:3;grid-row:1/3;align-self:center;width:auto}
+}

@@ -52,6 +52,14 @@ function renderGoleadoresTab() {
   const totalGoals = tracked.reduce((sum, match) => sum + matchTotalGoals(match), 0);
   const rows = statsPlayers(scope).filter(row => row.goals > 0)
     .sort((a,b) => b.goals - a.goals || goalsPerGame(b) - goalsPerGame(a) || a.p.name.localeCompare(b.p.name));
+  const rankedGoals = rows.reduce((sum, row) => sum + row.goals, 0);
+  const rankedIds = new Set(rows.map(row => row.p.id));
+  const guestGoals = tracked.reduce((total, match) => total + Object.entries(getGoals(match))
+    .filter(([id]) => !id.startsWith('__t') && !rankedIds.has(id))
+    .reduce((sum, [,goals]) => sum + goals, 0), 0);
+  const unassignedGoals = tracked.reduce((total, match) => total + Object.entries(getGoals(match))
+    .filter(([id]) => id.startsWith('__t'))
+    .reduce((sum, [,goals]) => sum + goals, 0), 0);
 
   if (!tracked.length || !rows.length) {
     el.innerHTML = `${periodButtons}<div class="empty-state"><div class="empty-state-icon">🥇</div><div>Todavía no hay goleadores para este período.</div><div style="font-size:12px;margin-top:6px">Los datos aparecen desde el primer partido con planilla de goles registrada.</div></div>`;
@@ -62,22 +70,25 @@ function renderGoleadoresTab() {
   const leader = rows[0];
   const runner = rows[1] || null;
   const rest = rows.slice(2);
-  const share = row => Math.round(row.goals / Math.max(1, totalGoals) * 100);
-  const cardRows = rest.map((row, index) => `<article class="leaderboard-list-card" onclick="openPlayerProfile('${row.p.id}')">
+  const share = row => Math.round(row.goals / Math.max(1, rankedGoals) * 100);
+  const cardRows = rest.map((row, index) => {
+    const canOpen = isCurrentRosterPlayer(row.p);
+    return `<article class="leaderboard-list-card${canOpen ? '' : ' is-historical'}"${canOpen ? ` ${typeof profileRowAttributes === 'function' ? profileRowAttributes(row.p) : ''}` : ` aria-label="${escapeHtml(row.p.name)} · jugador histórico"`}>
     <div class="leaderboard-list-rank">${index + 3}</div>
-    <div class="leaderboard-list-card-visual">${typeof renderFifaCard === 'function' ? renderFifaCard(row.p, highlights, 'thumbnail', row) : ''}</div>
+    <div class="leaderboard-list-card-visual">${typeof renderFifaCard === 'function' ? renderFifaCard(row.p, highlights, 'thumbnail', row, false) : ''}</div>
     <div class="leaderboard-list-copy"><b>${escapeHtml(row.p.name)}</b><span>${row.goalPj} PJ con planilla · ${share(row)}% de los goles</span></div>
     <div class="leaderboard-list-metrics"><strong>${row.goals}</strong><span>GOLES</span><b>${goalsPerGame(row).toFixed(2)} G/PJ</b></div>
-  </article>`).join('');
+  </article>`;
+  }).join('');
 
   el.innerHTML = `${periodButtons}
     <section class="leaderboard-page scorer-page">
-      <header class="leaderboard-page-head"><div><span>RANKING OFENSIVO</span><h2>GOLEADORES</h2><p>${tracked.length} partidos con planilla · ${totalGoals} goles registrados</p></div><div class="leaderboard-page-total"><b>${leader.goals}</b><span>Goles del líder</span></div></header>
+      <header class="leaderboard-page-head"><div><span>RANKING OFENSIVO</span><h2>GOLEADORES</h2><p>${tracked.length} partidos con planilla · ${rankedGoals} goles de jugadores${guestGoals || unassignedGoals ? ` · ${guestGoals + unassignedGoals} invitados/sin autor` : ''}</p></div><div class="leaderboard-page-total"><b>${leader.goals}</b><span>Goles del líder</span></div></header>
       <div class="leaderboard-podium scorer-podium">
         ${leaderboardCard(leader, '1°', 'MÁXIMO GOLEADOR', leader.goals, 'GOLES', `${goalsPerGame(leader).toFixed(2)} G/PJ · ${leader.goalPj} PJ REG.`, highlights, 'is-champion')}
         ${runner ? leaderboardCard(runner, '2°', 'SEGUNDO GOLEADOR', runner.goals, 'GOLES', `${goalsPerGame(runner).toFixed(2)} G/PJ · ${runner.goalPj} PJ REG.`, highlights, 'is-runner') : ''}
       </div>
       ${rest.length ? `<div class="leaderboard-list-title"><span>Resto del ranking</span><b>${rest.length} jugador${rest.length === 1 ? '' : 'es'}</b></div><div class="leaderboard-list-grid">${cardRows}</div>` : ''}
-      <p class="leaderboard-note">El promedio se calcula únicamente con los partidos donde existe planilla de goles. Los partidos anteriores no alteran G/PJ.</p>
+      <p class="leaderboard-note">El promedio se calcula únicamente con los partidos donde existe planilla de goles. La participación usa los ${rankedGoals} goles de jugadores actuales o históricos${guestGoals || unassignedGoals ? `; aparte hubo ${guestGoals} de invitados y ${unassignedGoals} sin autor` : ''}.</p>
     </section>`;
 }

@@ -4,14 +4,40 @@ let regPhotoData = null;
 let regPosPrimary = null;
 let regPosSecondary = null;
 let regRatingMode = 'field';
+let authAttemptGeneration = 0;
+
+function invalidateAuthAttempt() {
+  authAttemptGeneration++;
+}
+
+function resetRegisterForm() {
+  regPhotoData = null;
+  regPosPrimary = null;
+  regPosSecondary = null;
+  regRatingMode = 'field';
+  ['reg-name','reg-user','reg-pass'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.value = '';
+  });
+  const photoInput = document.getElementById('reg-photo-input');
+  if (photoInput) photoInput.value = '';
+  const preview = document.getElementById('reg-photo-preview');
+  if (preview) preview.textContent = '📷';
+  document.querySelectorAll('#reg-pos-primary .pos-btn,#reg-pos-secondary .pos-btn').forEach(button => button.classList.remove('selected'));
+  renderRegRatingMode();
+}
 
 function showLoginForm() {
+  invalidateAuthAttempt();
   document.getElementById('login-form-box').classList.remove('hidden');
   document.getElementById('register-form-box').classList.add('hidden');
   document.getElementById('forgot-form-box').classList.add('hidden');
   updateLoginClubContext();
 }
 async function showRegisterForm() {
+  const attemptGeneration = ++authAttemptGeneration;
+  const clubId = state.currentClub?.id;
+  if (!clubId) { showClubChooser(); return; }
   if (!state.currentClub?.inviteCode) {
     const codeInput = document.getElementById('login-invite-code');
     const code = safePlainText(codeInput?.value, 16).toUpperCase().replace(/[^A-Z0-9-]/g, '');
@@ -24,7 +50,8 @@ async function showRegisterForm() {
     }
     try {
       const data = await callRpc('fulbito_lookup_club', { p_invite_code: code });
-      if (!data || data.id !== state.currentClub.id) throw new Error('Código inválido para este club');
+      if (attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId) return;
+      if (!data || data.id !== clubId) throw new Error('Código inválido para este club');
       state.currentClub = { ...state.currentClub, ...mapClubBrand(data, state.currentClub), inviteCode: code };
       const known = state.clubs.find(club => club.id === state.currentClub.id);
       if (known) Object.assign(known, state.currentClub);
@@ -32,6 +59,7 @@ async function showRegisterForm() {
       updateLoginClubContext();
       errEl.style.display = 'none';
     } catch (_) {
+      if (attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId) return;
       errEl.textContent = 'El código no es válido para el club seleccionado. Pedíselo al administrador.';
       errEl.style.display = 'block';
       codeInput?.focus();
@@ -43,6 +71,7 @@ async function showRegisterForm() {
   document.getElementById('forgot-form-box').classList.add('hidden');
 }
 function showForgotForm() {
+  invalidateAuthAttempt();
   document.getElementById('login-form-box').classList.add('hidden');
   document.getElementById('register-form-box').classList.add('hidden');
   document.getElementById('forgot-form-box').classList.remove('hidden');
@@ -50,6 +79,8 @@ function showForgotForm() {
 
 async function doLogin() {
   if (!state.currentClub) { showClubChooser(); return; }
+  const clubId = state.currentClub.id;
+  const attemptGeneration = ++authAttemptGeneration;
   const userInput = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
@@ -57,12 +88,14 @@ async function doLogin() {
   if (!userInput || !pass) { errEl.textContent = 'Ingresá usuario y contraseña.'; errEl.style.display = 'block'; return; }
   try {
     const data = await callRpc('fulbito_login_player', {
-      p_club_id: state.currentClub.id,
+      p_club_id: clubId,
       p_username: userInput,
       p_password: pass
     });
-    await openAuthorizedPlayer(data);
+    if (attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId) return;
+    await openAuthorizedPlayer(data, { clubId, attemptGeneration });
   } catch (_) {
+    if (attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId) return;
     // El servidor devuelve el mismo mensaje para usuario y contraseña para no revelar cuentas.
     errEl.innerHTML = 'Usuario o contraseña incorrectos. <a href="#" onclick="showForgotForm();return false" style="color:var(--gold)">¿La olvidaste?</a>';
     errEl.style.display = 'block';
@@ -71,6 +104,8 @@ async function doLogin() {
 
 async function doRegister() {
   if (!state.currentClub) { showClubChooser(); return; }
+  const clubId = state.currentClub.id;
+  const attemptGeneration = ++authAttemptGeneration;
   const name = document.getElementById('reg-name').value.trim();
   const user = document.getElementById('reg-user').value.trim().toLowerCase();
   const pass = document.getElementById('reg-pass').value;
@@ -92,25 +127,40 @@ async function doRegister() {
       p_rating_mode: regRatingMode,
       p_photo: regPhotoData || null
     });
-    await openAuthorizedPlayer(data);
+    if (attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId) return;
+    await openAuthorizedPlayer(data, { clubId, attemptGeneration });
   } catch (error) {
+    if (attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId) return;
     errEl.textContent = error.message || 'No se pudo crear la cuenta.';
     errEl.style.display = 'block';
   }
 }
 
-async function openAuthorizedPlayer(data) {
+async function openAuthorizedPlayer(data, { clubId = state.currentClub?.id, attemptGeneration = authAttemptGeneration } = {}) {
+  if (!clubId || attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId) return false;
+  resetTeamDraftState();
   const player = mapPlayers([data])[0];
   state.supportMode = false;
   state.supportHome = null;
-  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, isPlatformAdmin: !!data.is_platform_admin, clubId: state.currentClub.id };
+  state.currentUser = { id: player.id, username: player.username, name: player.name, isAdmin: !!player.isAdmin, isPlatformAdmin: !!data.is_platform_admin, clubId };
   SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubCrestDesign: state.currentClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? state.currentClub.inviteCode || null : null });
-  state.players = await loadPlayers(state.currentClub.id);
-  matches = await loadMatches(state.currentClub.id);
+  const [authorizedPlayers, savedMatches] = await Promise.all([
+    loadPlayers(clubId),
+    loadMatches(clubId)
+  ]);
+  if (attemptGeneration !== authAttemptGeneration || state.currentClub?.id !== clubId || state.currentUser?.id !== player.id) return false;
+  state.players = authorizedPlayers === null ? [] : authorizedPlayers;
+  // Al iniciar sesión no reutilizamos partidos de otro club. Si la lectura
+  // falla, la pantalla arranca vacía y el auto-sync puede recuperarla.
+  matches = savedMatches === null ? [] : savedMatches;
   showApp();
+  return true;
 }
 
 async function doLogout() {
+  invalidateAuthAttempt();
+  resetTeamDraftState();
+  resetRegisterForm();
   state.currentUser = null;
   SESSION.del();
   stopSync();

@@ -59,6 +59,9 @@ function showClubLanding() {
 }
 
 async function showClubChooser() {
+  if (typeof clubSelectionGeneration === 'number') clubSelectionGeneration++;
+  if (typeof invalidateAuthAttempt === 'function') invalidateAuthAttempt();
+  resetTeamDraftState();
   SESSION.del();
   state.currentUser = null;
   state.currentClub = null;
@@ -103,7 +106,7 @@ async function createClub() {
   success.innerHTML = `
     <p class="club-create-note">¡Listo! Compartí este código con tu grupo para que entren al espacio correcto.</p>
     <div class="club-code-reveal">${escapeHtml(club.inviteCode)}</div>
-    <button class="btn-login" onclick="selectClub('${club.id}')">CONTINUAR Y CREAR MI CUENTA</button>
+    <button class="btn-login" onclick="selectNewClubForRegistration('${club.id}')">CONTINUAR Y CREAR MI CUENTA</button>
     <div class="login-divider"></div>
     <button class="btn-register" onclick="showClubChooser()">Volver a mis clubes</button>`;
   success.classList.remove('hidden');
@@ -138,6 +141,11 @@ async function joinClubByCode() {
   await selectClub(club.id);
 }
 
+async function selectNewClubForRegistration(clubId) {
+  await selectClub(clubId);
+  await showRegisterForm();
+}
+
 const APP_LOADER_MINIMUM_MS = 420;
 const appBootStartedAt = performance.now();
 
@@ -162,12 +170,16 @@ function updateLoginClubContext() {
   if (codeInput) codeInput.value = state.currentClub.inviteCode || '';
 }
 
+let clubSelectionGeneration = 0;
+
 async function selectClub(clubId, { restoreSession = false } = {}) {
   const club = state.clubs.find(item => item.id === clubId);
   if (!club) {
     showClubError('No pudimos abrir ese club. Actualizá e intentá de nuevo.');
     return;
   }
+  const selectionGeneration = ++clubSelectionGeneration;
+  resetTeamDraftState();
   state.currentClub = club;
   KNOWN_CLUBS.remember(club);
   state.supportMode = false;
@@ -179,12 +191,25 @@ async function selectClub(clubId, { restoreSession = false } = {}) {
   const saved = SESSION.get();
   const savedClubId = saved?.clubId || (saved ? LEGACY_CLUB_ID : null);
   if (restoreSession && saved && savedClubId === club.id) {
-    let player = null;
-    try { player = await callRpc('fulbito_get_my_player', { p_club_id: club.id }); } catch (_) { player = null; }
+    const accessSnapshot = await loadCurrentPlayerAccess(club.id);
+    if (selectionGeneration !== clubSelectionGeneration || state.currentClub?.id !== club.id) return;
+    if (!accessSnapshot.ok) {
+      showScreen('screen-login');
+      showLoginForm();
+      const error = document.getElementById('login-error');
+      if (error) {
+        error.textContent = 'No pudimos validar tu sesión guardada. Revisá la conexión e intentá nuevamente.';
+        error.style.display = 'block';
+      }
+      return;
+    }
+    const player = accessSnapshot.player;
     if (player) {
       const mapped = mapPlayers([player])[0];
       state.currentUser = { id: mapped.id, username: mapped.username, name: mapped.name, isAdmin: !!mapped.isAdmin, isPlatformAdmin: !!player.is_platform_admin, clubId: club.id };
-      state.players = await loadPlayers(club.id);
+      const restoredPlayers = await loadPlayers(club.id);
+      if (selectionGeneration !== clubSelectionGeneration || state.currentClub?.id !== club.id || state.currentUser?.id !== mapped.id) return;
+      state.players = restoredPlayers === null ? [] : restoredPlayers;
       SESSION.set({ ...state.currentUser, clubName: club.name, clubCrest: club.crest || null, clubCrestDesign: club.crestDesign || null, clubInviteCode: mapped.isAdmin ? club.inviteCode || null : null });
       showApp();
       return;
@@ -239,12 +264,45 @@ async function init() {
 
 async function refreshPlayers() {
   showToast('⏳ Actualizando...');
-  state.players = await loadPlayers();
-  matches = await loadMatches();
+  const clubId = state.currentClub?.id;
+  const userId = state.currentUser?.id;
+  if (!clubId || !userId) return;
+  const goalWriteGeneration = typeof _goalWriteGeneration === 'number' ? _goalWriteGeneration : null;
+  const goalWritesWerePending = typeof _goalWritesPending === 'number' && _goalWritesPending > 0;
+  const appMutationBarrier = typeof captureAppMutationBarrier === 'function'
+    ? captureAppMutationBarrier()
+    : null;
+  const accessRead = state.currentUser?.supportMode
+    ? Promise.resolve(null)
+    : loadCurrentPlayerAccess(clubId);
+  const [freshPlayers, freshMatches, accessSnapshot] = await Promise.all([
+    loadPlayers(clubId),
+    loadMatches(clubId),
+    accessRead
+  ]);
+  // El usuario puede cambiar de club mientras las tres lecturas están en
+  // vuelo. Una respuesta anterior jamás debe hidratar el contexto nuevo.
+  if (state.currentClub?.id !== clubId || state.currentUser?.id !== userId) return;
+  // La barrera protege el snapshot completo. Aplicar sólo el plantel de una
+  // respuesta vieja podía deshacer visualmente un cambio de rol, perfil o
+  // calificación aunque los partidos sí quedaran protegidos.
+  if (appMutationBarrier && typeof isAppMutationBarrierCurrent === 'function' &&
+      !isAppMutationBarrierCurrent(appMutationBarrier)) {
+    showToast('⏳ Hay cambios más recientes guardándose; conservamos la información actual');
+    return;
+  }
+  if (freshPlayers !== null) state.players = freshPlayers;
+  if (!reconcileCurrentUserAccess(freshPlayers, accessSnapshot)) return;
+  const goalStateStillCurrent = !goalWritesWerePending &&
+    (goalWriteGeneration === null || goalWriteGeneration === _goalWriteGeneration) &&
+    !(typeof _goalWritesPending === 'number' && _goalWritesPending > 0);
+  if (freshMatches !== null && goalStateStillCurrent) matches = freshMatches;
   renderHub();
   renderPlayers();
   renderAttendance();
-  showToast(`✅ ${state.players.length} jugadores cargados`);
+  showToast(freshPlayers === null
+    ? '⚠️ No se pudo actualizar el plantel; se conservan los datos anteriores'
+    : `✅ ${state.players.length} jugadores cargados`);
 }
 
 // ============================================================

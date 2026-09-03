@@ -118,6 +118,83 @@
       };
       document.getElementById('harness-result').textContent = JSON.stringify(window.__STATS_CHECKS__);
     }
+    if(new URLSearchParams(location.search).has('resetchecks')){
+      (async()=>{
+        const checks={};
+        let confirmations=[];
+        let upserts=0;
+        confirmAppAction=async options=>{confirmations.push(options);return true;};
+        upsertMatch=async match=>{upserts++;return true;};
+        state.currentUser.isAdmin=true;
+
+        matches[0].result={winner:0,winners:[0],margin:2,mvp:'p-scorer',goals:{'p-scorer':2},goalEvents:[{id:'e1',scorerId:'p-scorer',assistType:'individual',assistPlayerId:null},{id:'e2',scorerId:'p-scorer',assistType:'rebound',assistPlayerId:null}],goalsTracked:true,assistsTracked:true};
+        renderGoles();
+        checks.trackedResetButton=[...document.querySelectorAll('button')].some(button=>button.textContent.includes('Reiniciar planilla'));
+        await resetGoals(matches[0].id);
+        checks.closedBecomesDraw=matches[0].result.winner==='draw'&&matches[0].result.margin===null&&JSON.stringify(matches[0].result.winners)==='[0,1]';
+        checks.closedBecomesZero=matchScoreStr(matches[0])==='0–0'&&Object.keys(matches[0].result.goals).length===0&&matches[0].result.goalEvents.length===0;
+        checks.confirmExplainsOutcome=/empate 0–0/i.test(confirmations[0]?.message||'')&&/0–0/.test(confirmations[0]?.confirmText||'');
+        checks.oneTrackedUpsert=upserts===1;
+
+        confirmations=[];
+        const beforeUpserts=upserts;
+        matches[0].result={winner:0,winners:[0],margin:1,mvp:null,goals:{},goalEvents:[],goalsTracked:false,assistsTracked:false};
+        renderGoles();
+        checks.noMarkerHasNoReset=[...document.querySelectorAll('button')].every(button=>!button.textContent.includes('Reiniciar'));
+        checks.noMarkerExplicitState=/PARTIDO CERRADO SIN MARCADOR/.test(document.getElementById('goles-content').textContent);
+        checks.noMarkerHasNoScoreboard=!document.querySelector('.score-board')&&!document.querySelector('.goal-btn');
+        checks.noMarkerHasCreateAction=[...document.querySelectorAll('button')].some(button=>button.textContent.includes('Crear planilla y reabrir'));
+        state.currentUser.isAdmin=false;
+        renderGoles();
+        checks.noMarkerPlayerCannotCreate=[...document.querySelectorAll('button')].every(button=>!button.textContent.includes('Crear planilla'));
+        state.currentUser.isAdmin=true;
+        await resetGoals(matches[0].id);
+        checks.noMarkerDirectCallBlocked=confirmations.length===0&&upserts===beforeUpserts&&matches[0].result.winner===0&&matches[0].result.goalsTracked===false;
+        await startGoalSheetForClosedMatch(matches[0].id);
+        checks.createSheetExplainsReopen=/volverá a quedar abierto/i.test(confirmations[0]?.message||'')&&/ganador actual se quitará/i.test(confirmations[0]?.message||'');
+        checks.createSheetReopens=matches[0].result.winner===null&&matches[0].result.margin===null&&matches[0].result.goalsTracked===true&&matches[0].result.assistsTracked===true;
+        checks.createSheetShowsBoard=!!document.querySelector('.score-board')&&document.querySelectorAll('.goal-btn').length>0;
+        checks.createSheetOneUpsert=upserts===beforeUpserts+1;
+
+        window.__RESET_CHECKS__=checks;
+        document.getElementById('harness-result').dataset.checks=JSON.stringify(checks);
+        const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);
+        document.getElementById('harness-result').textContent=failed.length?`FAIL RESET: ${failed.join(', ')}`:'PASS RESET';
+      })().catch(error=>{document.getElementById('harness-result').textContent=`FAIL RESET: ${error.message}`;});
+    }
+    if(new URLSearchParams(location.search).has('refreshchecks')){
+      (async()=>{
+        const checks={};
+        matches=Array.from({length:15},(_,index)=>({
+          id:`m-${String(index+1).padStart(2,'0')}`,
+          match_date:`2026-08-${String(index+1).padStart(2,'0')}`,
+          created_at:`2026-08-${String(index+1).padStart(2,'0')}T20:00:00Z`,
+          teams:structured(serverMatches[0].teams),
+          result:{winner:null,margin:null,mvp:null,goals:{},goalEvents:[],goalsTracked:true,assistsTracked:true}
+        }));
+        renderGoles();
+        const optionValues=[...document.querySelectorAll('.goles-select option')].map(option=>option.value);
+        checks.selectorShowsAll=optionValues.length===15;
+        checks.selectorNewestFirst=optionValues[0]==='m-15'&&optionValues.at(-1)==='m-01';
+
+        let lastToast='';
+        showToast=message=>{lastToast=message;};
+        const cachedIds=matches.map(match=>match.id).join(',');
+        loadMatches=async()=>null;
+        await refreshGoles();
+        checks.failedReadKeepsCache=matches.map(match=>match.id).join(',')===cachedIds;
+        checks.failedReadNoSuccess=!/Planilla actualizada/.test(lastToast)&&/No se pudo actualizar/.test(lastToast);
+
+        loadMatches=async()=>[];
+        await refreshGoles();
+        checks.emptySuccessClears=matches.length===0&&/Planilla actualizada/.test(lastToast);
+
+        window.__REFRESH_CHECKS__=checks;
+        document.getElementById('harness-result').dataset.checks=JSON.stringify(checks);
+        const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);
+        document.getElementById('harness-result').textContent=failed.length?`FAIL REFRESH: ${failed.join(', ')}`:'PASS REFRESH';
+      })().catch(error=>{document.getElementById('harness-result').textContent=`FAIL REFRESH: ${error.message}`;});
+    }
   </script>
 </body>
 </html>

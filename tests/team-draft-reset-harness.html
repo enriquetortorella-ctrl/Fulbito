@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Team draft reset harness</title>
+</head>
+<body>
+  <div id="guests-list">INVITADO DEL CLUB ANTERIOR</div>
+  <div id="teams-result">EQUIPOS DEL CLUB ANTERIOR</div>
+  <output id="result">RUNNING</output>
+
+  <script>
+    const state = { builtTeams: [{ players: [{ id: 'old-player' }] }], teamsEditMode: true };
+  </script>
+  <script src="../js/tabs/equipos.js"></script>
+  <script>
+    guests = [{ id: 'guest_1234567890123', name: 'Invitado anterior' }];
+    guestStats = { ritmo: 5 };
+    lastSeed = 1234;
+
+    resetTeamDraftState();
+
+    const checks = {
+      builtTeams: state.builtTeams === null,
+      editMode: state.teamsEditMode === false,
+      guests: guests.length === 0,
+      guestStats: Object.keys(guestStats).length === 0,
+      seed: lastSeed === 0,
+      guestsDom: document.getElementById('guests-list').innerHTML === '',
+      teamsDom: document.getElementById('teams-result').innerHTML === ''
+    };
+    const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+    const output = document.getElementById('result');
+    output.textContent = failed.length ? `FAIL: ${failed.join(', ')}` : 'PASS';
+    output.dataset.checks = JSON.stringify(checks);
+  </script>
+</body>
+</html>

@@ -1,5 +1,30 @@
 // RATE TAB
 // ============================================================
+const _ratingWriteQueues = new Map();
+let _ratingWritesPending = 0;
+let _ratingWriteGeneration = 0;
+
+function hasCompleteRating(player, voterId) {
+  const rating = player?.ratings?.[voterId];
+  return !!rating && getRatingStats(player).every(stat => getStatValue(rating, stat) > 0);
+}
+
+function enqueuePlayerRatingWrite(playerId, task) {
+  _ratingWritesPending++;
+  _ratingWriteGeneration++;
+  const previous = _ratingWriteQueues.get(playerId) || Promise.resolve();
+  const operation = previous.then(task, task);
+  // La cola almacenada nunca rechaza: un error de una estrella no debe impedir
+  // que el siguiente toque del mismo jugador pueda guardarse.
+  const tail = operation.catch(() => undefined);
+  _ratingWriteQueues.set(playerId, tail);
+  tail.finally(() => {
+    _ratingWritesPending--;
+    if (_ratingWriteQueues.get(playerId) === tail) _ratingWriteQueues.delete(playerId);
+  });
+  return operation;
+}
+
 function renderRate() {
   const list = document.getElementById('rate-list');
   if (state.currentUser?.supportMode) {
@@ -18,7 +43,7 @@ function renderRate() {
 
   list.innerHTML = toRate.map((p, idx) => {
     const myRating = p.ratings?.[myId] || {};
-    const hasVoted = Object.keys(myRating).length > 0;
+    const hasVoted = hasCompleteRating(p, myId);
     const playerStats = getRatingStats(p);
     const statsHTML = playerStats.map(s => {
       const val = getStatValue(myRating, s);
@@ -32,7 +57,7 @@ function renderRate() {
     return `<div class="rate-player">
       <div class="rate-player-header" onclick="toggleRatePlayer('${p.id}')">
         <div style="font-size:24px">${posEmoji(getEffectivePosition(p))}</div>
-        <div class="rate-player-name">${p.name}</div>
+        <div class="rate-player-name">${escapeHtml(p.name)}</div>
         ${hasVoted?`<div class="rate-player-voted">✓ Votado</div>`:''}
         <div style="font-size:12px;color:var(--muted)">▼</div>
       </div>
@@ -49,31 +74,47 @@ function toggleRatePlayer(id) {
 async function rateStat(playerId, stat, val) {
   if (state.currentUser?.supportMode) { showToast('🛡️ El soporte no puede emitir votos.'); return; }
   const myId = state.currentUser.id;
+  const clubId = state.currentClub?.id;
   if (playerId === myId) { showToast('⚠️ No podés calificarte a vos mismo.'); return; }
-  const p = state.players.find(x=>x.id===playerId);
-  if (!p) return;
+  const initialPlayer = state.players.find(x=>x.id===playerId);
+  if (!initialPlayer || !getRatingStats(initialPlayer).includes(stat)) return;
   try {
-    const data = await callRpc('fulbito_rate_player', {
-      p_club_id: state.currentClub.id,
-      p_player_id: playerId,
-      // La RPC mantiene "atajadas" como nombre de almacenamiento heredado.
-      // En la app y para los jugadores, ATA es siempre Ataque.
-      p_stat: stat === 'ataque' ? 'atajadas' : stat,
-      p_value: val
+    await enqueuePlayerRatingWrite(playerId, async () => {
+      if (state.currentUser?.id !== myId || state.currentClub?.id !== clubId) {
+        throw new Error('Cambió la sesión antes de guardar la calificación.');
+      }
+      const currentPlayer = state.players.find(x => x.id === playerId);
+      if (!currentPlayer || !getRatingStats(currentPlayer).includes(stat)) {
+        throw new Error('Ese atributo ya no corresponde al jugador.');
+      }
+      const data = await callRpc('fulbito_rate_player', {
+        p_club_id: clubId,
+        p_player_id: playerId,
+        // La RPC mantiene "atajadas" como nombre de almacenamiento heredado.
+        // En la app y para los jugadores, ATA es siempre Ataque.
+        p_stat: stat === 'ataque' ? 'atajadas' : stat,
+        p_value: val
+      });
+      const saved = mapPlayers([data])[0];
+      // No mostramos un éxito optimista: la respuesta debe traer la estrella
+      // recién guardada. Así una falla del servidor no queda disimulada en pantalla.
+      if (!saved || getStatValue(saved.ratings?.[myId], stat) !== val) {
+        throw new Error('La calificación no quedó confirmada. Actualizá la app e intentá de nuevo.');
+      }
+      const activePlayer = state.players.find(x => x.id === playerId);
+      if (state.currentUser?.id === myId && state.currentClub?.id === clubId && activePlayer) {
+        Object.assign(activePlayer, saved);
+      }
     });
-    const saved = mapPlayers([data])[0];
-    // No mostramos un éxito optimista: la respuesta debe traer la estrella
-    // recién guardada. Así una falla del servidor no queda disimulada en pantalla.
-    if (!saved || getStatValue(saved.ratings?.[myId], stat) !== val) {
-      throw new Error('La calificación no quedó confirmada. Actualizá la app e intentá de nuevo.');
-    }
-    Object.assign(p, saved);
   } catch (error) { showToast(`❌ ${error.message}`); return; }
+  if (state.currentUser?.id !== myId || state.currentClub?.id !== clubId) return;
+  const p = state.players.find(x => x.id === playerId);
+  if (!p) return;
   const container = document.getElementById(`stars-${playerId}-${stat}`);
   if (container) {
     container.innerHTML = [1,2,3,4,5].map(n=>`<span class="star${n<=val?' lit':''}" onclick="rateStat('${playerId}','${stat}',${n})">★</span>`).join('');
   }
-  const hasAllStats = getRatingStats(p).every(s => getStatValue(p.ratings[myId], s) > 0);
+  const hasAllStats = hasCompleteRating(p, myId);
   const header = document.querySelector(`#rate-body-${playerId}`)?.previousElementSibling;
   if (header && hasAllStats) {
     let badge = header.querySelector('.rate-player-voted');
@@ -149,14 +190,14 @@ function exportVotesCSV() {
     const teamsStr = (m.teams||[]).map((t,i)=>`${TEAM_NAMES[i]}: ${(t.players||[]).map(p=>p.name).join(' / ')}`).join(' || ');
     let resStr = 'Pendiente', marginStr = '', mvpStr = '';
     if (isPlayed(m)) {
-      if (m.result.winner === 'draw') resStr = 'Empate';
-      else { resStr = 'Ganó ' + TEAM_NAMES[m.result.winner]; marginStr = marginLabel(m.result.margin); }
+      resStr = matchResultText(m);
+      if (matchWinnerIndices(m).length === 1) marginStr = marginLabel(m.result.margin);
       if (m.result.mvp) {
         const all = (m.teams||[]).flatMap(t=>t.players||[]);
         mvpStr = all.find(p=>p.id===m.result.mvp)?.name || '';
       }
     }
-    const scoreStr = matchHasGoals(m) ? matchScoreStr(m) : '';
+    const scoreStr = hasGoalsTracking(m) ? matchScoreStr(m) : '';
     const scorersStr = matchScorers(m).map(s => `${s.name} (${s.goals})`).join(' / ');
     const assistComplete = hasAssistsTracking(m);
     const assistEvents = getGoalEvents(m);
@@ -196,7 +237,7 @@ function exportVotesCSV() {
 }
 
 async function resetAllRatings() {
-  if (!state.currentUser?.isAdmin) { showToast('⚠️ Solo un admin puede borrar las calificaciones'); return; }
+  if (!(typeof canRunClubBulkActions === 'function' ? canRunClubBulkActions() : state.currentUser?.isAdmin)) { showToast('⚠️ Solo un admin puede borrar las calificaciones'); return; }
   if (!await confirmAppAction({ title: 'BORRAR CALIFICACIONES', message: 'Se borrarán todas las calificaciones del club. Esta acción no se puede deshacer.', confirmText: 'Sí, borrar', danger: true })) return;
   try {
     await callRpc('fulbito_clear_ratings', { p_club_id: state.currentClub.id });

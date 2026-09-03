@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Storage and sync harness</title>
+</head>
+<body>
+  <div id="conn-dot"></div>
+  <output id="result">RUNNING</output>
+  <script>
+    function safePlainText(value, maxLength = 80) { return String(value ?? '').slice(0, maxLength); }
+    const state = {
+      currentClub: { id:'club-test', name:'Nombre anterior', crest:null, crestDesign:null, matchWeekday:null, matchTime:null, matchVenue:null, matchAddress:null },
+      currentUser: { id:'admin', isAdmin:true },
+      players: [{ id:'cached', name:'Jugador en caché' }]
+    };
+    let playerResponse = 'error';
+    let matchResponse = [];
+    async function callRpc(name) {
+      if (name === 'fulbito_get_players') {
+        if (playerResponse === 'error') throw new Error('Falla simulada de jugadores');
+        if (playerResponse === 'invalid') return { unexpected:true };
+        return playerResponse;
+      }
+      if (name === 'fulbito_get_matches') return matchResponse;
+      if (name === 'fulbito_get_club_brand') return { id:'club-test', name:'Nombre remoto', crest:null };
+      throw new Error(`RPC inesperada: ${name}`);
+    }
+    let syncCallback = null;
+    window.setInterval = callback => { syncCallback = callback; return 1; };
+    window.clearInterval = () => {};
+    let renderCount = 0;
+    function getActiveTabName() { return 'inicio'; }
+    function renderHub() { renderCount++; }
+    function renderPlayers() {}
+    function renderAttendance() {}
+    function renderAdmin() {}
+    function renderPartidos() {}
+    function renderGoleadoresTab() {}
+    function renderRanking() {}
+    function renderStats() {}
+    function renderGoles() {}
+    function renderClubIdentity() {}
+    function cancelGoalAssist() {}
+    function cancelAppActionConfirmation() {}
+    function closeModal() {}
+    function sameClubCrestDesign(a,b) { return JSON.stringify(a) === JSON.stringify(b); }
+    function showToast() {}
+    let _goalSaveTimer = null;
+    let _goalWritesPending = 0;
+    let _goalWriteGeneration = 0;
+    let _goalReadGeneration = 0;
+  </script>
+  <script src="../js/storage.js"></script>
+  <script src="../js/sync.js"></script>
+  <script>
+    (async () => {
+      const checks = {};
+      checks.errorIsNull = await loadPlayers('club-test') === null;
+      playerResponse = 'invalid';
+      checks.invalidIsNull = await loadPlayers('club-test') === null;
+      playerResponse = [];
+      const empty = await loadPlayers('club-test');
+      checks.validEmptyIsArray = Array.isArray(empty) && empty.length === 0;
+
+      playerResponse = 'error';
+      matchResponse = [];
+      state.players = [{ id:'cached', name:'Jugador en caché' }];
+      matches = [{ id:'stale-match' }];
+      await startSync();
+      await syncCallback();
+      checks.playerErrorPreservesCache = state.players.length === 1 && state.players[0].id === 'cached';
+      checks.playerErrorDoesNotBlockMatches = matches.length === 0;
+      checks.playerErrorDoesNotBlockBrand = state.currentClub.name === 'Nombre remoto';
+      checks.playerErrorStillRenders = renderCount > 0;
+
+      playerResponse = [];
+      await syncCallback();
+      checks.validEmptyClearsPlayers = state.players.length === 0;
+
+      stopSync();
+      const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+      const output = document.getElementById('result');
+      output.textContent = failed.length ? `FAIL: ${failed.join(', ')}` : 'PASS';
+      output.dataset.checks = JSON.stringify(checks);
+    })().catch(error => {
+      document.getElementById('result').textContent = `FAIL: ${error.message}`;
+    });
+  </script>
+</body>
+</html>

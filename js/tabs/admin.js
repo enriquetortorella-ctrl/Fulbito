@@ -4,10 +4,62 @@ let clubBrandDraftCrest;
 let clubBrandDraftDesign;
 let clubBrandDraftName = '';
 let clubBrandDraftClubId = null;
+let clubAdminDraftSupportMode = null;
 let clubCrestDesignerOpen = false;
 let clubCrestDesign = null;
 let clubInviteEditorOpen = false;
+let clubInviteDraftCode = '';
+let clubBrandDraftDirty = false;
+let clubScheduleDraft = null;
+let clubScheduleDraftDirty = false;
 let pendingClubScheduleUpdate = null;
+
+function resetClubAdminDrafts(clubId = state.currentClub?.id || null) {
+  clubBrandDraftClubId = clubId;
+  clubAdminDraftSupportMode = !!state.currentUser?.supportMode;
+  clubBrandDraftCrest = undefined;
+  clubBrandDraftDesign = undefined;
+  clubBrandDraftName = '';
+  clubBrandDraftDirty = false;
+  clubCrestDesignerOpen = false;
+  clubCrestDesign = null;
+  clubInviteEditorOpen = false;
+  clubInviteDraftCode = '';
+  clubScheduleDraft = null;
+  clubScheduleDraftDirty = false;
+}
+
+function canManageClubAccounts() {
+  return !!state.currentUser?.isAdmin && !state.currentUser?.supportMode;
+}
+
+function canRunClubBulkActions() {
+  return !!state.currentUser?.isAdmin && !!state.currentClub?.id;
+}
+
+// El auto-sync puede actualizar el estado remoto, pero no debe reconstruir el
+// formulario mientras el administrador escribe. Los borradores quedan en el
+// DOM hasta que el usuario los guarde o cambie de club.
+function isAdminEditingDraft() {
+  const active = document.activeElement;
+  const editorFocused = !!active?.closest?.('#club-admin-info') && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName);
+  return editorFocused || clubBrandDraftDirty || clubInviteEditorOpen || clubScheduleDraftDirty ||
+    clubCrestDesignerOpen || !!pendingClubIdentityUpdate || !!pendingClubInviteCode || !!pendingClubScheduleUpdate;
+}
+
+function trackClubInviteDraft(value) {
+  clubInviteDraftCode = safePlainText(value, 16).toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16);
+}
+
+function trackClubScheduleDraft() {
+  clubScheduleDraft = {
+    weekday: document.getElementById('club-match-weekday')?.value ?? '',
+    time: document.getElementById('club-match-time')?.value || '',
+    venue: safePlainText(document.getElementById('club-match-venue')?.value || '', 80),
+    address: safePlainText(document.getElementById('club-match-address')?.value || '', 140)
+  };
+  clubScheduleDraftDirty = true;
+}
 
 function clubBrandPreviewHTML(crest, name) {
   const imageUrl = safeClubCrestUrl(crest);
@@ -21,14 +73,18 @@ function clubMatchScheduleEditorHTML(isSupport) {
   if (isSupport) {
     return `<div class="club-match-schedule is-readonly"><div><b>📅 Partido semanal</b><span>${schedule ? `${escapeHtml(clubNextMatchText())} · ${escapeHtml(schedule.venue)}` : 'Este club todavía no configuró un día, horario y sede.'}</span></div></div>`;
   }
-  const weekdayOptions = CLUB_WEEKDAYS.map((label, value) => `<option value="${value}" ${schedule?.weekday === value ? 'selected' : ''}>${label.charAt(0).toUpperCase()}${label.slice(1)}</option>`).join('');
+  const draft = clubScheduleDraftDirty && clubScheduleDraft
+    ? clubScheduleDraft
+    : { weekday: schedule?.weekday ?? '', time: schedule?.time || '', venue: schedule?.venue || '', address: schedule?.address || '' };
+  const selectedWeekday = draft.weekday === '' ? '' : Number(draft.weekday);
+  const weekdayOptions = CLUB_WEEKDAYS.map((label, value) => `<option value="${value}" ${selectedWeekday === value ? 'selected' : ''}>${label.charAt(0).toUpperCase()}${label.slice(1)}</option>`).join('');
   return `<div class="club-match-schedule">
     <div class="club-match-schedule-head"><div><b>📅 Próximo partido</b><span>Se actualiza solo con la fecha de cada semana.</span></div></div>
     <div class="club-match-schedule-fields">
-      <label>Día<select id="club-match-weekday"><option value="">Sin configurar</option>${weekdayOptions}</select></label>
-      <label>Hora<input id="club-match-time" type="time" value="${escapeHtml(schedule?.time || '')}"></label>
-      <label class="club-match-venue">Nombre de la cancha<input id="club-match-venue" maxlength="80" value="${escapeHtml(schedule?.venue || '')}" placeholder="Ej.: Stallion Adrogué"></label>
-      <label class="club-match-address">Dirección para Maps <small>No se muestra en Inicio.</small><input id="club-match-address" maxlength="140" value="${escapeHtml(schedule?.address || '')}" placeholder="Ej.: Av. Hipólito Yrigoyen 1234, Adrogué"></label>
+      <label>Día<select id="club-match-weekday" onchange="trackClubScheduleDraft()"><option value="">Sin configurar</option>${weekdayOptions}</select></label>
+      <label>Hora<input id="club-match-time" type="time" value="${escapeHtml(draft.time)}" oninput="trackClubScheduleDraft()"></label>
+      <label class="club-match-venue">Nombre de la cancha<input id="club-match-venue" maxlength="80" value="${escapeHtml(draft.venue)}" placeholder="Ej.: Stallion Adrogué" oninput="trackClubScheduleDraft()"></label>
+      <label class="club-match-address">Dirección para Maps <small>No se muestra en Inicio.</small><input id="club-match-address" maxlength="140" value="${escapeHtml(draft.address)}" placeholder="Ej.: Av. Hipólito Yrigoyen 1234, Adrogué" oninput="trackClubScheduleDraft()"></label>
     </div>
     <div class="club-match-schedule-actions"><button class="btn btn-primary btn-sm" onclick="requestClubMatchScheduleSave()">💾 Guardar partido semanal</button>${schedule ? '<button class="btn btn-ghost btn-sm" onclick="clearClubMatchSchedule()">Quitar configuración</button>' : ''}</div>
   </div>`;
@@ -37,24 +93,22 @@ function clubMatchScheduleEditorHTML(isSupport) {
 function renderAdmin() {
   const clubInfo = document.getElementById('club-admin-info');
   if (clubInfo && state.currentClub) {
-    if (clubBrandDraftClubId !== state.currentClub.id) {
-      clubBrandDraftClubId = state.currentClub.id;
-      clubBrandDraftCrest = undefined;
-      clubBrandDraftDesign = undefined;
-      clubBrandDraftName = '';
-      clubCrestDesignerOpen = false;
-      clubCrestDesign = null;
+    if (clubBrandDraftClubId !== state.currentClub.id || clubAdminDraftSupportMode !== !!state.currentUser?.supportMode) {
+      resetClubAdminDrafts(state.currentClub.id);
     }
-    const draftName = clubBrandDraftName || state.currentClub.name;
+    const draftName = clubBrandDraftDirty ? clubBrandDraftName : state.currentClub.name;
     const draftCrest = clubBrandDraftCrest === undefined ? state.currentClub.crest : clubBrandDraftCrest;
     const isSupport = !!state.currentUser?.supportMode;
     const inviteCode = safePlainText(state.currentClub.inviteCode, 24);
+    const supportNotice = isSupport ? `<div class="admin-support-scope" role="status"><strong>🛡️ Modo soporte maestro</strong><span>Podés corregir asistencia, planillas, resultados y ejecutar borrados masivos. La identidad, el código de acceso y las cuentas se muestran en modo lectura.</span></div>` : '';
     const invite = isSupport ? `
       <div class="club-brand-invite"><div><b>🛡️ Código de invitación</b><span>Vista de administrador maestro · solo lectura.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Sin código')}</code></div></div>` : `
       <div class="club-brand-invite"><div><b>Código de invitación</b><span>Compartilo para que entren al grupo.</span></div><div class="club-invite-action"><code>${escapeHtml(inviteCode || 'Cargando…')}</code><button class="btn btn-gold btn-sm" onclick="copyClubInviteCode()" ${inviteCode ? '' : 'disabled'}>📋 Copiar</button><button class="btn btn-ghost btn-sm" onclick="toggleClubInviteEditor()" ${inviteCode ? '' : 'disabled'}>✏ Cambiar</button></div></div>
-      ${clubInviteEditorOpen ? `<div class="club-invite-editor"><div><label for="club-invite-code-input">Nuevo código</label><input id="club-invite-code-input" maxlength="16" value="${escapeHtml(inviteCode)}" placeholder="EJ: MARMOL-26" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,16)"><small>De 4 a 16 caracteres: letras, números o guion. El anterior dejará de funcionar.</small></div><div class="club-invite-editor-actions"><button class="btn btn-primary btn-sm" onclick="saveClubInviteCode()">Guardar código</button><button class="btn btn-ghost btn-sm" onclick="toggleClubInviteEditor(false)">Cancelar</button></div></div>` : ''}`;
-    clubInfo.innerHTML = `
-      <div class="club-brand-editor">
+      ${clubInviteEditorOpen ? `<div class="club-invite-editor"><div><label for="club-invite-code-input">Nuevo código</label><input id="club-invite-code-input" maxlength="16" value="${escapeHtml(clubInviteDraftCode)}" placeholder="EJ: MARMOL-26" autocomplete="off" oninput="trackClubInviteDraft(this.value);this.value=clubInviteDraftCode"><small>De 4 a 16 caracteres: letras, números o guion. El anterior dejará de funcionar.</small></div><div class="club-invite-editor-actions"><button class="btn btn-primary btn-sm" onclick="saveClubInviteCode()">Guardar código</button><button class="btn btn-ghost btn-sm" onclick="toggleClubInviteEditor(false)">Cancelar</button></div></div>` : ''}`;
+    const identity = isSupport ? `<div class="club-brand-editor is-readonly">
+        <div class="club-brand-preview ${safeClubCrestUrl(draftCrest) ? 'has-custom-crest' : ''}" id="club-brand-preview">${clubBrandPreviewHTML(draftCrest, draftName)}</div>
+        <div class="club-brand-readonly"><span>Nombre del club</span><strong>${escapeHtml(state.currentClub.name)}</strong><small>Identidad administrada por los administradores de este club.</small></div>
+      </div>` : `<div class="club-brand-editor">
         <div class="club-brand-preview ${safeClubCrestUrl(draftCrest) ? 'has-custom-crest' : ''}" id="club-brand-preview">${clubBrandPreviewHTML(draftCrest, draftName)}</div>
         <div class="club-brand-fields">
           <label for="club-brand-name">Nombre del club</label>
@@ -63,13 +117,16 @@ function renderAdmin() {
           <input id="club-brand-crest-input" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewClubCrest(this)">
           <div class="club-brand-actions"><button type="button" class="btn btn-ghost btn-sm" id="open-crest-studio" aria-haspopup="dialog" aria-controls="modal-crest-designer" onclick="toggleClubCrestDesigner(true)">🎨 Abrir Crest Studio</button><button type="button" class="btn btn-primary btn-sm" onclick="saveClubIdentity()">💾 Guardar identidad</button><button type="button" class="btn btn-ghost btn-sm" onclick="clearClubCrest()">↺ Usar iniciales</button></div>
         </div>
-      </div>
+      </div>`;
+    clubInfo.innerHTML = `
+      ${supportNotice}
+      ${identity}
       ${invite}
       ${clubMatchScheduleEditorHTML(isSupport)}`;
   }
   const list = document.getElementById('admin-players-list');
   const myId = state.currentUser?.id;
-  const canManageAccounts = state.currentUser?.isAdmin && !state.currentUser?.supportMode;
+  const canManageAccounts = canManageClubAccounts();
   list.innerHTML = state.players.map(p => {
     const isMe = p.id === myId;
     const actions = !canManageAccounts ? '' : isMe
@@ -81,12 +138,18 @@ function renderAdmin() {
         </div>`;
     return `
     <div class="admin-player-row">
-      <div style="font-size:20px">${posEmoji(getEffectivePosition(p))}</div>
-      <div class="admin-player-name">${p.name} <span style="color:var(--muted);font-size:12px">@${p.username}</span>${p.isAdmin?' 👑':''}${p._resetRequested?' <span style="color:var(--red);font-size:11px">⚠️ pidió reset</span>':''}</div>
+      <div class="admin-player-position" aria-hidden="true">${posEmoji(getEffectivePosition(p))}</div>
+      <div class="admin-player-name"><span class="admin-player-name-main">${escapeHtml(p.name)}</span><span class="admin-player-handle">@${escapeHtml(p.username)}</span>${p.isAdmin?'<span class="admin-player-badge">👑 Admin</span>':''}${p._resetRequested?'<span class="admin-player-reset">⚠️ pidió reset</span>':''}</div>
       ${actions}
     </div>
   `;
   }).join('');
+  const dangerZone = document.getElementById('admin-danger-zone');
+  if (dangerZone) dangerZone.hidden = !canRunClubBulkActions();
+  const votesSection = document.getElementById('admin-votes-section');
+  // El maestro puede auditar el detalle completo del club. La exportación es
+  // sólo lectura; no expone contraseñas ni abre acceso directo a tablas.
+  if (votesSection) votesSection.hidden = false;
 }
 
 function updateClubBrandPreview(crest, name) {
@@ -98,6 +161,7 @@ function updateClubBrandPreview(crest, name) {
 
 function trackClubBrandName(name) {
   clubBrandDraftName = safePlainText(name, 50);
+  clubBrandDraftDirty = true;
   const crest = clubBrandDraftCrest === undefined ? state.currentClub?.crest : clubBrandDraftCrest;
   updateClubBrandPreview(crest, clubBrandDraftName || state.currentClub?.name || 'FC');
 }
@@ -200,6 +264,7 @@ async function previewClubCrest(input) {
     input.disabled = true;
     clubBrandDraftCrest = await optimizeClubCrest(file);
     clubBrandDraftDesign = null;
+    clubBrandDraftDirty = true;
     updateClubBrandPreview(clubBrandDraftCrest, clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub.name);
     showToast('✅ Escudo listo para guardar');
   } catch (error) {
@@ -213,6 +278,7 @@ async function previewClubCrest(input) {
 function clearClubCrest() {
   clubBrandDraftCrest = null;
   clubBrandDraftDesign = null;
+  clubBrandDraftDirty = true;
   const fileInput = document.getElementById('club-brand-crest-input');
   if (fileInput) fileInput.value = '';
   updateClubBrandPreview(null, clubBrandDraftName || document.getElementById('club-brand-name')?.value || state.currentClub?.name || 'FC');
@@ -223,7 +289,10 @@ let pendingClubInviteCode = null;
 let pendingAdminPasswordPlayerId = null;
 
 function saveClubIdentity() {
-  if (!state.currentUser?.isAdmin || !state.currentClub) return;
+  if (!canManageClubAccounts() || !state.currentClub) {
+    showToast('⚠️ La identidad sólo puede cambiarla un administrador del club.');
+    return;
+  }
   const nameInput = document.getElementById('club-brand-name');
   const nextName = safePlainText(nameInput?.value, 50).trim();
   if (nextName.length < 3) {
@@ -248,7 +317,11 @@ function cancelClubConfirmation() {
 }
 
 function requestClubMatchScheduleSave() {
-  if (!state.currentUser?.isAdmin || !state.currentClub) return;
+  if (!canManageClubAccounts() || !state.currentClub) {
+    showToast('⚠️ El partido semanal sólo puede cambiarlo un administrador del club.');
+    return;
+  }
+  trackClubScheduleDraft();
   const weekdayValue = document.getElementById('club-match-weekday')?.value ?? '';
   const matchTime = document.getElementById('club-match-time')?.value || '';
   const matchVenue = safePlainText(document.getElementById('club-match-venue')?.value || '', 80).trim();
@@ -292,7 +365,10 @@ async function confirmClubMatchScheduleSave() {
     KNOWN_CLUBS.remember(state.currentClub);
     SESSION.set({ ...state.currentUser, clubName: freshClub.name, clubCrest: freshClub.crest || null, clubCrestDesign: freshClub.crestDesign || null, clubInviteCode: state.currentUser.isAdmin ? freshClub.inviteCode || null : null, clubMatchWeekday: freshClub.matchWeekday, clubMatchTime: freshClub.matchTime, clubMatchVenue: freshClub.matchVenue, clubMatchAddress: freshClub.matchAddress });
     pendingClubScheduleUpdate = null;
+    clubScheduleDraft = null;
+    clubScheduleDraftDirty = false;
     closeModal('modal-club-confirm');
+    renderClubIdentity();
     renderHub();
     renderAdmin();
     showToast(update.weekday === null ? '✅ Partido semanal quitado' : '✅ Próximo partido configurado');
@@ -320,6 +396,7 @@ async function confirmClubIdentitySave() {
     clubBrandDraftCrest = undefined;
     clubBrandDraftDesign = undefined;
     clubBrandDraftName = '';
+    clubBrandDraftDirty = false;
     clubBrandDraftClubId = state.currentClub.id;
     pendingClubIdentityUpdate = null;
     closeModal('modal-club-confirm');
@@ -363,16 +440,24 @@ async function copyClubInviteCode() {
 }
 
 function toggleClubInviteEditor(force) {
-  if (!state.currentUser?.isAdmin) return;
-  clubInviteEditorOpen = typeof force === 'boolean' ? force : !clubInviteEditorOpen;
+  if (!canManageClubAccounts()) {
+    showToast('⚠️ El código sólo puede cambiarlo un administrador del club.');
+    return;
+  }
+  const nextOpen = typeof force === 'boolean' ? force : !clubInviteEditorOpen;
+  clubInviteEditorOpen = nextOpen;
+  clubInviteDraftCode = nextOpen ? safePlainText(state.currentClub?.inviteCode, 16) : '';
   renderAdmin();
   if (clubInviteEditorOpen) document.getElementById('club-invite-code-input')?.focus();
 }
 
 function saveClubInviteCode() {
-  if (!state.currentUser?.isAdmin || !state.currentClub) return;
+  if (!canManageClubAccounts() || !state.currentClub) {
+    showToast('⚠️ El código sólo puede cambiarlo un administrador del club.');
+    return;
+  }
   const input = document.getElementById('club-invite-code-input');
-  const nextCode = safePlainText(input?.value, 16).toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  const nextCode = safePlainText(input?.value || clubInviteDraftCode, 16).toUpperCase().replace(/[^A-Z0-9-]/g, '');
   if (!/^[A-Z0-9][A-Z0-9-]{3,15}$/.test(nextCode)) {
     showToast('⚠️ Usá entre 4 y 16 letras, números o guiones.');
     return;
@@ -397,6 +482,7 @@ async function confirmClubInviteCodeSave() {
     if (known) Object.assign(known, freshClub);
     SESSION.set({ ...state.currentUser, clubName: state.currentClub.name, clubCrest: state.currentClub.crest || null, clubCrestDesign: state.currentClub.crestDesign || null, clubInviteCode: nextCode });
     clubInviteEditorOpen = false;
+    clubInviteDraftCode = '';
     pendingClubInviteCode = null;
     closeModal('modal-club-confirm');
     renderAdmin();
@@ -411,6 +497,7 @@ async function confirmClubInviteCodeSave() {
 }
 
 function openAdminPasswordDialog(id) {
+  if (!canManageClubAccounts()) { showToast('⚠️ Las cuentas sólo puede administrarlas un admin del club.'); return; }
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
   if (p.id === state.currentUser?.id) { showToast('⚠️ Tu contraseña se cambia desde Mi perfil.'); return; }
@@ -454,6 +541,7 @@ async function confirmAdminPasswordChange() {
 let pendingPlayerRemovalId = null;
 
 function removePlayer(id) {
+  if (!canManageClubAccounts()) { showToast('⚠️ Las cuentas sólo puede administrarlas un admin del club.'); return; }
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
   if (p.id === state.currentUser?.id) { showToast('⚠️ No podés eliminar tu propia cuenta desde acá.'); return; }
@@ -486,6 +574,9 @@ async function confirmPlayerRemoval() {
   if (button) { button.disabled = true; button.textContent = 'Eliminando…'; }
   try {
     await deletePlayer(id);
+    // Una formación todavía no guardada puede contener al usuario eliminado.
+    // Se descarta recién después de que el servidor confirmó el borrado.
+    if (typeof resetTeamDraftState === 'function') resetTeamDraftState();
     state.players = state.players.filter(x=>x.id!==id);
     pendingPlayerRemovalId = null;
     closeModal('modal-delete-player');

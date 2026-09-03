@@ -167,13 +167,31 @@ async function loadClubs() {
 }
 
 async function loadPlayers(clubId = state.currentClub?.id) {
-  if (!clubId) return [];
+  if (!clubId) return null;
   try {
     const data = await callRpc('fulbito_get_players', { p_club_id: clubId });
-    return mapPlayers(Array.isArray(data) ? data : []);
+    if (!Array.isArray(data)) throw new Error('Respuesta de jugadores inválida');
+    return mapPlayers(data);
   } catch (error) {
     console.error('loadPlayers error:', error);
-    return [];
+    // `[]` representa exclusivamente un plantel vacío confirmado por el
+    // servidor. `null` permite conservar la caché ante una falla de lectura.
+    return null;
+  }
+}
+
+// Verifica la vinculación de la sesión anónima con su jugador sin confundir
+// una revocación real (`player: null`) con una falla transitoria de red/RPC.
+// Los consumidores deben actuar sobre `player: null` únicamente cuando
+// `ok === true`; si `ok === false`, conservan la sesión y reintentan luego.
+async function loadCurrentPlayerAccess(clubId = state.currentClub?.id) {
+  if (!clubId) return { ok: false, player: null, error: new Error('No hay club seleccionado') };
+  try {
+    const player = await callRpc('fulbito_get_my_player', { p_club_id: clubId });
+    return { ok: true, player: player || null, error: null };
+  } catch (error) {
+    console.error('loadCurrentPlayerAccess:', error);
+    return { ok: false, player: null, error };
   }
 }
 
@@ -257,10 +275,11 @@ function sortMatches() {
 }
 
 async function loadMatches(clubId = state.currentClub?.id) {
-  if (!clubId) return [];
+  if (!clubId) return null;
   try {
     const data = await callRpc('fulbito_get_matches', { p_club_id: clubId });
-    const list = Array.isArray(data) ? data : [];
+    if (!Array.isArray(data)) throw new Error('Respuesta de partidos inválida');
+    const list = data;
     list.sort((a,b) =>
       (b.match_date||'').localeCompare(a.match_date||'') ||
       (b.created_at||'').localeCompare(a.created_at||'')
@@ -268,7 +287,9 @@ async function loadMatches(clubId = state.currentClub?.id) {
     return list;
   } catch (error) {
     console.error('loadMatches:', error);
-    return [];
+    // `[]` queda reservado para una lectura válida de un club sin partidos.
+    // `null` permite que cada consumidor conserve su caché ante un error real.
+    return null;
   }
 }
 

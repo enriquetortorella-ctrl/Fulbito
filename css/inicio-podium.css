@@ -8,8 +8,13 @@
 .hub-live-card-frame,
 .hub-live-card.is-scorer .hub-live-card-frame,
 .hub-live-card.is-mvp .hub-live-card-frame,
-.hub-live-card.is-streak .hub-live-card-frame{display:block;width:min(94%,112px);max-width:112px;aspect-ratio:.667;flex:0 0 auto}
+.hub-live-card.is-streak .hub-live-card-frame{display:block;width:min(94%,138px);max-width:138px;aspect-ratio:.667;flex:0 0 auto}
 .hub-live-card-frame .fifa-card{box-sizing:border-box;width:100%!important;height:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;margin:0!important;aspect-ratio:auto!important}
 .hub-live-card.is-mvp{z-index:2}.hub-live-card.is-mvp .hub-live-card-label{color:#fff0a4;text-shadow:0 0 9px rgba(255,210,83,.42)}.hub-live-card.is-mvp .hub-live-card-metric b{font-size:23px;color:#ffe89a}.hub-live-card.is-streak .hub-live-card-metric b{color:#d9f47f}
-@media (max-width:920px){.hub-live-card-frame,.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame,.hub-live-card.is-streak .hub-live-card-frame{width:min(94%,126px);max-width:126px}}
-@media (max-width:640px){.hub-live-card-frame,.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame,.hub-live-card.is-streak .hub-live-card-frame{width:min(94%,96px);max-width:96px}.hub-live-card.is-mvp .hub-live-card-metric b{font-size:20px}}
+@media (max-width:920px){.hub-live-card-frame,.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame,.hub-live-card.is-streak .hub-live-card-frame{width:min(96%,132px);max-width:132px}}
+@media (max-width:640px){.hub-live-cards{padding-inline:6px}.hub-live-card-frame,.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame,.hub-live-card.is-streak .hub-live-card-frame{width:min(100%,138px);max-width:138px}.hub-live-card.is-mvp .hub-live-card-metric b{font-size:20px}}
+@media (max-width:420px){
+  .hub-live-cards{grid-template-columns:repeat(3,132px);justify-content:start;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding:3px 8px 9px;scrollbar-width:thin;scrollbar-color:rgba(111,211,255,.42) transparent}
+  .hub-live-card{scroll-snap-align:center}
+  .hub-live-card-frame,.hub-live-card.is-scorer .hub-live-card-frame,.hub-live-card.is-mvp .hub-live-card-frame,.hub-live-card.is-streak .hub-live-card-frame{width:132px;max-width:132px}
+}

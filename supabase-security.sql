@@ -673,7 +673,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if not public.fulbito_is_admin(p_club_id) then
+  if not public.fulbito_is_platform_admin() and not public.fulbito_is_admin(p_club_id) then
     raise exception 'Solo un administrador puede borrar las calificaciones' using errcode = '42501';
   end if;
   update public.fulbito_players set ratings = '{}'::jsonb where club_id = p_club_id;
@@ -707,7 +707,7 @@ as $$
 declare
   v_target public.fulbito_players%rowtype;
 begin
-  if not public.fulbito_is_admin(p_club_id) then
+  if not public.fulbito_is_admin(p_club_id) and not public.fulbito_is_platform_admin() then
     raise exception 'Solo un administrador puede modificar roles' using errcode = '42501';
   end if;
   select * into v_target from public.fulbito_players where id = p_player_id and club_id = p_club_id for update;
@@ -724,33 +724,10 @@ begin
 end;
 $$;
 
-create or replace function public.fulbito_admin_reset_player(p_club_id text, p_player_id text)
-returns void
-language plpgsql
-security definer
-set search_path = public, extensions, pg_temp
-as $$
-declare
-  v_actor public.fulbito_players%rowtype;
-begin
-  select * into v_actor from public.fulbito_players
-   where club_id = p_club_id and auth_user_id = auth.uid();
-  if not found or not v_actor.is_admin then
-    raise exception 'Solo un administrador puede resetear contraseñas' using errcode = '42501';
-  end if;
-  if v_actor.id = p_player_id then
-    raise exception 'Usá Mi perfil para cambiar tu propia contraseña' using errcode = '22023';
-  end if;
-  update public.fulbito_players
-     set password = crypt('1234', gen_salt('bf', 10)),
-         auth_user_id = null,
-         _reset_requested = false
-   where id = p_player_id and club_id = p_club_id;
-  if not found then
-    raise exception 'Jugador no encontrado' using errcode = '22023';
-  end if;
-end;
-$$;
+-- Retira el reseteo heredado que imponía la contraseña fija `1234`. RESTRICT
+-- es deliberado (valor por defecto): si apareciera una dependencia inesperada,
+-- la migración falla de forma segura en lugar de borrarla en cascada.
+drop function if exists public.fulbito_admin_reset_player(text, text);
 
 create or replace function public.fulbito_admin_set_player_password(
   p_club_id text,
@@ -764,10 +741,14 @@ set search_path = public, extensions, pg_temp
 as $$
 declare
   v_actor public.fulbito_players%rowtype;
+  v_is_platform boolean := public.fulbito_is_platform_admin();
 begin
   select * into v_actor from public.fulbito_players
-   where club_id = p_club_id and auth_user_id = auth.uid();
-  if not found or not v_actor.is_admin then
+   where auth_user_id = auth.uid()
+     and (v_is_platform or club_id = p_club_id)
+   order by (club_id = p_club_id) desc
+   limit 1;
+  if not found or (not v_is_platform and not v_actor.is_admin) then
     raise exception 'Solo un administrador puede cambiar contraseñas' using errcode = '42501';
   end if;
   if v_actor.id = p_player_id then
@@ -796,10 +777,14 @@ as $$
 declare
   v_actor public.fulbito_players%rowtype;
   v_target public.fulbito_players%rowtype;
+  v_is_platform boolean := public.fulbito_is_platform_admin();
 begin
   select * into v_actor from public.fulbito_players
-   where club_id = p_club_id and auth_user_id = auth.uid();
-  if not found or not v_actor.is_admin then
+   where auth_user_id = auth.uid()
+     and (v_is_platform or club_id = p_club_id)
+   order by (club_id = p_club_id) desc
+   limit 1;
+  if not found or (not v_is_platform and not v_actor.is_admin) then
     raise exception 'Solo un administrador puede eliminar jugadores' using errcode = '42501';
   end if;
   select * into v_target from public.fulbito_players where id = p_player_id and club_id = p_club_id for update;
@@ -809,14 +794,47 @@ begin
   if v_actor.id = v_target.id then
     raise exception 'No podés eliminar tu propia cuenta desde administración' using errcode = '22023';
   end if;
+  if exists (
+    select 1 from public.fulbito_platform_master where player_id = p_player_id
+  ) then
+    raise exception 'No se puede eliminar la cuenta del administrador maestro' using errcode = '22023';
+  end if;
   if v_target.is_admin and not exists (
     select 1 from public.fulbito_players where club_id = p_club_id and is_admin and id <> p_player_id
   ) then
     raise exception 'El club debe conservar al menos un administrador' using errcode = '22023';
   end if;
   delete from public.fulbito_players where id = p_player_id and club_id = p_club_id;
+
+  -- Al borrar una cuenta también se quitan sus votos de las demás tarjetas.
+  -- Si quedaran, un usuario inexistente seguiría alterando OVR y promedios.
+  update public.fulbito_players
+     set ratings = coalesce(ratings, '{}'::jsonb) - p_player_id
+   where club_id = p_club_id
+     and coalesce(ratings, '{}'::jsonb) ? p_player_id;
 end;
 $$;
+
+-- Limpieza única e idempotente para instalaciones que borraron usuarios con
+-- una versión anterior: conserva sólo votos de cuentas que todavía pertenecen
+-- al mismo club. Así un perfil eliminado no sigue alterando los promedios.
+update public.fulbito_players target
+   set ratings = coalesce((
+     select jsonb_object_agg(entry.key, entry.value)
+       from jsonb_each(coalesce(target.ratings, '{}'::jsonb)) entry
+      where exists (
+        select 1 from public.fulbito_players voter
+         where voter.club_id = target.club_id and voter.id = entry.key
+      )
+   ), '{}'::jsonb)
+ where exists (
+   select 1
+     from jsonb_object_keys(coalesce(target.ratings, '{}'::jsonb)) orphan(voter_id)
+    where not exists (
+      select 1 from public.fulbito_players voter
+       where voter.club_id = target.club_id and voter.id = orphan.voter_id
+    )
+ );
 
 -- Borrado total reservado exclusivamente al administrador maestro. Protege el
 -- club que sostiene su propio acceso para no dejar a la plataforma sin soporte.
@@ -895,6 +913,7 @@ declare
   v_winner_count integer;
   v_winner integer;
   v_margin integer;
+  v_winners jsonb;
 begin
   if jsonb_typeof(v_result) <> 'object'
      or jsonb_typeof(p_teams) <> 'array'
@@ -940,6 +959,11 @@ begin
     into v_max, v_winner_count
     from unnest(v_scores) as scores(score)
     cross join lateral (select max(value) as maximum_score from unnest(v_scores) as all_scores(value)) maximum;
+  select coalesce(jsonb_agg((score_row.ordinality - 1)::integer order by score_row.ordinality), '[]'::jsonb)
+    into v_winners
+    from unnest(v_scores) with ordinality as score_row(value, ordinality)
+   where value = v_max;
+  v_result := jsonb_set(v_result, '{winners}', v_winners, true);
   if v_winner_count > 1 then
     v_result := jsonb_set(v_result, '{winner}', to_jsonb('draw'::text), true);
     v_result := jsonb_set(v_result, '{margin}', 'null'::jsonb, true);
@@ -1332,6 +1356,7 @@ declare
   v_player_id text;
   v_is_platform boolean := public.fulbito_is_platform_admin();
   v_existing_result jsonb;
+  v_existing_teams jsonb;
   v_existing_found boolean := false;
   v_incoming_result jsonb := p_match -> 'result';
   v_trimmed_mutation_ids jsonb;
@@ -1397,6 +1422,8 @@ begin
          or case
               when jsonb_typeof(player_data -> 'ovr') = 'number'
                 then (player_data ->> 'ovr')::numeric not between 38 and 99
+              when player_data -> 'ovr' is null or jsonb_typeof(player_data -> 'ovr') = 'null'
+                then false
               else true
             end
          or coalesce(player_data ->> 'photo', '') <> ''
@@ -1411,14 +1438,25 @@ begin
   end if;
   v_date := nullif(p_match ->> 'match_date', '')::date;
 
+  select teams into v_existing_teams
+    from public.fulbito_matches
+   where id = v_id and club_id = p_club_id;
+
   for v_player_id in
     select item ->> 'id'
       from jsonb_array_elements(p_match -> 'teams') team,
            lateral jsonb_array_elements(coalesce(team -> 'players', '[]'::jsonb)) item
      where coalesce(item ->> 'isGuest', 'false') <> 'true'
   loop
-    if v_player_id is null or not exists (
-      select 1 from public.fulbito_players where id = v_player_id and club_id = p_club_id
+    if v_player_id is null or (
+      not exists (select 1 from public.fulbito_players where id = v_player_id and club_id = p_club_id)
+      and not exists (
+        select 1
+          from jsonb_array_elements(coalesce(v_existing_teams, '[]'::jsonb)) old_team,
+               lateral jsonb_array_elements(coalesce(old_team -> 'players', '[]'::jsonb)) old_player
+         where old_player ->> 'id' = v_player_id
+           and coalesce(old_player ->> 'isGuest', 'false') <> 'true'
+      )
     ) then
       raise exception 'Un jugador del partido no pertenece a este club' using errcode = '22023';
     end if;
@@ -1608,7 +1646,6 @@ revoke all on function public.fulbito_rate_player(text, text, text, integer) fro
 revoke all on function public.fulbito_clear_ratings(text) from public;
 revoke all on function public.fulbito_request_reset(text, text) from public;
 revoke all on function public.fulbito_set_admin(text, text, boolean) from public;
-revoke all on function public.fulbito_admin_reset_player(text, text) from public;
 revoke all on function public.fulbito_admin_set_player_password(text, text, text) from public;
 revoke all on function public.fulbito_delete_player(text, text) from public;
 revoke all on function public.fulbito_platform_delete_club(text) from public;
@@ -1635,7 +1672,6 @@ grant execute on function public.fulbito_rate_player(text, text, text, integer) 
 grant execute on function public.fulbito_clear_ratings(text) to authenticated;
 grant execute on function public.fulbito_request_reset(text, text) to authenticated;
 grant execute on function public.fulbito_set_admin(text, text, boolean) to authenticated;
-grant execute on function public.fulbito_admin_reset_player(text, text) to authenticated;
 grant execute on function public.fulbito_admin_set_player_password(text, text, text) to authenticated;
 grant execute on function public.fulbito_delete_player(text, text) to authenticated;
 grant execute on function public.fulbito_platform_delete_club(text) to authenticated;

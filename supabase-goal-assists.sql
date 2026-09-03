@@ -39,6 +39,7 @@ declare
   v_winner_count integer;
   v_winner integer;
   v_margin integer;
+  v_winners jsonb;
 begin
   if jsonb_typeof(v_result) <> 'object'
      or jsonb_typeof(p_teams) <> 'array'
@@ -86,6 +87,12 @@ begin
     into v_max, v_winner_count
     from unnest(v_scores) as scores(score)
     cross join lateral (select max(value) as maximum_score from unnest(v_scores) as all_scores(value)) maximum;
+
+  select coalesce(jsonb_agg((score_row.ordinality - 1)::integer order by score_row.ordinality), '[]'::jsonb)
+    into v_winners
+    from unnest(v_scores) with ordinality as score_row(value, ordinality)
+   where value = v_max;
+  v_result := jsonb_set(v_result, '{winners}', v_winners, true);
 
   if v_winner_count > 1 then
     v_result := jsonb_set(v_result, '{winner}', to_jsonb('draw'::text), true);
@@ -502,6 +509,7 @@ declare
   v_player_id text;
   v_is_platform boolean := public.fulbito_is_platform_admin();
   v_existing_result jsonb;
+  v_existing_teams jsonb;
   v_existing_found boolean := false;
   v_incoming_result jsonb := p_match -> 'result';
   v_trimmed_mutation_ids jsonb;
@@ -567,6 +575,8 @@ begin
          or case
               when jsonb_typeof(player_data -> 'ovr') = 'number'
                 then (player_data ->> 'ovr')::numeric not between 38 and 99
+              when player_data -> 'ovr' is null or jsonb_typeof(player_data -> 'ovr') = 'null'
+                then false
               else true
             end
          or coalesce(player_data ->> 'photo', '') <> ''
@@ -581,14 +591,25 @@ begin
   end if;
   v_date := nullif(p_match ->> 'match_date', '')::date;
 
+  select teams into v_existing_teams
+    from public.fulbito_matches
+   where id = v_id and club_id = p_club_id;
+
   for v_player_id in
     select item ->> 'id'
       from jsonb_array_elements(p_match -> 'teams') team,
            lateral jsonb_array_elements(coalesce(team -> 'players', '[]'::jsonb)) item
      where coalesce(item ->> 'isGuest', 'false') <> 'true'
   loop
-    if v_player_id is null or not exists (
-      select 1 from public.fulbito_players where id = v_player_id and club_id = p_club_id
+    if v_player_id is null or (
+      not exists (select 1 from public.fulbito_players where id = v_player_id and club_id = p_club_id)
+      and not exists (
+        select 1
+          from jsonb_array_elements(coalesce(v_existing_teams, '[]'::jsonb)) old_team,
+               lateral jsonb_array_elements(coalesce(old_team -> 'players', '[]'::jsonb)) old_player
+         where old_player ->> 'id' = v_player_id
+           and coalesce(old_player ->> 'isGuest', 'false') <> 'true'
+      )
     ) then
       raise exception 'Un jugador del partido no pertenece a este club' using errcode = '22023';
     end if;

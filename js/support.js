@@ -10,7 +10,7 @@ async function openPlatformAdmin() {
     state.platformClubs = Array.isArray(clubs) ? clubs : [];
     root.innerHTML = `
       <div style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:10px;padding:12px 14px;margin-bottom:14px;color:var(--text);font-size:13px;line-height:1.5">
-        <b style="color:var(--gold)">Acceso maestro</b> · Elegí un club para asistirlo. Podés administrar plantel, asistencia y partidos; las votaciones quedan bloqueadas para preservar la autoría de cada jugador.
+        <b style="color:var(--gold)">Acceso maestro</b> · Elegí un club para asistirlo. En modo soporte podés corregir asistencia, planillas y resultados, y ejecutar los borrados masivos disponibles. La identidad, el código, las cuentas y la emisión de votos quedan en modo lectura.
       </div>
       <div style="display:grid;gap:9px;max-height:50vh;overflow:auto;padding-right:3px">
         ${state.platformClubs.map(club => `<div class="club-card" style="width:100%;display:flex;align-items:center;gap:10px">
@@ -55,6 +55,7 @@ async function enterSupportClub(clubId) {
   if (!state.supportMode) {
     state.supportHome = { club: { ...state.currentClub }, user: { ...state.currentUser } };
   }
+  resetTeamDraftState();
   state.currentClub = {
     id: club.id,
     name: safePlainText(club.name, 50) || 'Club',
@@ -63,12 +64,12 @@ async function enterSupportClub(clubId) {
   };
   state.currentUser = { ...state.currentUser, name: 'Soporte maestro', isAdmin: true, supportMode: true, clubId: club.id };
   state.supportMode = true;
-  state.builtTeams = null;
   closeModal('modal-platform-admin');
   showToast('⏳ Abriendo modo soporte...');
   const [players, savedMatches] = await Promise.all([loadPlayers(club.id), loadMatches(club.id)]);
-  state.players = players;
-  matches = savedMatches;
+  state.players = players === null ? [] : players;
+  // Nunca mezclar la caché del club anterior al cambiar de contexto.
+  matches = savedMatches === null ? [] : savedMatches;
   showApp();
   showToast(`🛡️ Modo soporte: ${state.currentClub.name}`);
 }
@@ -80,10 +81,10 @@ async function exitSupportMode() {
   state.currentUser = { ...home.user, supportMode: false };
   state.supportMode = false;
   state.supportHome = null;
-  state.builtTeams = null;
+  resetTeamDraftState();
   const [players, savedMatches] = await Promise.all([loadPlayers(home.club.id), loadMatches(home.club.id)]);
-  state.players = players;
-  matches = savedMatches;
+  state.players = players === null ? [] : players;
+  matches = savedMatches === null ? [] : savedMatches;
   showApp();
   showToast('🏟️ Volviste a tu club');
 }

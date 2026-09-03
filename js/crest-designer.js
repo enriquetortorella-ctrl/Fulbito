@@ -490,6 +490,7 @@ async function applyClubCrestDesign() {
     if (!safeClubCrestUrl(encoded)) throw new Error('El escudo no superó la validación final.');
     clubBrandDraftCrest = encoded;
     clubBrandDraftDesign = { ...clubCrestDesign };
+    clubBrandDraftDirty = true;
     clubCrestDesignerOpen = false;
     closeModal('modal-crest-designer');
     deactivateProCrestModal({ restoreFocus: false });

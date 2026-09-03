@@ -23,26 +23,26 @@
   obtiene acceso directo a las tablas ni a las contraseñas.
 -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/inicio.css">
-<link rel="stylesheet" href="css/jugadores.css">
-<link rel="stylesheet" href="css/asistencia.css">
-<link rel="stylesheet" href="css/calificar.css">
-<link rel="stylesheet" href="css/equipos.css">
-<link rel="stylesheet" href="css/partidos.css">
-<link rel="stylesheet" href="css/admin.css">
-<link rel="stylesheet" href="css/crest-designer.css">
-<link rel="stylesheet" href="css/goles.css">
-<link rel="stylesheet" href="css/stats.css">
-<link rel="stylesheet" href="css/utils.css">
-<link rel="stylesheet" href="css/responsive.css">
-<link rel="stylesheet" href="css/theme-aurora.css">
-<link rel="stylesheet" href="css/stats-matchcentre.css">
-<link rel="stylesheet" href="css/cards.css">
-<link rel="stylesheet" href="css/leaderboards.css">
-<link rel="stylesheet" href="css/inicio-hero.css">
-<link rel="stylesheet" href="css/inicio-matchcentre.css">
-<link rel="stylesheet" href="css/inicio-podium.css">
+<link rel="stylesheet" href="css/base.css?v=60">
+<link rel="stylesheet" href="css/inicio.css?v=60">
+<link rel="stylesheet" href="css/jugadores.css?v=60">
+<link rel="stylesheet" href="css/asistencia.css?v=60">
+<link rel="stylesheet" href="css/calificar.css?v=60">
+<link rel="stylesheet" href="css/equipos.css?v=60">
+<link rel="stylesheet" href="css/partidos.css?v=60">
+<link rel="stylesheet" href="css/admin.css?v=60">
+<link rel="stylesheet" href="css/crest-designer.css?v=60">
+<link rel="stylesheet" href="css/goles.css?v=60">
+<link rel="stylesheet" href="css/stats.css?v=60">
+<link rel="stylesheet" href="css/utils.css?v=60">
+<link rel="stylesheet" href="css/responsive.css?v=60">
+<link rel="stylesheet" href="css/theme-aurora.css?v=60">
+<link rel="stylesheet" href="css/stats-matchcentre.css?v=60">
+<link rel="stylesheet" href="css/cards.css?v=60">
+<link rel="stylesheet" href="css/leaderboards.css?v=60">
+<link rel="stylesheet" href="css/inicio-hero.css?v=60">
+<link rel="stylesheet" href="css/inicio-matchcentre.css?v=60">
+<link rel="stylesheet" href="css/inicio-podium.css?v=60">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -146,8 +146,8 @@
       1. Ingresá tu usuario abajo<br>
       2. Tocá "Pedir reset"<br>
       3. Avisale a un admin de tu club<br>
-      4. El admin te resetea la clave a <strong style="color:var(--gold)">1234</strong><br>
-      5. Entrás con 1234 y la cambiás en "Mi perfil"
+      4. El admin te asigna una nueva contraseña segura<br>
+      5. Entrás con esa clave y podés cambiarla en "Mi perfil"
     </div>
     <div class="form-group">
       <label>Tu usuario</label>
@@ -223,30 +223,30 @@
       <button class="btn-logout" onclick="doLogout()" title="Salir">🚪</button>
     </div>
   </div>
-  <div class="nav-tabs">
-    <div class="nav-tab active" onclick="switchTab('inicio')"><span class="nav-tab-icon">⚡</span>Inicio</div>
-    <div class="nav-tab" onclick="switchTab('jugadores')"><span class="nav-tab-icon">👥</span>Jugadores</div>
-    <div class="nav-tab" onclick="switchTab('asistencia')"><span class="nav-tab-icon">✅</span>Asistencia</div>
-    <div class="nav-tab" onclick="switchTab('calificar')"><span class="nav-tab-icon">⭐</span>Calificar</div>
-    <div class="nav-tab" onclick="switchTab('equipos')"><span class="nav-tab-icon">🏆</span>Equipos</div>
-    <div class="nav-tab" onclick="switchTab('goles')"><span class="nav-tab-icon">⚽</span>Goles</div>
-    <div class="nav-tab" onclick="switchTab('partidos')"><span class="nav-tab-icon">📜</span>Partidos</div>
-    <div class="nav-tab" onclick="switchTab('goleadores')"><span class="nav-tab-icon">🥇</span>Goleadores</div>
-    <div class="nav-tab" onclick="switchTab('posiciones')"><span class="nav-tab-icon">🏅</span>Posiciones</div>
-    <div class="nav-tab" onclick="switchTab('stats')"><span class="nav-tab-icon">📊</span>Stats</div>
-    <div class="nav-tab" id="admin-tab" onclick="switchTab('admin')" style="display:none"><span class="nav-tab-icon">⚙️</span>Admin</div>
+  <div class="nav-tabs" role="tablist" aria-label="Secciones de El Fulbito">
+    <button type="button" class="nav-tab active" id="nav-tab-inicio" role="tab" aria-controls="tab-inicio" aria-selected="true" tabindex="0" data-tab="inicio" onclick="switchTab('inicio')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">⚡</span>Inicio</button>
+    <button type="button" class="nav-tab" id="nav-tab-jugadores" role="tab" aria-controls="tab-jugadores" aria-selected="false" tabindex="-1" data-tab="jugadores" onclick="switchTab('jugadores')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">👥</span>Jugadores</button>
+    <button type="button" class="nav-tab" id="nav-tab-asistencia" role="tab" aria-controls="tab-asistencia" aria-selected="false" tabindex="-1" data-tab="asistencia" onclick="switchTab('asistencia')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">✅</span>Asistencia</button>
+    <button type="button" class="nav-tab" id="nav-tab-calificar" role="tab" aria-controls="tab-calificar" aria-selected="false" tabindex="-1" data-tab="calificar" onclick="switchTab('calificar')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">⭐</span>Calificar</button>
+    <button type="button" class="nav-tab" id="nav-tab-equipos" role="tab" aria-controls="tab-equipos" aria-selected="false" tabindex="-1" data-tab="equipos" onclick="switchTab('equipos')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">🏆</span>Equipos</button>
+    <button type="button" class="nav-tab" id="nav-tab-goles" role="tab" aria-controls="tab-goles" aria-selected="false" tabindex="-1" data-tab="goles" onclick="switchTab('goles')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">⚽</span>Goles</button>
+    <button type="button" class="nav-tab" id="nav-tab-partidos" role="tab" aria-controls="tab-partidos" aria-selected="false" tabindex="-1" data-tab="partidos" onclick="switchTab('partidos')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">📜</span>Partidos</button>
+    <button type="button" class="nav-tab" id="nav-tab-goleadores" role="tab" aria-controls="tab-goleadores" aria-selected="false" tabindex="-1" data-tab="goleadores" onclick="switchTab('goleadores')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">🥇</span>Goleadores</button>
+    <button type="button" class="nav-tab" id="nav-tab-posiciones" role="tab" aria-controls="tab-posiciones" aria-selected="false" tabindex="-1" data-tab="posiciones" onclick="switchTab('posiciones')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">🏅</span>Posiciones</button>
+    <button type="button" class="nav-tab" id="nav-tab-stats" role="tab" aria-controls="tab-stats" aria-selected="false" tabindex="-1" data-tab="stats" onclick="switchTab('stats')" onkeydown="handleTabKeydown(event)"><span class="nav-tab-icon" aria-hidden="true">📊</span>Stats</button>
+    <button type="button" class="nav-tab" id="admin-tab" role="tab" aria-controls="tab-admin" aria-selected="false" tabindex="-1" data-tab="admin" onclick="switchTab('admin')" onkeydown="handleTabKeydown(event)" style="display:none"><span class="nav-tab-icon" aria-hidden="true">⚙️</span>Admin</button>
   </div>
 
   <!-- TAB: INICIO / MATCHDAY CENTRAL -->
-  <div class="tab-content active" id="tab-inicio" style="padding:16px">
+  <div class="tab-content active" id="tab-inicio" role="tabpanel" aria-labelledby="nav-tab-inicio" style="padding:16px">
     <div id="hub-content"></div>
   </div>
 
   <!-- TAB: JUGADORES -->
-  <div class="tab-content" id="tab-jugadores" style="padding:16px">
+  <div class="tab-content" id="tab-jugadores" role="tabpanel" aria-labelledby="nav-tab-jugadores" hidden style="padding:16px">
     <section class="roster-hero">
       <div class="roster-hero-copy">
-        <div class="roster-kicker"><span></span> CLUB HOUSE · SÁBADOS</div>
+        <div class="roster-kicker"><span></span><b id="roster-club-kicker">PLANTEL DEL CLUB</b></div>
         <h1>EL PLANTEL</h1>
         <p>Cartas, rendimiento y rivalidades del club.</p>
       </div>
@@ -293,10 +293,10 @@
   </div>
 
   <!-- TAB: ASISTENCIA -->
-  <div class="tab-content" id="tab-asistencia" style="padding:16px">
+  <div class="tab-content" id="tab-asistencia" role="tabpanel" aria-labelledby="nav-tab-asistencia" hidden style="padding:16px">
     <div class="section-header">
       <div class="section-title">¿QUIÉN VA?</div>
-      <button class="btn btn-danger btn-sm btn-clear-all" onclick="clearAllAttendance()">🗑️ Borrar todo</button>
+      <button class="btn btn-danger btn-sm btn-clear-all" id="attendance-clear-all" onclick="clearAllAttendance()" hidden>🗑️ Borrar todo</button>
     </div>
     <div class="attend-stats">
       <div class="attend-stat going"><div class="attend-stat-num" id="stat-going">0</div><div class="attend-stat-label">Van</div></div>
@@ -307,7 +307,7 @@
   </div>
 
   <!-- TAB: CALIFICAR -->
-  <div class="tab-content" id="tab-calificar" style="padding:16px">
+  <div class="tab-content" id="tab-calificar" role="tabpanel" aria-labelledby="nav-tab-calificar" hidden style="padding:16px">
     <div class="section-header">
       <div class="section-title">VOTAR</div>
       <span class="text-muted">Calificá a tus compañeros</span>
@@ -316,27 +316,28 @@
   </div>
 
   <!-- TAB: EQUIPOS -->
-  <div class="tab-content" id="tab-equipos" style="padding:16px">
+  <div class="tab-content" id="tab-equipos" role="tabpanel" aria-labelledby="nav-tab-equipos" hidden style="padding:16px">
     <div class="section-title" style="margin-bottom:16px">ARMAR EQUIPOS</div>
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Tipo de cancha</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Formato y cupo por equipo</div>
       <div class="field-selector">
-        <div class="field-btn selected" id="field-5" onclick="selectField(5)">
+        <button type="button" class="field-btn selected" id="field-5" aria-pressed="true" onclick="selectField(5)">
           <span class="field-btn-icon">⚽</span>
           <div class="field-btn-label">F5</div>
-          <div class="field-btn-sub">5 por lado</div>
-        </div>
-        <div class="field-btn" id="field-8" onclick="selectField(8)">
+          <div class="field-btn-sub">Hasta 5 por equipo</div>
+        </button>
+        <button type="button" class="field-btn" id="field-8" aria-pressed="false" onclick="selectField(8)">
           <span class="field-btn-icon">🏟️</span>
-          <div class="field-btn-label">F8/9</div>
-          <div class="field-btn-sub">8-9 por lado</div>
-        </div>
-        <div class="field-btn" id="field-11" onclick="selectField(11)">
+          <div class="field-btn-label">F8</div>
+          <div class="field-btn-sub">Hasta 8 por equipo</div>
+        </button>
+        <button type="button" class="field-btn" id="field-11" aria-pressed="false" onclick="selectField(11)">
           <span class="field-btn-icon">🏟️</span>
           <div class="field-btn-label">F11</div>
-          <div class="field-btn-sub">11 por lado</div>
-        </div>
+          <div class="field-btn-sub">Hasta 11 por equipo</div>
+        </button>
       </div>
+      <div class="field-capacity-note" id="field-capacity-note">Podés jugar con menos. F5 admite como máximo 5 jugadores en cada equipo.</div>
     </div>
     <div style="margin-bottom:16px">
       <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Cantidad de equipos</div>
@@ -352,7 +353,7 @@
   </div>
 
   <!-- TAB: GOLES -->
-  <div class="tab-content" id="tab-goles" style="padding:16px">
+  <div class="tab-content" id="tab-goles" role="tabpanel" aria-labelledby="nav-tab-goles" hidden style="padding:16px">
     <div class="section-header">
       <div class="section-title">PLANILLA DE GOLES</div>
       <button class="btn btn-ghost btn-sm" onclick="refreshGoles()">🔄</button>
@@ -361,41 +362,41 @@
   </div>
 
   <!-- TAB: PARTIDOS -->
-  <div class="tab-content" id="tab-partidos" style="padding:16px">
+  <div class="tab-content" id="tab-partidos" role="tabpanel" aria-labelledby="nav-tab-partidos" hidden style="padding:16px">
     <div id="partidos-historial"></div>
   </div>
 
   <!-- TAB: GOLEADORES -->
-  <div class="tab-content" id="tab-goleadores" style="padding:16px">
+  <div class="tab-content" id="tab-goleadores" role="tabpanel" aria-labelledby="nav-tab-goleadores" hidden style="padding:16px">
     <div id="goleadores-content"></div>
   </div>
 
   <!-- TAB: POSICIONES -->
-  <div class="tab-content" id="tab-posiciones" style="padding:16px">
+  <div class="tab-content" id="tab-posiciones" role="tabpanel" aria-labelledby="nav-tab-posiciones" hidden style="padding:16px">
     <div id="posiciones-content"></div>
   </div>
 
   <!-- TAB: STATS -->
-  <div class="tab-content" id="tab-stats" style="padding:16px">
+  <div class="tab-content" id="tab-stats" role="tabpanel" aria-labelledby="nav-tab-stats" hidden style="padding:16px">
     <div id="stats-content"></div>
   </div>
 
   <!-- TAB: ADMIN -->
-  <div class="tab-content" id="tab-admin" style="padding:16px">
+  <div class="tab-content" id="tab-admin" role="tabpanel" aria-labelledby="admin-tab" hidden style="padding:16px">
     <div class="admin-section" id="club-admin-section">
       <h3>🏟️ Tu club</h3>
       <div id="club-admin-info"></div>
     </div>
-    <div class="admin-section">
+    <div class="admin-section" id="admin-players-section">
       <h3>👥 Jugadores registrados</h3>
       <div id="admin-players-list"></div>
     </div>
-    <div class="admin-section">
+    <div class="admin-section" id="admin-votes-section">
       <h3>📊 Análisis de votos</h3>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Exporta todos los votos a un CSV para abrir en Excel y analizar quién votó qué.</p>
       <button class="btn btn-primary w-full" onclick="exportVotesCSV()" style="justify-content:center">📥 Descargar CSV de votos</button>
     </div>
-    <div class="admin-section">
+    <div class="admin-section" id="admin-danger-zone">
       <h3>⚙️ Configuración</h3>
       <button class="btn btn-danger w-full" onclick="resetAllRatings()" style="margin-bottom:8px;justify-content:center">🗑️ Borrar todas las calificaciones</button>
       <button class="btn btn-danger w-full" onclick="resetAllAttendance()" style="justify-content:center">🗑️ Borrar toda la asistencia</button>
@@ -502,29 +503,29 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/state.js"></script>
-<script src="js/init.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/navigation.js"></script>
-<script src="js/support.js"></script>
-<script src="js/ratings-normalize.js"></script>
-<script src="js/stats-core.js"></script>
-<script src="js/render.js"></script>
-<script src="js/tabs/inicio-podium.js"></script>
-<script src="js/tabs/inicio.js"></script>
-<script src="js/tabs/jugadores.js"></script>
-<script src="js/tabs/asistencia.js"></script>
-<script src="js/tabs/calificar.js"></script>
-<script src="js/tabs/equipos.js"></script>
-<script src="js/tabs/goles.js"></script>
-<script src="js/tabs/partidos.js"></script>
-<script src="js/tabs/stats.js"></script>
-<script src="js/tabs/goleadores.js"></script>
-<script src="js/tabs/admin.js"></script>
-<script src="js/crest-designer.js"></script>
-<script src="js/sync.js"></script>
-<script src="js/boot.js"></script>
+<script src="js/config.js?v=60"></script>
+<script src="js/storage.js?v=60"></script>
+<script src="js/state.js?v=60"></script>
+<script src="js/init.js?v=60"></script>
+<script src="js/auth.js?v=60"></script>
+<script src="js/navigation.js?v=60"></script>
+<script src="js/support.js?v=60"></script>
+<script src="js/ratings-normalize.js?v=60"></script>
+<script src="js/stats-core.js?v=60"></script>
+<script src="js/render.js?v=60"></script>
+<script src="js/tabs/inicio-podium.js?v=60"></script>
+<script src="js/tabs/inicio.js?v=60"></script>
+<script src="js/tabs/jugadores.js?v=60"></script>
+<script src="js/tabs/asistencia.js?v=60"></script>
+<script src="js/tabs/calificar.js?v=60"></script>
+<script src="js/tabs/equipos.js?v=60"></script>
+<script src="js/tabs/goles.js?v=60"></script>
+<script src="js/tabs/partidos.js?v=60"></script>
+<script src="js/tabs/stats.js?v=60"></script>
+<script src="js/tabs/goleadores.js?v=60"></script>
+<script src="js/tabs/admin.js?v=60"></script>
+<script src="js/crest-designer.js?v=60"></script>
+<script src="js/sync.js?v=60"></script>
+<script src="js/boot.js?v=60"></script>
 </body>
 </html>

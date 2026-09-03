@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Equipos responsive harness</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/equipos.css">
+  <style>
+    body{margin:0;padding:8px;background:#07111b}
+    #fixture{width:100%;max-width:320px}
+    #result{display:block;margin-bottom:8px;color:#fff;font:12px monospace}
+  </style>
+</head>
+<body>
+  <output id="result">RUNNING</output>
+  <div id="field-capacity-note"></div>
+  <div id="teams-result"></div>
+  <script>
+    const state={builtTeams:null,teamsEditMode:true,currentUser:{isAdmin:true},currentClub:{name:'Club'}};
+    const TEAM_NAMES=['A','B','C'];
+    const TEAM_EMOJIS=['🔵','🔴','🟣'];
+    const matches=[];
+    const getOverall=player=>player.ovr;
+    const getEffectivePosition=player=>player.effPos;
+    const getPlayerForm=()=>({last5:[]});
+    const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const safePlainText=value=>String(value||'');
+    const showToast=()=>{};
+  </script>
+  <script src="../js/tabs/equipos.js"></script>
+  <script>
+    const makePlayer=(id,name,pos,ovr)=>({id,name,effPos:pos,ovr,balanceOvr:ovr,isGuest:false});
+    const teams=[
+      {players:[
+        makePlayer('a1','Fernando Javier López con un nombre extraordinariamente largo','POR',78),
+        makePlayer('a2','Sebastián Bonasegla','DEF',72)
+      ],total:150},
+      {players:[
+        makePlayer('b1','Federico Salvarezza también con apellido extendido','POR',77),
+        makePlayer('b2','Enrique Tortorella','MED',73)
+      ],total:150}
+    ];
+    fieldSelected=5;
+    renderBuiltTeams(teams);
+    requestAnimationFrame(()=>{
+      const container=document.getElementById('teams-result');
+      const rows=[...document.querySelectorAll('.team-player-row')];
+      const names=[...document.querySelectorAll('.team-player-name')];
+      const checks={
+        valid:validateBuiltTeams(teams,{fieldSize:5}).valid,
+        noContainerOverflow:container.scrollWidth<=container.clientWidth+1,
+        noRowOverflow:rows.every(row=>row.scrollWidth<=row.clientWidth+1),
+        namesContained:names.every(name=>name.getBoundingClientRect().right<=name.parentElement.getBoundingClientRect().right+1),
+        capacityVisible:/F5/.test(container.textContent)&&/2\/5/.test(container.textContent),
+        allNamesPresent:names.length===4
+      };
+      const failed=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);
+      const output=document.getElementById('result');
+      output.textContent=failed.length?`FAIL: ${failed.join(', ')}`:'PASS';
+      output.dataset.checks=JSON.stringify(checks);
+      window.__EQUIPOS_CHECKS__=checks;
+    });
+  </script>
+</body>
+</html>

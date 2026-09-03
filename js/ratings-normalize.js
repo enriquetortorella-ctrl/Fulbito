@@ -3,6 +3,10 @@
 let _biasCache = null;
 let _biasCacheStamp = 0;
 
+function isCompleteStoredRating(player, rating) {
+  return !!rating && getRatingStats(player).every(stat => getStatValue(rating, stat) > 0);
+}
+
 function computeVoterBiases() {
   // El sesgo depende de los valores, no sólo de la cantidad de votos. Si una
   // persona corrige una estrella ya registrada, el objeto conserva la misma
@@ -14,6 +18,7 @@ function computeVoterBiases() {
   state.players.forEach(p => {
     Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
       if (voterId === p.id) return;
+      if (!isCompleteStoredRating(p, r)) return;
       getRatingStats(p).forEach(s => {
         const value = getStatValue(r, s);
         if (value > 0) allVotes.push(value);
@@ -26,6 +31,7 @@ function computeVoterBiases() {
   state.players.forEach(p => {
     Object.entries(p.ratings || {}).forEach(([voterId, r]) => {
       if (voterId === p.id) return;
+      if (!isCompleteStoredRating(p, r)) return;
       if (!voterVotes[voterId]) voterVotes[voterId] = [];
       getRatingStats(p).forEach(s => {
         const value = getStatValue(r, s);
@@ -59,7 +65,9 @@ function normalizeVote(rawVote, voterId) {
 function getValidRatings(player) {
   const myId = player.id;
   return Object.entries(player.ratings || {})
-    .filter(([voterId]) => voterId !== myId)
+    // La interfaz guarda una estrella por vez. Una boleta interrumpida no debe
+    // diluir atributos ausentes ni mover el OVR hasta completar la ficha.
+    .filter(([voterId, rating]) => voterId !== myId && isCompleteStoredRating(player, rating))
     .map(([voterId, rating]) => {
       const normalized = {};
       getRatingStats(player).forEach(s => {

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../css/inicio.css?v=59">
   <link rel="stylesheet" href="../css/jugadores.css?v=59">
   <link rel="stylesheet" href="../css/stats.css?v=59">
+  <link rel="stylesheet" href="../css/partidos.css?v=59">
   <link rel="stylesheet" href="../css/responsive.css?v=59">
   <link rel="stylesheet" href="../css/theme-aurora.css?v=59">
   <link rel="stylesheet" href="../css/stats-matchcentre.css?v=59">
@@ -24,7 +25,7 @@
     .harness-title{margin:10px 0;font:28px 'Bebas Neue',sans-serif;color:#fff}
     .harness-status{position:fixed;right:8px;top:8px;z-index:9999;padding:7px 10px;border-radius:8px;background:#102338;border:1px solid #385675;font:700 11px sans-serif}
     .harness-status.ok{color:#b6f23d}.harness-status.fail{color:#ff7d86}
-    #tab-jugadores,#tab-stats,#tab-card-variants{display:block!important}
+    #tab-jugadores,#tab-stats,#tab-goleadores,#tab-posiciones,#tab-card-variants{display:block!important}
     #players-grid{margin-top:10px}
     .harness-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .harness-toolbar select{padding:7px;background:#0c1a2c;color:white;border:1px solid #385675;border-radius:7px}
@@ -52,6 +53,14 @@
     <section id="tab-stats" class="tab-content active">
       <h1 class="harness-title">Estadísticas</h1>
       <div id="stats-content"></div>
+    </section>
+    <section id="tab-goleadores" class="tab-content active">
+      <h1 class="harness-title">Goleadores históricos</h1>
+      <div id="goleadores-content"></div>
+    </section>
+    <section id="tab-posiciones" class="tab-content active">
+      <h1 class="harness-title">Posiciones históricas</h1>
+      <div id="posiciones-content"></div>
     </section>
     <section id="tab-card-variants" class="tab-content active">
       <h1 class="harness-title">Variantes reales de carta</h1>
@@ -92,9 +101,11 @@
       {id:'p3',name:'Federico Salvareza Apellido Muy Largo',username:'Federico Salvareza Apellido Muy Largo',posPrimary:'DEL',ovr:75,stats:{...fieldStats,ataque:90},photo:'../assets/fulbito-icon.svg',ratings:{}},
       {id:'p4',name:'Facundo Badie',username:'Facu',posPrimary:'MED',ovr:71,stats:{...fieldStats,defensa:75},photo:'',ratings:{}},
       {id:'p5',name:'Arquero del Barrio',username:'Arquero de Prueba',posPrimary:'POR',ratingMode:'goalkeeper',ovr:69,stats:{...keeperStats},photo:'../assets/fulbito-icon.svg',ratings:{}},
-      {id:'p6',name:'Jugador Sin Usuario',posPrimary:'DEF',ovr:62,stats:{...fieldStats,ritmo:60},photo:'',ratings:{}}
+      {id:'p6',name:'Jugador Sin Usuario',posPrimary:'DEF',ovr:62,stats:{...fieldStats,ritmo:60},photo:'',ratings:{}},
+      {id:'p-zero',name:'Alta Reciente Sin Partidos',posPrimary:'MED',ovr:67,stats:{...fieldStats},photo:'',ratings:{}}
     ];
     const guest={id:'guest-1',name:'Invitado Histórico',username:'Invitado',posPrimary:'MED',ovr:60,stats:fieldStats,isGuest:true};
+    const historical={id:'p-old',name:'Jugador Borrado del Plantel',username:'Histórico',pos:'DEL',ovr:74,isGuest:false};
     const team=(name,list)=>({name,players:list});
     const result=(winner,goals,events,mvp)=>({winner,margin:1,mvp,goals,goalEvents:events,goalsTracked:true,assistsTracked:true});
     const event=(id,scorerId,assistType,assistPlayerId)=>({id,scorerId,assistType,assistPlayerId:assistPlayerId||null});
@@ -102,7 +113,7 @@
       {id:'m3',match_date:'2026-09-05',created_at:'2026-09-05T22:00:00Z',teams:[team('A',[players[0],players[1],players[2]]),team('B',[players[3],players[4],players[5]])],result:result(0,{p1:2,p2:1,p4:1},[event('e31','p1','player','p2'),event('e32','p1','individual'),event('e33','p2','player','p3'),event('e34','p4','rebound')],'p1')},
       {id:'m2',match_date:'2026-08-29',created_at:'2026-08-29T22:00:00Z',teams:[team('A',[players[0],players[3],players[5]]),team('B',[players[1],players[2],players[4]])],result:result(1,{p2:2,p3:1,p6:1},[event('e21','p2','player','p3'),event('e22','p2','player','p5'),event('e23','p3','individual'),event('e24','p6','rebound')],'p3')},
       {id:'m1',match_date:'2026-08-22',created_at:'2026-08-22T22:00:00Z',teams:[team('A',[players[0],players[2],guest]),team('B',[players[1],players[3],players[5]])],result:result('draw',{p1:1,p2:1},[event('e11','p1','player','guest-1'),event('e12','p2','player','p4')],null)},
-      {id:'legacy',match_date:'2026-08-15',created_at:'2026-08-15T22:00:00Z',teams:[team('A',[players[0],players[1]]),team('B',[players[2],players[3]])],result:result(0,{p1:1},[event('old','p1','unrecorded')],null)}
+      {id:'legacy',match_date:'2026-08-15',created_at:'2026-08-15T22:00:00Z',teams:[team('A',[players[0],players[1],historical]),team('B',[players[2],players[3]])],result:result(0,{p1:1,'p-old':6},[event('old','p1','unrecorded')],null)}
     ];
     const state={players,currentUser:{id:'p1',name:'Enrique'},currentClub:{id:'test',name:'Club Test'}};
     let rosterQuery='',rosterSort='rating';
@@ -129,11 +140,14 @@
   <script src="../js/tabs/jugadores.js?v=59"></script>
   <script src="../js/tabs/stats.js?v=59"></script>
   <script src="../js/tabs/goleadores.js?v=59"></script>
+  <script src="../js/tabs/partidos.js?v=59"></script>
   <script src="../js/tabs/inicio-podium.js?v=59"></script>
   <script>
     (async()=>{
     renderPlayers();
     renderStats();
+    renderGoleadoresTab();
+    renderRanking();
     const harnessRows=players.map(p=>({p,ovr:getOverall(p)||60,...getPlayerRecord(p.id)}));
     const harnessPlayed=matches.filter(isPlayed);
     const harnessHighlights=getCardHighlights(harnessRows,harnessPlayed);
@@ -215,7 +229,7 @@
         if(variant==='full'){
           if(!visible(name)||!visible(stats)||!visible(meta))issues.push(`${label}-full-density-missing`);
         }else if(variant==='podium'){
-          if(!visible(name)||visible(stats)||visible(meta))issues.push(`${label}-podium-density-wrong`);
+          if(!visible(name)||!visible(stats)||!visible(meta))issues.push(`${label}-podium-density-missing`);
         }else if(variant==='thumbnail'&&(visible(name)||visible(stats)||visible(meta))){
           issues.push(`${label}-thumbnail-density-wrong`);
         }
@@ -232,6 +246,29 @@
       if(homeCards.length!==3)issues.push(`home-card-count-${homeCards.length}`);
       if(podiumCards.length!==2)issues.push(`podium-card-count-${podiumCards.length}`);
       if(thumbnailCards.length!==3)issues.push(`thumbnail-card-count-${thumbnailCards.length}`);
+      const cardData=card=>({
+        overall:card.querySelector('.fifa-card-overall')?.textContent.trim(),
+        stats:[...card.querySelectorAll('.fifa-card-stat')].map(stat=>stat.textContent.replace(/\s+/g,' ').trim()),
+        record:card.querySelector('.fifa-card-record')?.textContent.trim()||'',
+        medals:[...card.querySelectorAll('.fifa-medal')].map(medal=>medal.textContent.replace(/\s+/g,'').trim())
+      });
+      [...homeCards,...podiumCards].forEach((card,index)=>{
+        const source=fullCards.find(full=>full.getAttribute('aria-label')===card.getAttribute('aria-label'));
+        if(!source)return issues.push(`podium-data-${index}-source-missing`);
+        if(JSON.stringify(cardData(card))!==JSON.stringify(cardData(source)))issues.push(`podium-data-${index}-mismatch`);
+        card.querySelectorAll('.fifa-card-stat').forEach((stat,statIndex)=>{
+          const valueSize=parseFloat(getComputedStyle(stat.querySelector('span:first-child')).fontSize)||0;
+          const labelSize=parseFloat(getComputedStyle(stat.querySelector('span:last-child')).fontSize)||0;
+          if(valueSize<8)issues.push(`podium-data-${index}-stat-${statIndex}-value-too-small-${valueSize.toFixed(1)}`);
+          if(labelSize<5.5)issues.push(`podium-data-${index}-stat-${statIndex}-label-too-small-${labelSize.toFixed(1)}`);
+        });
+      });
+      if(innerWidth<=420){
+        const homeShell=document.getElementById('harness-home-cards');
+        const widths=homeCards.map(card=>Math.round(card.getBoundingClientRect().width));
+        if(new Set(widths).size!==1)issues.push(`home-mobile-unequal-widths-${widths.join('-')}`);
+        if(getComputedStyle(homeShell).overflowX!=='auto')issues.push('home-mobile-scroll-missing');
+      }
       document.querySelectorAll('#harness-home-cards .hub-live-card-frame').forEach((frame,index)=>{
         const card=frame.querySelector('.fifa-card');
         if(!card)return issues.push(`home-${index}-card-missing`);
@@ -253,11 +290,29 @@
         if(visible(copy)&&visible(metrics)&&intersects(copy.getBoundingClientRect(),metrics.getBoundingClientRect()))issues.push(`thumbnail-${index}-copy-metrics-overlap`);
         checkContentBox(metrics,`thumbnail-${index}-external-metrics`);
       });
-      ['#harness-home-cards','.leaderboard-page','#harness-leaderboard-podium','#harness-thumbnail-grid'].forEach(selector=>checkContentBox(document.querySelector(selector),`shell-${selector}`));
+      ['.leaderboard-page','#harness-leaderboard-podium','#harness-thumbnail-grid'].forEach(selector=>checkContentBox(document.querySelector(selector),`shell-${selector}`));
+      if(innerWidth>420)checkContentBox(document.querySelector('#harness-home-cards'),'shell-#harness-home-cards');
       if(![...document.querySelectorAll('#players-grid .fifa-card')].some(card=>card.querySelectorAll('.fifa-medal').length===3))issues.push('three-metrics-missing');
       if(!document.querySelector('.assists-module'))issues.push('assist-module-missing');
       if(!document.querySelector('.performance-table th[title="Asistencias"]'))issues.push('assist-column-missing');
-      if(!document.querySelector('.assists-list')?.textContent.includes('Invitado Histórico'))issues.push('guest-assist-missing');
+      if(document.querySelector('.assists-list')?.textContent.includes('Invitado Histórico'))issues.push('guest-leaked-into-assist-ranking');
+      if(!document.querySelector('.assists-breakdown')?.textContent.includes('1 de invitados/sin ficha'))issues.push('guest-assist-summary-missing');
+      const historicalPerformance=[...document.querySelectorAll('.performance-table tbody tr')].find(row=>row.textContent.includes(historical.name));
+      if(!historicalPerformance)issues.push('historical-performance-missing');
+      else if(historicalPerformance.hasAttribute('onclick')||historicalPerformance.hasAttribute('tabindex')||historicalPerformance.getAttribute('role')==='button')issues.push('historical-performance-clickable');
+      const zeroAttendance=[...document.querySelectorAll('#stats-content .bar-row')].find(row=>row.textContent.includes(players[6].name));
+      if(!zeroAttendance||!zeroAttendance.textContent.includes('0/4'))issues.push('zero-pj-attendance-missing');
+      const historicalScorer=[...document.querySelectorAll('#goleadores-content .leaderboard-feature,#goleadores-content .leaderboard-list-card')].find(row=>row.textContent.includes(historical.name));
+      if(!historicalScorer)issues.push('historical-scorer-missing');
+      else {
+        if(historicalScorer.hasAttribute('onclick')||historicalScorer.hasAttribute('tabindex')||historicalScorer.getAttribute('role')==='button')issues.push('historical-scorer-clickable');
+        const historicalCard=historicalScorer.querySelector('.fifa-card');
+        if(!historicalCard||historicalCard.hasAttribute('onclick')||historicalCard.hasAttribute('tabindex')||historicalCard.getAttribute('role')==='button')issues.push('historical-scorer-card-clickable');
+        else if(getComputedStyle(historicalCard).cursor!=='default')issues.push('historical-scorer-card-pointer');
+      }
+      const historicalPosition=[...document.querySelectorAll('#posiciones-content .rank-row')].find(row=>row.textContent.includes(historical.name));
+      if(!historicalPosition)issues.push('historical-position-missing');
+      else if(historicalPosition.hasAttribute('onclick')||historicalPosition.hasAttribute('tabindex')||historicalPosition.getAttribute('role')==='button')issues.push('historical-position-clickable');
       try {
         const scopedRows=statsPlayers(matches.slice(0,2));
         const scopedHighlights=getCardHighlights(scopedRows,matches.slice(0,2));

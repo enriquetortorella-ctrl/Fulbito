@@ -16,7 +16,7 @@ function rosterEntries() {
     return {
       p,
       index,
-      ovr: getOverall(p) || 60,
+      ovr: getOverall(p),
       rec,
       ppp: rec.pj ? rec.pts / rec.pj : 0
     };
@@ -29,9 +29,10 @@ function renderRosterSummary(entries, visible) {
   const leader = document.getElementById('roster-leader');
   const visibleCount = document.getElementById('roster-visible-count');
   if (count) count.textContent = entries.length;
-  if (average) average.textContent = entries.length ? Math.round(entries.reduce((sum, x) => sum + x.ovr, 0) / entries.length) : '—';
+  const rated = entries.filter(x => Number.isFinite(x.ovr));
+  if (average) average.textContent = rated.length ? Math.round(rated.reduce((sum, x) => sum + x.ovr, 0) / rated.length) : '—';
   if (leader) {
-    const top = entries.slice().sort((a,b) => b.ovr-a.ovr || a.p.name.localeCompare(b.p.name))[0];
+    const top = rated.slice().sort((a,b) => b.ovr-a.ovr || a.p.name.localeCompare(b.p.name))[0];
     leader.textContent = top ? `${top.p.name} · ${top.ovr}` : '—';
   }
   if (visibleCount) visibleCount.textContent = `${visible.length} de ${entries.length} jugador${entries.length===1?'':'es'}`;
@@ -46,10 +47,11 @@ function renderPlayers() {
 
   visible.sort((a,b) => {
     if (rosterSort === 'name') return a.p.name.localeCompare(b.p.name) || a.index-b.index;
-    if (rosterSort === 'performance') return b.ppp-a.ppp || b.rec.pj-a.rec.pj || b.ovr-a.ovr;
-    if (rosterSort === 'goals') return b.rec.goals-a.rec.goals || b.rec.pj-a.rec.pj || b.ovr-a.ovr;
-    if (rosterSort === 'assists') return b.rec.assists-a.rec.assists || b.rec.assistPj-a.rec.assistPj || b.ovr-a.ovr;
-    return b.ovr-a.ovr || a.p.name.localeCompare(b.p.name);
+    const ovrDiff = (Number.isFinite(b.ovr) ? b.ovr : -1) - (Number.isFinite(a.ovr) ? a.ovr : -1);
+    if (rosterSort === 'performance') return b.ppp-a.ppp || b.rec.pj-a.rec.pj || ovrDiff;
+    if (rosterSort === 'goals') return b.rec.goals-a.rec.goals || b.rec.pj-a.rec.pj || ovrDiff;
+    if (rosterSort === 'assists') return b.rec.assists-a.rec.assists || b.rec.assistPj-a.rec.assistPj || ovrDiff;
+    return ovrDiff || a.p.name.localeCompare(b.p.name);
   });
 
   renderRosterSummary(entries, visible);
@@ -61,7 +63,7 @@ function renderPlayers() {
     return;
   }
   if (!visible.length) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⌕</div><div>No encontramos a "${rosterQuery}"</div><div style="font-size:12px;margin-top:7px">Probá con otro nombre, usuario o posición.</div></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⌕</div><div>No encontramos a "${escapeHtml(rosterQuery)}"</div><div style="font-size:12px;margin-top:7px">Probá con otro nombre, usuario o posición.</div></div>`;
     return;
   }
   const highlights = getCardHighlights(entries);
@@ -96,10 +98,14 @@ function getSelfOverall(p) {
 }
 
 function cardStatsHTML(stats, player) {
-  const pairs = getRatingStats(player).map(stat => [STAT_LABELS[stat], statToFifa(stats[stat])]);
-  const max = Math.max(...pairs.map(([,v]) => v));
+  const pairs = getRatingStats(player).map(stat => {
+    const raw = getStatValue(stats, stat);
+    return [STAT_LABELS[stat], raw > 0 ? statToFifa(raw) : null];
+  });
+  const numeric = pairs.map(([,value]) => value).filter(Number.isFinite);
+  const max = numeric.length ? Math.max(...numeric) : null;
   return pairs.map(([k,v]) =>
-    `<div class="fifa-card-stat${v===max && v>40 ? ' best' : ''}"><span>${v}</span><span>${k}</span></div>`
+    `<div class="fifa-card-stat${v!==null && v===max && v>40 ? ' best' : ''}${v===null ? ' is-missing' : ''}"><span>${v === null ? '—' : v}</span><span>${k}</span></div>`
   ).join('');
 }
 
@@ -111,8 +117,9 @@ function getCardHighlights(entries, scope) {
   const rankedByGoals = entries.filter(entry => (recordOf(entry).goals || 0) > 0);
   const maxGoals = rankedByGoals.length ? Math.max(...rankedByGoals.map(entry => recordOf(entry).goals || 0)) : 0;
   const topScorerIds = new Set(rankedByGoals.filter(entry => (recordOf(entry).goals || 0) === maxGoals).map(entry => entry.p.id));
+  const visiblePlayerIds = new Set(entries.map(entry => entry.p?.id).filter(Boolean));
   const latestMvpMatch = scopedMatches
-    .filter(m => isPlayed(m) && m.result?.mvp)
+    .filter(m => isPlayed(m) && m.result?.mvp && visiblePlayerIds.has(m.result.mvp))
     .slice()
     .sort((a,b) => `${b.match_date||''}|${b.created_at||''}`.localeCompare(`${a.match_date||''}|${a.created_at||''}`))[0];
   return {
@@ -131,10 +138,10 @@ function cardSpotlightsHTML(p, highlights) {
   return badges.length ? `<div class="card-spotlights">${badges.join('')}</div>` : '';
 }
 
-function renderFifaCard(p, highlights, variant, recordOverride) {
+function renderFifaCard(p, highlights, variant, recordOverride, interactive = true) {
   highlights = highlights || { topScorerIds:new Set(), latestMvpId:null, forms:new Map() };
-  const ovr = getOverall(p) || 60;
-  const tier = getCardTier(ovr);
+  const ovr = typeof rankingPlayerOverall === 'function' ? rankingPlayerOverall(p) : getOverall(p);
+  const tier = getCardTier(ovr ?? 0);
   const pos = getEffectivePosition(p);
   const stats = getAvgStats(p) || {};
   const photoUrl = safePhotoUrl(p.photo);
@@ -162,7 +169,7 @@ function renderFifaCard(p, highlights, variant, recordOverride) {
   const isLatestMvp = highlights.latestMvpId === p.id;
   const spotlights = cardSpotlightsHTML(p, highlights);
   const densityClass = variant === 'thumbnail' ? 'card-thumbnail' : variant === 'podium' ? 'card-podium' : 'card-full';
-  const cardClasses = [tier.cls, densityClass, isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
+  const cardClasses = [tier.cls, densityClass, ovr === null ? 'is-unrated' : '', isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
   // La etiqueta bajo la posición explica el marco. Mismo orden de prioridad
   // que los fondos en cards.css: racha < goleador < MVP.
   const frameLabel = isLatestMvp ? 'MVP'
@@ -170,12 +177,20 @@ function renderFifaCard(p, highlights, variant, recordOverride) {
     : isHot ? `RACHA ${form.streak}V`
     : tier.label;
 
-  return `<div class="fifa-card ${cardClasses}" role="button" tabindex="0" aria-label="Ver ficha de ${escapeHtml(p.name)}" onclick="event.stopPropagation();openPlayerProfile('${p.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openPlayerProfile('${p.id}')}">
+  const canOpenProfile = typeof isCurrentRosterPlayer === 'function'
+    ? isCurrentRosterPlayer(p)
+    : state.players.some(player => player.id === p.id);
+  const profileAttrs = canOpenProfile && interactive
+    ? `role="button" tabindex="0" aria-label="Ver ficha de ${escapeHtml(p.name)}" onclick="event.stopPropagation();openPlayerProfile('${p.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openPlayerProfile('${p.id}')}"`
+    : interactive
+      ? `aria-label="${escapeHtml(p.name)} · jugador histórico"`
+      : 'aria-hidden="true"';
+  return `<div class="fifa-card ${cardClasses}${canOpenProfile ? '' : ' is-historical'}" ${profileAttrs}>
     <span class="fifa-shine"></span>
     ${portrait}
     <div class="fifa-top">
       <div class="fifa-left">
-        <div class="fifa-card-overall">${ovr}</div>
+        <div class="fifa-card-overall">${ovr ?? '—'}</div>
         <div class="fifa-card-pos">${pos}</div>
         <div class="fifa-card-tier">${frameLabel}</div>
       </div>
@@ -192,22 +207,23 @@ function openPlayerProfile(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
   closeModal('modal-profile');
-  const ovr = getOverall(p) || 60;
-  const tier = getCardTier(ovr);
+  const ovr = getOverall(p);
+  const tier = getCardTier(ovr ?? 0);
   const pos = getEffectivePosition(p);
   const stats = getAvgStats(p) || {};
   const profilePhotoUrl = safePhotoUrl(p.photo);
   const photo = profilePhotoUrl ? `<img src="${escapeHtml(profilePhotoUrl)}" alt="" style="width:100px;height:100px;border-radius:10px;object-fit:cover;border:2px solid var(--gold);display:block;margin:0 auto 12px">` : `<div style="font-size:64px;text-align:center;margin-bottom:12px">👤</div>`;
 
   const statBars = getRatingStats(p).map(s => {
-    const fifa = statToFifa(stats[s]||0);
+    const raw = getStatValue(stats, s);
+    const fifa = raw > 0 ? statToFifa(raw) : null;
     return `<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
         <span style="color:var(--muted)">${STAT_LABELS[s]}</span>
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px">${fifa}</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px">${fifa ?? '—'}</span>
       </div>
       <div style="height:4px;background:var(--bg3);border-radius:2px">
-        <div style="height:4px;border-radius:2px;width:${fifa}%;background:${fifa>=75?'var(--gold)':fifa>=60?'var(--green)':'var(--muted)'}"></div>
+        <div style="height:4px;border-radius:2px;width:${fifa ?? 0}%;background:${fifa!==null && fifa>=75?'var(--gold)':fifa!==null && fifa>=60?'var(--green)':'var(--muted)'}"></div>
       </div>
     </div>`;
   }).join('');
@@ -310,8 +326,8 @@ function openPlayerProfile(id) {
   document.getElementById('modal-profile-content').innerHTML = `
       ${photo}
     <div style="text-align:center;margin-bottom:16px">
-      <span style="font-family:'Bebas Neue',sans-serif;font-size:48px">${ovr}</span>
-      <span style="display:block;color:var(--muted);font-size:13px">${tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:48px">${ovr ?? '—'}</span>
+      <span style="display:block;color:var(--muted);font-size:13px">${ovr === null ? 'Sin calificar' : tier.label} · ${pos} · ${validVoters} voto${validVoters===1?'':'s'}${trimmedNote}</span>
       ${usesGoalkeeperStats(p) ? '<span style="display:block;color:var(--cyan);font-size:12px;margin-top:4px">🧤 Estadísticas de arquero</span>' : ''}
       <span style="display:block;color:var(--muted);font-size:12px;margin-top:4px">Posición secundaria: ${p.posSecondary||'-'}</span>
       ${(recChip || goalChip || assistChip) ? `<div class="profile-metrics">${recChip}${goalChip}${assistChip}</div>` : ''}
@@ -477,7 +493,7 @@ async function requestReset() {
   }
   try {
     await callRpc('fulbito_request_reset', { p_club_id: state.currentClub.id, p_username: user });
-    msgEl.innerHTML = `✅ Listo. Si existe esa cuenta, el pedido fue enviado al admin.<br><strong style="color:var(--gold)">Cuando lo resetee, entrá con la clave 1234.</strong>`;
+    msgEl.innerHTML = `✅ Listo. Si existe esa cuenta, el pedido fue enviado al admin.<br><strong style="color:var(--gold)">El admin te informará la nueva contraseña.</strong>`;
     msgEl.style.background='rgba(34,197,94,.1)'; msgEl.style.color='var(--green)';
     msgEl.style.display='block';
   } catch (error) {
@@ -490,23 +506,35 @@ async function requestReset() {
 async function toggleAdmin(id) {
   const p = state.players.find(x=>x.id===id);
   if (!p) return;
+  if (typeof canManageClubAccounts === 'function' && !canManageClubAccounts()) {
+    showToast('⚠️ Los roles sólo puede cambiarlos un administrador del club.');
+    return;
+  }
+  if (p.id === state.currentUser?.id) {
+    showToast('⚠️ No podés cambiar tu propio rol. Pedile a otro administrador que lo haga.');
+    return;
+  }
+  const nextIsAdmin = !p.isAdmin;
+  if (!nextIsAdmin && state.players.filter(player => player.isAdmin).length <= 1) {
+    showToast('⚠️ El club debe conservar al menos un administrador.');
+    return;
+  }
+  const accepted = await confirmAppAction({
+    title: nextIsAdmin ? 'ASIGNAR ADMINISTRADOR' : 'QUITAR ADMINISTRADOR',
+    message: nextIsAdmin
+      ? `${p.name} (@${p.username}) podrá administrar usuarios, identidad y datos del club.`
+      : `${p.name} (@${p.username}) dejará de poder administrar usuarios y configuración del club.`,
+    confirmText: nextIsAdmin ? 'Sí, hacer admin' : 'Sí, quitar acceso',
+    danger: !nextIsAdmin
+  });
+  if (!accepted) return;
   try {
-    const data = await callRpc('fulbito_set_admin', { p_club_id: state.currentClub.id, p_player_id: id, p_is_admin: !p.isAdmin });
-    Object.assign(p, mapPlayers([data])[0]);
+    const data = await callRpc('fulbito_set_admin', { p_club_id: state.currentClub.id, p_player_id: id, p_is_admin: nextIsAdmin });
+    const saved = data ? mapPlayers([data])[0] : null;
+    if (!saved || saved.id !== p.id || saved.isAdmin !== nextIsAdmin) throw new Error('El servidor no confirmó el cambio de rol.');
+    Object.assign(p, saved);
     renderAdmin();
     showToast(p.isAdmin ? `👑 ${p.username} es admin` : `${p.username} ya no es admin`);
-  } catch (error) { showToast(`❌ ${error.message}`); }
-}
-
-async function adminResetPassword(id) {
-  const p = state.players.find(x=>x.id===id);
-  if (!p) return;
-  if (!await confirmAppAction({ title: 'RESETEAR CONTRASEÑA', message: `La contraseña de ${p.name} (@${p.username}) pasará a ser 1234.`, confirmText: 'Resetear contraseña', danger: true })) return;
-  try {
-    await callRpc('fulbito_admin_reset_player', { p_club_id: state.currentClub.id, p_player_id: id });
-    p._resetRequested = false;
-    renderAdmin();
-    showToast(`🔑 Contraseña de ${p.username} reseteada a 1234`);
   } catch (error) { showToast(`❌ ${error.message}`); }
 }
 

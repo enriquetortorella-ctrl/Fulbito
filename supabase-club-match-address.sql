@@ -35,7 +35,7 @@ begin
     'id', v_club.id,
     'name', v_club.name,
     'crest', v_club.crest,
-    'invite_code', case when public.fulbito_is_admin(p_club_id) then v_club.invite_code else null end,
+    'invite_code', case when public.fulbito_is_admin(p_club_id) or public.fulbito_is_platform_admin() then v_club.invite_code else null end,
     'match_weekday', v_club.match_weekday,
     'match_time', to_char(v_club.match_time, 'HH24:MI'),
     'match_venue', v_club.match_venue,
@@ -81,7 +81,7 @@ begin
   if not found then raise exception 'Club no encontrado' using errcode = '22023'; end if;
   return jsonb_build_object(
     'id', v_club.id, 'name', v_club.name, 'crest', v_club.crest,
-    'invite_code', case when public.fulbito_is_admin(p_club_id) then v_club.invite_code else null end,
+    'invite_code', case when public.fulbito_is_admin(p_club_id) or public.fulbito_is_platform_admin() then v_club.invite_code else null end,
     'match_weekday', v_club.match_weekday, 'match_time', to_char(v_club.match_time, 'HH24:MI'),
     'match_venue', v_club.match_venue, 'match_address', v_club.match_address
   );

@@ -17,25 +17,57 @@ function formatMatchDate(m) {
 
 function daysSince(dateStr) {
   if (!dateStr) return null;
-  const d = new Date(dateStr + 'T12:00:00');
-  if (isNaN(d)) return null;
-  return Math.round((Date.now() - d.getTime()) / 86400000);
+  const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!dateParts) return null;
+  const todayISO = typeof hubTodayISO === 'function'
+    ? hubTodayISO()
+    : new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      }).format(new Date());
+  const todayParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(todayISO);
+  if (!todayParts) return null;
+  const utcDay = parts => Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]));
+  return Math.round((utcDay(todayParts) - utcDay(dateParts)) / 86400000);
 }
 
 async function saveMatchFromTeams() {
   const teams = state.builtTeams;
   if (!teams || !teams.length) return;
-  if (!await confirmAppAction({ title: 'GUARDAR PARTIDO', message: 'Se guardará el partido y se abrirá la planilla de goles.', confirmText: 'Guardar partido' })) return;
+  // Defensa en profundidad: aunque otro botón o una consola invoque esta
+  // función directamente, nunca persiste una formación inválida.
+  if (typeof validateBuiltTeams === 'function') {
+    const validation = validateBuiltTeams(teams);
+    if (typeof showTeamValidationError === 'function' && !showTeamValidationError(validation)) return false;
+    if (!validation.valid) return false;
+  }
+  const matchDate = typeof getClubMatchDateForSave === 'function'
+    ? getClubMatchDateForSave()
+    : (typeof hubTodayISO === 'function' ? hubTodayISO() : new Date().toISOString().slice(0,10));
+  const existing = matches.find(match => !isPlayed(match) && match.match_date === matchDate);
+  if (existing && (hasGoalsTracking(existing) || getGoalEvents(existing).length)) {
+    showToast('⚽ Ya existe una planilla abierta para esa fecha', 3200);
+    openGolesFor(existing.id);
+    return;
+  }
+  const confirmed = await confirmAppAction({
+    title: existing ? 'REEMPLAZAR EQUIPOS' : 'GUARDAR PARTIDO',
+    message: existing
+      ? `Ya existe un partido abierto del ${formatMatchDate(existing)} sin goles. Se actualizarán sus equipos y se abrirá la misma planilla.`
+      : 'Se guardará el partido y se abrirá la planilla de goles.',
+    confirmText: existing ? 'Actualizar equipos' : 'Guardar partido'
+  });
+  if (!confirmed) return;
 
   const m = {
-    id: `m${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-    match_date: new Date().toISOString().slice(0,10),
+    id: existing?.id || `m${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+    match_date: matchDate,
     teams: teams.map((t, i) => ({
       name: TEAM_NAMES[i] || String(i+1),
       players: t.players.map(p => ({
         id: p.id,
         name: p.name,
-        ovr: p.ovr || getOverall(p) || 60,
+        ovr: Number.isFinite(p.ovr) ? p.ovr : (Number.isFinite(getOverall(p)) ? getOverall(p) : null),
         pos: p.effPos || 'MED',
         isGuest: !!p.isGuest
       }))
@@ -44,16 +76,13 @@ async function saveMatchFromTeams() {
     // Así los clubes que sólo anotan quién ganó no alteran las estadísticas
     // de goles ni los promedios.
     result: { winner: null, margin: null, mvp: null, goals: {}, goalEvents: [], goalEventMutationIds: [], goalsTracked: false, assistsTracked: true },
-    created_by: state.currentUser.id
+    created_by: existing?.created_by || state.currentUser.id
   };
-  matches.unshift(m);
-  sortMatches();
   const saved = await upsertMatch(m);
-  if (!saved) {
-    matches = matches.filter(item => item.id !== m.id);
-    renderHub();
-    return;
-  }
+  if (!saved) return;
+  if (existing) matches = matches.map(item => item.id === existing.id ? m : item);
+  else matches.unshift(m);
+  sortMatches();
   renderHub();
   showToast('💾 Partido guardado — anotá los goles acá');
   openGolesFor(m.id);
@@ -63,8 +92,14 @@ async function saveMatchFromTeams() {
 async function updateMatchDate(id, val) {
   const m = matches.find(x => x.id === id);
   if (!m || !val) return;
+  const previousDate = m.match_date;
   m.match_date = val;
-  await upsertMatch(m);
+  const saved = await upsertMatch(m);
+  if (!saved) {
+    m.match_date = previousDate;
+    renderHistorial();
+    return;
+  }
   sortMatches();
   renderHub();
   renderHistorial();
@@ -102,12 +137,12 @@ function renderHistorial() {
   el.innerHTML = summary + matches.map(m => {
     const teams = m.teams || [];
     const res = isPlayed(m) ? m.result : null;
-    const hasGoals = matchHasGoals(m);
+    const hasGoals = hasGoalsTracking(m);
     const sc = matchScore(m);
 
     let badge;
     if (!res) badge = `<span class="match-badge pend">⏳ ${hasGoals ? 'En juego ' + matchScoreStr(m) : 'Sin resultado'}</span>`;
-    else if (res.winner === 'draw') badge = `<span class="match-badge draw">🤝 Empate${hasGoals?' '+matchScoreStr(m):''}</span>`;
+    else if (matchWinnerIndices(m).length > 1) badge = `<span class="match-badge draw">🤝 ${escapeHtml(matchResultText(m))}${hasGoals?' '+matchScoreStr(m):''}</span>`;
     else {
       const detail = hasGoals ? matchScoreStr(m) : marginLabel(res.margin);
       badge = `<span class="match-badge win">🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${detail ? ' ' + detail : ''}</span>`;
@@ -126,7 +161,8 @@ function renderHistorial() {
       ? '⚠️ Asistencias parciales: faltan detalles de algunos goles y no se incluyen en promedios.'
       : 'ℹ️ Este partido no tiene detalle de asistencias y no se incluye en esos promedios.';
     const teamsHTML = teams.map((t, i) => {
-      const isWinner = res && res.winner === i;
+      const outcome = res ? teamMatchOutcome(m, i) : null;
+      const isWinner = outcome === 'win' || outcome === 'draw';
       const names = (t.players||[]).map(p => {
         const mvpStar = res && res.mvp === p.id ? ' ⭐' : '';
         const gn = goals[p.id] || 0;
@@ -137,7 +173,7 @@ function renderHistorial() {
       }).join('<br>');
       const goalsTeam = hasGoals ? `<span class="match-score">${sc[i]}</span>` : '';
       return `<div class="match-team t${i}${isWinner?' winner':''}">
-        <div class="match-team-name">${isWinner?'🏆 ':''}EQUIPO ${TEAM_NAMES[i]}${goalsTeam}</div>
+        <div class="match-team-name">${outcome === 'win' ? '🏆 ' : outcome === 'draw' ? '🤝 ' : ''}EQUIPO ${TEAM_NAMES[i]}${goalsTeam}</div>
         <div class="match-team-players">${names}</div>
       </div>`;
     }).join('');
@@ -177,8 +213,15 @@ function renderHistorial() {
 
 async function removeMatch(id) {
   if (!await confirmAppAction({ title: 'ELIMINAR PARTIDO', message: 'El partido se eliminará del historial. Esta acción no se puede deshacer.', confirmText: 'Sí, eliminar', danger: true })) return;
+  try {
+    const deleted = await deleteMatchDb(id);
+    if (deleted === false) return;
+  } catch (error) {
+    console.error('removeMatch:', error);
+    showToast(`❌ ${error.message || 'No se pudo eliminar el partido'}`, 3500);
+    return;
+  }
   matches = matches.filter(m => m.id !== id);
-  await deleteMatchDb(id);
   renderHistorial();
   renderPlayers();
   showToast('🗑️ Partido eliminado');
@@ -199,24 +242,28 @@ function openResultModal(mid) {
   resultMargin = isPlayed(m) ? m.result.margin : null;
   resultMvp = (m.result && m.result.mvp) || null;
   resultTracksGoals = hasGoalsTracking(m);
+  if (resultTracksGoals) applyScoreToResult(false);
   renderResultModal();
   openModal('modal-result');
 }
 
 function setResultWinner(w) {
+  if (resultTracksGoals) return;
   resultWinner = w;
-  if (w === 'draw') resultMargin = null;
+  resultMargin = null;
   renderResultModal();
 }
 
 function setResultMargin(mg) {
+  if (resultTracksGoals) return;
   resultMargin = mg;
   renderResultModal();
 }
 
 function setResultTracksGoals(enabled) {
   resultTracksGoals = !!enabled;
-  if (!resultTracksGoals) resultMargin = null;
+  if (resultTracksGoals) applyScoreToResult(false);
+  else resultMargin = null;
   renderResultModal();
 }
 
@@ -225,17 +272,16 @@ function setResultMvp(pid) {
   renderResultModal();
 }
 
-function applyScoreToResult() {
+function applyScoreToResult(shouldRender = true) {
   const m = matches.find(x => x.id === resultMatchId);
   if (!m) return;
-  const sc = matchScore(m);
-  const max = Math.max(...sc);
-  const ordenados = [...sc].sort((a,b)=>b-a);
-  if (sc.filter(s => s === max).length > 1) { resultWinner = 'draw'; resultMargin = null; }
-  else { resultWinner = sc.indexOf(max); resultMargin = Math.min(3, Math.max(1, max - ordenados[1])); }
+  const derived = deriveScoreResult(m);
+  if (!derived) return;
+  resultWinner = derived.winner;
+  resultMargin = derived.margin;
   const scorers = matchScorers(m);
   if (!resultMvp && scorers[0]) resultMvp = scorers[0].id;
-  renderResultModal();
+  if (shouldRender) renderResultModal();
 }
 
 function renderResultModal() {
@@ -254,13 +300,13 @@ function renderResultModal() {
     <div style="font-size:11px;color:var(--muted);margin-top:7px;line-height:1.4">${resultTracksGoals ? 'Este partido contará para goles, asistencias y promedios. Podés completar o ajustar la planilla en Goles.' : 'Se guarda quién ganó y el MVP, sin marcador, goles ni asistencias en las estadísticas.'}</div>
   </div>`;
 
-  if (matchHasGoals(m)) {
+  if (resultTracksGoals || hasGoalsTracking(m)) {
     html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:10px">
       <div style="flex:1">
         <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">Marcador de la planilla</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px">${matchScoreStr(m)}</div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="applyScoreToResult()">Usar marcador</button>
+      <span class="chip" style="color:var(--green)">Resultado automático</span>
     </div>`;
   }
 
@@ -268,20 +314,10 @@ function renderResultModal() {
   html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">`;
   teams.forEach((t, i) => {
     const active = resultWinner === i;
-    html += `<button class="btn ${active?'btn-primary':'btn-ghost'}" style="flex:1;min-width:90px;justify-content:center" onclick="setResultWinner(${i})">Equipo ${TEAM_NAMES[i]}</button>`;
+    html += `<button class="btn ${active?'btn-primary':'btn-ghost'}" style="flex:1;min-width:90px;justify-content:center" ${resultTracksGoals ? 'disabled' : `onclick="setResultWinner(${i})"`}>Equipo ${TEAM_NAMES[i]}</button>`;
   });
-  html += `<button class="btn ${resultWinner==='draw'?'btn-primary':'btn-ghost'}" style="flex:1;min-width:90px;justify-content:center" onclick="setResultWinner('draw')">🤝 Empate</button>`;
+  html += `<button class="btn ${resultWinner==='draw'?'btn-primary':'btn-ghost'}" style="flex:1;min-width:90px;justify-content:center" ${resultTracksGoals ? 'disabled' : `onclick="setResultWinner('draw')"`}>🤝 Empate</button>`;
   html += `</div>`;
-
-  if (resultTracksGoals && resultWinner !== null && resultWinner !== 'draw') {
-    html += `<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">¿Por cuánto?</div>`;
-    html += `<div style="display:flex;gap:8px;margin-bottom:8px">`;
-    [[1,'Por 1'],[2,'Por 2'],[3,'Goleada 3+']].forEach(([v,label]) => {
-      const active = resultMargin === v;
-      html += `<button class="btn ${active?'btn-primary':'btn-ghost'}" style="flex:1;justify-content:center" onclick="setResultMargin(${v})">${label}</button>`;
-    });
-    html += `</div>`;
-  }
 
   // MVP opcional (aparece cuando ya hay resultado elegido)
   if (resultWinner !== null) {
@@ -298,7 +334,7 @@ function renderResultModal() {
     html += `</div>`;
   }
 
-  const ready = resultWinner !== null && (!resultTracksGoals || resultWinner === 'draw' || resultMargin !== null);
+  const ready = resultWinner !== null;
   html += `<button class="btn btn-green w-full" style="justify-content:center;margin-top:14px" ${ready?'':'disabled'} onclick="saveMatchResult()">✅ Guardar resultado</button>`;
 
   document.getElementById('modal-result-content').innerHTML = html;
@@ -311,8 +347,16 @@ async function saveMatchResult() {
   await reconcilePendingGoalWrites();
   const m = matches.find(x => x.id === resultMatchId);
   if (!m) return;
+  if (resultTracksGoals) applyScoreToResult(false);
   if (resultWinner === null) return;
+  const previousResult = JSON.parse(JSON.stringify(m.result || null));
   const goals = getGoals(m);
+  const derived = resultTracksGoals ? deriveScoreResult(m) : null;
+  const winners = derived
+    ? derived.winners
+    : resultWinner === 'draw'
+      ? (m.teams || []).map((_, index) => index)
+      : [Number(resultWinner)];
   m.result = {
     ...(m.result || {}),
     winner: resultWinner,
@@ -321,10 +365,14 @@ async function saveMatchResult() {
     // Conservamos una planilla previa si se edita el modo, pero sólo se usa
     // para estadísticas cuando el administrador confirma que se registra.
     goals,
-    goalsTracked: resultTracksGoals
+    goalsTracked: resultTracksGoals,
+    winners
   };
   const saved = await upsertMatch(m);
-  if (!saved) return;
+  if (!saved) {
+    m.result = previousResult;
+    return;
+  }
   closeModal('modal-result');
   renderHub();
   renderPartidos();
@@ -337,7 +385,7 @@ async function shareMatchResult(id) {
   const m = matches.find(x => x.id === id);
   if (!m) return;
   const res = isPlayed(m) ? m.result : null;
-  const hasGoals = matchHasGoals(m);
+  const hasGoals = hasGoalsTracking(m);
   const sc = matchScore(m);
   const goals = getGoals(m);
   const assistsByPlayer = Object.fromEntries(matchAssisters(m).map(item => [item.id, item.assists]));
@@ -346,7 +394,7 @@ async function shareMatchResult(id) {
 
   let text = `⚽ EL FULBITO — ${formatMatchDate(m)}\n`;
   if (!res) text += hasGoals ? `⏳ En juego: ${matchScoreStr(m)}\n` : '⏳ Resultado pendiente\n';
-  else if (res.winner === 'draw') text += `🤝 Empate${hasGoals?' '+matchScoreStr(m):''}\n`;
+  else if (matchWinnerIndices(m).length > 1) text += `🤝 ${matchResultText(m)}${hasGoals?' '+matchScoreStr(m):''}\n`;
   else {
     const detail = hasGoals ? matchScoreStr(m) : marginLabel(res.margin);
     text += `🏆 Ganó Equipo ${TEAM_NAMES[res.winner]}${detail ? ' ' + detail : ''}\n`;
@@ -356,7 +404,8 @@ async function shareMatchResult(id) {
     : 'ℹ️ Este partido no tiene detalle histórico de asistencias.\n';
 
   (m.teams||[]).forEach((t, i) => {
-    text += `\n${TEAM_EMOJIS[i]||'⚪'} EQUIPO ${TEAM_NAMES[i]}${hasGoals?` (${sc[i]})`:''}${res && res.winner===i ? ' 🏆' : ''}\n`;
+    const outcome = res ? teamMatchOutcome(m, i) : null;
+    text += `\n${TEAM_EMOJIS[i]||'⚪'} EQUIPO ${TEAM_NAMES[i]}${hasGoals?` (${sc[i]})`:''}${outcome === 'win' ? ' 🏆' : outcome === 'draw' ? ' 🤝' : ''}\n`;
     (t.players||[]).forEach(p => {
       const gn = goals[p.id] || 0;
       const an = assistsByPlayer[p.id] || 0;
@@ -367,7 +416,8 @@ async function shareMatchResult(id) {
   });
 
   if (navigator.share) {
-    try { await navigator.share({ text }); return; } catch(e) { /* cancelado */ }
+    try { await navigator.share({ text }); return; }
+    catch (e) { if (e?.name === 'AbortError') return; }
   }
   try {
     await navigator.clipboard.writeText(text);
@@ -398,7 +448,8 @@ function renderRanking() {
   }
 
   const yearArg = rankingYear === 'all' ? null : rankingYear;
-  const ranked = state.players
+  const rankingScope = matches.filter(m => isPlayed(m) && (!yearArg || (m.match_date || '').slice(0,4) === yearArg));
+  const ranked = statsPlayerPool(rankingScope)
     .map(p => ({ p, ...getPlayerRecord(p.id, yearArg) }))
     .filter(r => r.pj > 0)
     .sort((a,b) => b.pts - a.pts || b.w - a.w || a.pj - b.pj || a.p.name.localeCompare(b.p.name));
@@ -415,7 +466,6 @@ function renderRanking() {
   const medals = ['🥇','🥈','🥉'];
   const leader = ranked[0];
   const runner = ranked[1] || null;
-  const rankingScope = matches.filter(m => isPlayed(m) && (!yearArg || (m.match_date || '').slice(0,4) === yearArg));
   const highlights = typeof leaderboardHighlights === 'function' ? leaderboardHighlights(ranked, rankingScope) : null;
 
   let html = `${yearFilterHTML}<section class="leaderboard-page positions-page">
@@ -448,13 +498,15 @@ function renderRanking() {
     }
     const mvpHTML = r.mvps > 0 ? `<span style="color:var(--gold);font-weight:700">⭐${r.mvps}</span>` : '';
     const golHTML = r.goals > 0 ? `<span style="color:var(--green);font-weight:700">⚽${r.goals}</span>` : '';
-    const subHTML = (form.last5.length || streakHTML || mvpHTML || golHTML)
-      ? `<div class="rank-sub">${dots}${streakHTML?'&nbsp;'+streakHTML:''}${mvpHTML?'&nbsp;'+mvpHTML:''}${golHTML?'&nbsp;'+golHTML:''}</div>`
+    const assistHTML = r.assists > 0 ? `<span style="color:#c4b5fd;font-weight:700">🎯${r.assists}</span>` : '';
+    const subHTML = (form.last5.length || streakHTML || mvpHTML || golHTML || assistHTML)
+      ? `<div class="rank-sub">${dots}${streakHTML?'&nbsp;'+streakHTML:''}${mvpHTML?'&nbsp;'+mvpHTML:''}${golHTML?'&nbsp;'+golHTML:''}${assistHTML?'&nbsp;'+assistHTML:''}</div>`
       : '';
 
-    return `<div class="rank-row${i===0?' top1':''}" onclick="openPlayerProfile('${r.p.id}')" style="cursor:pointer">
+    const canOpen = isCurrentRosterPlayer(r.p);
+    return `<div class="rank-row${i===0?' top1':''}${canOpen ? '' : ' is-historical'}"${canOpen ? ` ${typeof profileRowAttributes === 'function' ? profileRowAttributes(r.p) : ''}` : ` aria-label="${escapeHtml(r.p.name)} · jugador histórico"`}>
       <div class="rank-pos">${posLabel}</div>
-      <div class="rank-name">${r.p.name}${subHTML}</div>
+      <div class="rank-name">${escapeHtml(r.p.name)}${subHTML}</div>
       <div class="rank-cells">
         <div class="rank-cell"><b>${r.pj}</b><span>PJ</span></div>
         <div class="rank-cell"><b style="color:var(--green)">${r.w}</b><span>V</span></div>
@@ -465,7 +517,7 @@ function renderRanking() {
     </div>`;
   }).join('');
 
-  html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">Victoria = 3 pts · Empate = 1 pt · ⭐ = veces MVP · ⚽ = goles · Cuadraditos = últimos 5 partidos<br>Los invitados no suman al ranking</div></section>`;
+  html += `<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">Victoria = 3 pts · Empate = 1 pt · ⭐ = veces MVP · ⚽ = goles · 🎯 = asistencias · Cuadraditos = últimos 5 partidos<br>Los invitados no suman al ranking</div></section>`;
 
   el.innerHTML = html;
 }

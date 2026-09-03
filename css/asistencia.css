@@ -16,4 +16,7 @@
 .attend-btn:hover{transform:scale(1.08);border-color:#48566b}
 .attend-btn.going-active{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 3px 10px rgba(34,197,94,.3)}
 .attend-btn.notgoing-active{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 3px 10px rgba(239,68,68,.3)}
+.attend-btn:focus-visible{outline:2px solid var(--cyan,#62d8ff);outline-offset:2px}
+.attend-btn:disabled{cursor:not-allowed;opacity:.42}.attend-btn:disabled:hover{transform:none;border-color:var(--border)}
 .btn-clear-all{margin-top:12px}
+.attendance-load-state{display:grid;justify-items:center;gap:8px;padding:28px 18px;border:1px solid rgba(98,216,255,.25);border-radius:var(--radius-md);background:linear-gradient(145deg,rgba(25,48,68,.72),rgba(5,14,25,.86));text-align:center}.attendance-load-state>div{font-size:32px;color:var(--cyan,#62d8ff)}.attendance-load-state>strong{font-size:16px}.attendance-load-state>span{max-width:440px;font-size:12px;line-height:1.45;color:var(--muted)}.attendance-load-state .btn{margin-top:4px}

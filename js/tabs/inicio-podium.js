@@ -4,14 +4,18 @@ function getHubPodium(rows, played) {
   const highlights = typeof getCardHighlights === 'function'
     ? getCardHighlights(rows, played)
     : { topScorerIds: new Set(), latestMvpId: null, forms: new Map() };
-  const latestMvpMatch = played.find(m => m.result?.mvp) || null;
+  const currentPlayerIds = new Set(rows.map(row => row.p?.id).filter(Boolean));
+  const latestMvpMatch = played.find(m => m.result?.mvp && currentPlayerIds.has(m.result.mvp)) || null;
   const latestMvp = latestMvpMatch
     ? rows.find(x => x.p.id === latestMvpMatch.result.mvp) || null
     : rows.slice().filter(x => x.rec.mvps > 0).sort((a,b) => b.rec.mvps - a.rec.mvps || b.ovr - a.ovr)[0] || null;
   const used = new Set(latestMvp?.p?.id ? [latestMvp.p.id] : []);
   const scorer = rows.slice()
     .filter(x => x.rec.goals > 0 && !used.has(x.p.id))
-    .sort((a,b) => b.rec.goals - a.rec.goals || b.rec.goalPj - a.rec.goalPj || a.p.name.localeCompare(b.p.name))[0] || null;
+    .sort((a,b) => b.rec.goals - a.rec.goals
+      || (b.rec.goals / Math.max(1, b.rec.goalPj)) - (a.rec.goals / Math.max(1, a.rec.goalPj))
+      || (b.ovr || 0) - (a.ovr || 0)
+      || a.p.name.localeCompare(b.p.name))[0] || null;
   if (scorer?.p?.id) used.add(scorer.p.id);
   const streakRows = rows.map(x => ({ ...x, streak: getMaxWinStreak(x.p.id) }));
   const streak = streakRows
@@ -19,7 +23,18 @@ function getHubPodium(rows, played) {
     .sort((a,b) => b.streak - a.streak || b.rec.w - a.rec.w || b.rec.mvps - a.rec.mvps)[0]
     || rows.slice().filter(x => x.rec.mvps > 0 && !used.has(x.p.id)).sort((a,b) => b.rec.mvps - a.rec.mvps)[0]
     || null;
-  return { highlights, latestMvp, scorer, streak };
+  const maxGoals = Math.max(0, ...rows.map(x => x.rec.goals || 0));
+  const maxStreak = Math.max(0, ...streakRows.map(x => x.streak || 0));
+  return {
+    highlights,
+    latestMvp,
+    scorer,
+    streak,
+    scorerLabel: scorer?.rec.goals === maxGoals ? 'MÁXIMO GOLEADOR' : 'GOLEADOR DESTACADO',
+    streakLabel: streak?.streak
+      ? (streak.streak === maxStreak ? 'MEJOR RACHA HISTÓRICA' : 'RACHA DESTACADA')
+      : 'OTRO REFERENTE MVP'
+  };
 }
 
 function hubLiveCard(label, item, value, unit, tone, highlights) {

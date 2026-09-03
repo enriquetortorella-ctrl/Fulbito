@@ -128,6 +128,64 @@ function matchScore(m) {
 
 function matchScoreStr(m) { return matchScore(m).join('–'); }
 
+// Devuelve todos los equipos que obtuvieron el mejor resultado. En partidos
+// de tres equipos, `winner: "draw"` puede significar que empataron sólo los
+// dos líderes; el tercero debe conservar una derrota. Las filas antiguas no
+// guardaban `winners`, por eso se reconstruye desde el marcador cuando existe.
+function matchWinnerIndices(m) {
+  if (!isPlayed(m)) return [];
+  const teamCount = (m.teams || []).length;
+  if (hasGoalsTracking(m) && teamCount) {
+    const score = matchScore(m);
+    const maximum = Math.max(...score);
+    return score.map((value, index) => value === maximum ? index : -1).filter(index => index >= 0);
+  }
+  const explicit = Array.isArray(m.result?.winners)
+    ? [...new Set(m.result.winners.map(Number).filter(index => Number.isInteger(index) && index >= 0 && index < teamCount))]
+    : [];
+  if (explicit.length) return explicit.sort((a,b) => a - b);
+
+  if (m.result?.winner === 'draw') {
+    return Array.from({ length: teamCount }, (_, index) => index);
+  }
+
+  const winner = Number(m.result?.winner);
+  return Number.isInteger(winner) && winner >= 0 && winner < teamCount ? [winner] : [];
+}
+
+function teamMatchOutcome(m, teamIndex) {
+  const winners = matchWinnerIndices(m);
+  if (!winners.length) return null;
+  if (winners.includes(teamIndex)) return winners.length === 1 ? 'win' : 'draw';
+  return 'loss';
+}
+
+function matchResultText(m) {
+  if (!isPlayed(m)) return 'Partido pendiente';
+  const winners = matchWinnerIndices(m);
+  if (winners.length > 1) {
+    if (winners.length === (m.teams || []).length) return 'Empate';
+    return `Empate Equipos ${winners.map(index => TEAM_NAMES[index] || index + 1).join(' y ')}`;
+  }
+  const winner = winners[0];
+  return winner === undefined ? 'Resultado pendiente' : `Ganó Equipo ${TEAM_NAMES[winner] || winner + 1}`;
+}
+
+function deriveScoreResult(m) {
+  const score = matchScore(m);
+  if (score.length < 2) return null;
+  const maximum = Math.max(...score);
+  const winners = score.map((value, index) => value === maximum ? index : -1).filter(index => index >= 0);
+  if (winners.length > 1) return { score, winners, winner: 'draw', margin: null };
+  const ordered = score.slice().sort((a,b) => b - a);
+  return {
+    score,
+    winners,
+    winner: winners[0],
+    margin: Math.min(3, Math.max(1, maximum - (ordered[1] || 0)))
+  };
+}
+
 // Goleadores de un partido, ordenados
 function matchScorers(m) {
   const g = getGoals(m);
@@ -143,6 +201,61 @@ function matchPlayerName(m, id) {
     if (f) return f.name;
   }
   return playerNameById(id);
+}
+
+// Universo estadístico del período: el plantel actual manda, pero los
+// exjugadores sobreviven mediante la foto inmutable guardada en cada partido.
+// Los invitados no entran en rankings personales y un id actual nunca se
+// duplica ni es reemplazado por un nombre/OVR histórico.
+function statsPlayerPool(ms) {
+  const currentPlayers = Array.isArray(state?.players) ? state.players : [];
+  const people = new Map();
+  currentPlayers.forEach(player => {
+    if (player?.id) people.set(player.id, player);
+  });
+
+  const orderedMatches = (Array.isArray(ms) ? ms : (Array.isArray(matches) ? matches : []))
+    .slice()
+    .sort((a, b) =>
+      (b.match_date || '').localeCompare(a.match_date || '') ||
+      (b.created_at || '').localeCompare(a.created_at || '')
+    );
+  orderedMatches.forEach(match => (match.teams || []).forEach(team => (team.players || []).forEach(player => {
+    const id = String(player?.id || '');
+    if (!id || player?.isGuest || /^guest[_-]/i.test(id) || people.has(id)) return;
+    const hasSnapshotOvr = player.ovr !== null && player.ovr !== undefined && player.ovr !== '';
+    const rawOvr = hasSnapshotOvr ? Number(player.ovr) : NaN;
+    people.set(id, {
+      ...player,
+      id,
+      name: String(player.name || 'Jugador histórico'),
+      username: String(player.username || player.name || 'Histórico'),
+      photo: player.photo || '',
+      posPrimary: player.posPrimary || player.pos || 'MED',
+      posSecondary: player.posSecondary || null,
+      ratingMode: player.ratingMode === 'goalkeeper' ? 'goalkeeper' : 'field',
+      ratings: {},
+      isGuest: false,
+      isHistorical: true,
+      historicalOvr: Number.isFinite(rawOvr) && rawOvr >= 0 && rawOvr <= 99 ? Math.round(rawOvr) : null
+    });
+  })));
+  return [...people.values()];
+}
+
+function isCurrentRosterPlayer(playerOrId) {
+  const id = typeof playerOrId === 'object' ? playerOrId?.id : playerOrId;
+  return !!id && Array.isArray(state?.players) && state.players.some(player => player?.id === id);
+}
+
+function rankingPlayerOverall(player) {
+  if (isCurrentRosterPlayer(player)) {
+    return typeof getOverall === 'function' ? getOverall(player) : null;
+  }
+  const rawValue = player?.historicalOvr ?? player?.ovr;
+  if (rawValue === null || rawValue === undefined || rawValue === '') return null;
+  const value = Number(rawValue);
+  return Number.isFinite(value) && value >= 0 && value <= 99 ? Math.round(value) : null;
 }
 
 // ============================================================
@@ -164,9 +277,10 @@ function getPlayerRecord(playerId, year) {
       assistPj++;
     }
     if (!isPlayed(m)) return;
-    if (m.result.winner === 'draw') d++;
-    else if (m.result.winner === teamIdx) w++;
-    else l++;
+    const outcome = teamMatchOutcome(m, teamIdx);
+    if (outcome === 'draw') d++;
+    else if (outcome === 'win') w++;
+    else if (outcome === 'loss') l++;
     if (m.result.mvp === playerId) mvps++;
   });
   return { w, d, l, mvps, goals, goalPj, assists, assistPj, pj: w+d+l, pts: w*3 + d };
@@ -200,9 +314,10 @@ function getPairStats(ms) {
         for (let j = i+1; j < ids.length; j++) {
           const key = [ids[i], ids[j]].sort().join('|');
           if (!together[key]) together[key] = { w:0, d:0, l:0 };
-          if (m.result.winner === 'draw') together[key].d++;
-          else if (m.result.winner === ti) together[key].w++;
-          else together[key].l++;
+          const outcome = teamMatchOutcome(m, ti);
+          if (outcome === 'draw') together[key].d++;
+          else if (outcome === 'win') together[key].w++;
+          else if (outcome === 'loss') together[key].l++;
         }
       }
     });
@@ -210,14 +325,31 @@ function getPairStats(ms) {
     // Enfrentados en equipos distintos
     for (let t1 = 0; t1 < regTeams.length; t1++) {
       for (let t2 = t1+1; t2 < regTeams.length; t2++) {
+        let pairOutcome = null;
+        if (hasGoalsTracking(m)) {
+          const score = matchScore(m);
+          if (score[t1] === score[t2]) pairOutcome = 'draw';
+          else pairOutcome = score[t1] > score[t2] ? 't1' : 't2';
+        } else {
+          const winners = matchWinnerIndices(m);
+          const t1Won = winners.includes(t1);
+          const t2Won = winners.includes(t2);
+          if (t1Won && t2Won) pairOutcome = 'draw';
+          else if (t1Won) pairOutcome = 't1';
+          else if (t2Won) pairOutcome = 't2';
+        }
+
+        // En partidos históricos sin marcador, conocer al ganador general no
+        // permite deducir qué ocurrió entre dos equipos que perdieron. Ese
+        // cruce queda fuera del historial antes que convertirlo en un empate.
+        if (!pairOutcome) continue;
         regTeams[t1].forEach(a => regTeams[t2].forEach(b => {
           const key = [a, b].sort().join('|');
           if (!against[key]) against[key] = { games:0, draws:0, wins:{} };
           against[key].games++;
-          if (m.result.winner === 'draw') against[key].draws++;
-          else if (m.result.winner === t1) against[key].wins[a] = (against[key].wins[a]||0)+1;
-          else if (m.result.winner === t2) against[key].wins[b] = (against[key].wins[b]||0)+1;
-          // (con 3 equipos, si ganó el tercero no suma para ninguno de los dos)
+          if (pairOutcome === 'draw') against[key].draws++;
+          else if (pairOutcome === 't1') against[key].wins[a] = (against[key].wins[a]||0)+1;
+          else against[key].wins[b] = (against[key].wins[b]||0)+1;
         }));
       }
     }
@@ -240,8 +372,8 @@ function getPlayerMatchesChrono(playerId, ms) {
 function getPlayerSeq(playerId, ms) {
   return getPlayerMatchesChrono(playerId, ms).map(m => {
     const ti = (m.teams||[]).findIndex(t => (t.players||[]).some(p => p.id === playerId));
-    if (m.result.winner === 'draw') return 'E';
-    return m.result.winner === ti ? 'V' : 'D';
+    const outcome = teamMatchOutcome(m, ti);
+    return outcome === 'win' ? 'V' : outcome === 'draw' ? 'E' : 'D';
   });
 }
 
@@ -267,9 +399,9 @@ function maxRun(seq, test) {
 function getRoutsWon(playerId, ms) {
   let n = 0;
   (ms || matches).forEach(m => {
-    if (!isPlayed(m) || m.result.winner === 'draw' || m.result.margin !== 3) return;
+    if (!isPlayed(m) || m.result.margin !== 3) return;
     const ti = (m.teams||[]).findIndex(t => (t.players||[]).some(p => p.id === playerId));
-    if (ti !== -1 && m.result.winner === ti) n++;
+    if (ti !== -1 && teamMatchOutcome(m, ti) === 'win') n++;
   });
   return n;
 }

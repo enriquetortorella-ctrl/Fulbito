@@ -19,14 +19,25 @@ function openGolesFor(id) {
 
 async function refreshGoles() {
   const reconciled = await reconcilePendingGoalWrites();
-  if (!reconciled) await loadGoalMatchesSnapshot(_goalWriteGeneration);
+  let refreshed = reconciled;
+  if (!reconciled) {
+    refreshed = (await loadGoalMatchesSnapshot(_goalWriteGeneration)) !== null;
+  }
   renderGoles();
-  showToast('🔄 Planilla actualizada');
+  showToast(refreshed
+    ? '🔄 Planilla actualizada'
+    : '❌ No se pudo actualizar la planilla. Conservamos los datos que ya tenías.',
+  refreshed ? 2200 : 4200);
 }
 
 function getActiveMatchId() {
   if (golesMatchId && matches.find(m => m.id === golesMatchId)) return golesMatchId;
-  const abierto = matches.find(m => !isPlayed(m));
+  const abierto = typeof hubOpenMatch === 'function'
+    ? hubOpenMatch()
+    : matches.filter(m => !isPlayed(m)).slice().sort((a,b) =>
+        (a.match_date || '').localeCompare(b.match_date || '') ||
+        (a.created_at || '').localeCompare(b.created_at || '')
+      )[0];
   return (abierto || matches[0] || {}).id || null;
 }
 
@@ -43,19 +54,28 @@ function createGoalMutationId() {
 }
 
 // Evita que una lectura lenta sobrescriba una escritura o una lectura más
-// reciente. `loadMatches` devuelve [] también ante error, por eso se conserva
-// la planilla visible cuando ya había partidos cargados.
-async function loadGoalMatchesSnapshot(expectedWriteGeneration = _goalWriteGeneration) {
+// reciente. `null` señala error; una lista vacía es una lectura válida y debe
+// limpiar una planilla que ya no existe en el servidor.
+async function loadGoalMatchesSnapshot(
+  expectedWriteGeneration = _goalWriteGeneration,
+  appMutationBarrier = typeof captureAppMutationBarrier === 'function'
+    ? captureAppMutationBarrier()
+    : null
+) {
+  // Una lectura iniciada mientras una escritura está pendiente puede observar
+  // la versión anterior aunque esa escritura termine antes que la lectura.
+  // El token recuerda ese estado inicial y evita aceptar ese snapshot.
+  if (appMutationBarrier && appMutationBarrier.mutationsWerePending) return null;
   const readGeneration = ++_goalReadGeneration;
   const freshMatches = await loadMatches();
   if (readGeneration !== _goalReadGeneration ||
       expectedWriteGeneration !== _goalWriteGeneration ||
-      _goalWritesPending > 0) return null;
-  if (freshMatches.length || !matches.length) {
-    matches = freshMatches;
-    return freshMatches;
-  }
-  return null;
+      _goalWritesPending > 0 ||
+      (appMutationBarrier && typeof isAppMutationBarrierCurrent === 'function' &&
+        !isAppMutationBarrierCurrent(appMutationBarrier))) return null;
+  if (freshMatches === null) return null;
+  matches = freshMatches;
+  return freshMatches;
 }
 
 async function recoverGoalStateAfterFailure() {
@@ -238,9 +258,13 @@ function enqueueGoalRpc(name, params) {
           ? { mid: document.activeElement.dataset.matchId, key: document.activeElement.dataset.goalKey }
           : null;
         const freshMatches = await loadGoalMatchesSnapshot(refreshGeneration);
-        if (freshMatches === null) return;
-        renderGoles();
-        if (focusedButton?.mid && focusedButton?.key) focusGoalTrigger(focusedButton.mid, focusedButton.key);
+        if (freshMatches !== null) {
+          renderGoles();
+          if (focusedButton?.mid && focusedButton?.key) focusGoalTrigger(focusedButton.mid, focusedButton.key);
+        }
+        // La RPC ya terminó correctamente. Si otra mutación invalidó sólo la
+        // lectura de verificación, no hay que dejar la interfaz eternamente en
+        // “Guardando…”. El próximo sync traerá el snapshot consolidado.
         setSaveState('✅ Guardado');
         setTimeout(() => setSaveState(''), 1600);
       }, 100);
@@ -478,13 +502,38 @@ function renderGoles() {
   const assistsByPlayer = Object.fromEntries(matchAssisters(m).map(item => [item.id, item.assists]));
 
   // Selector de partido
-  const opts = matches.slice(0, 12).map(mm => {
+  const orderedMatches = matches.slice().sort((a, b) =>
+    (b.match_date || '').localeCompare(a.match_date || '') ||
+    (b.created_at || '').localeCompare(a.created_at || '')
+  );
+  const opts = orderedMatches.map(mm => {
     const estado = isPlayed(mm) ? 'cerrado' : 'abierto';
-    const marcador = matchHasGoals(mm) ? ' · ' + matchScoreStr(mm) : '';
+    const marcador = hasGoalsTracking(mm) ? ' · ' + matchScoreStr(mm) : '';
     return `<option value="${mm.id}"${mm.id === mid ? ' selected' : ''}>${formatMatchDate(mm)} · ${estado}${marcador}</option>`;
   }).join('');
 
   let html = `<select class="goles-select" onchange="golesMatchId=this.value;renderGoles()">${opts}</select>`;
+
+  // Un resultado guardado en modo "solo ganador" no equivale a un 0–0. No
+  // mostramos un tablero ni controles que inventen un marcador inexistente.
+  if (isPlayed(m) && !hasGoalsTracking(m)) {
+    const teamCards = teams.map((team, index) => `<div class="goal-no-score-team">
+      <b>${TEAM_EMOJIS[index] || '⚪'} EQUIPO ${TEAM_NAMES[index] || index + 1}</b>
+      <span>${(team.players || []).map(player => escapeHtml(player.name)).join(' · ') || 'Sin jugadores registrados'}</span>
+    </div>`).join('');
+    html += `<section class="goal-no-score-state">
+      <div class="goal-no-score-icon" aria-hidden="true">📋</div>
+      <div class="goal-no-score-kicker">RESULTADO SIN PLANILLA</div>
+      <h2>PARTIDO CERRADO SIN MARCADOR</h2>
+      <p>Se registró <strong>${escapeHtml(matchResultText(m))}</strong>, pero este partido no tiene goles ni asistencias cargados.</p>
+      <div class="goal-no-score-teams teams-${Math.min(3, teams.length)}">${teamCards}</div>
+      <button class="btn btn-ghost w-full" style="justify-content:center" onclick="shareMatchResult('${m.id}')">📲 Compartir resultado</button>
+      ${isAdmin ? `<button class="btn btn-primary w-full" style="justify-content:center;margin-top:8px" onclick="startGoalSheetForClosedMatch('${m.id}')">⚽ Crear planilla y reabrir partido</button>` : ''}
+      <div class="goal-hint">${isAdmin ? 'Para cargar un marcador, creá una planilla nueva. El resultado se volverá a cerrar desde esa planilla.' : 'Este partido fue guardado deliberadamente sin marcador.'}</div>
+    </section>`;
+    el.innerHTML = html;
+    return;
+  }
 
   // Marcador
   html += `<div class="score-board">`;
@@ -500,7 +549,7 @@ function renderGoles() {
 
   if (isPlayed(m)) {
     const res = m.result;
-    const txt = res.winner === 'draw' ? '🤝 Partido cerrado como empate' : `🏆 Partido cerrado — ganó Equipo ${TEAM_NAMES[res.winner]}`;
+    const txt = matchWinnerIndices(m).length > 1 ? `🤝 Partido cerrado — ${matchResultText(m).toLowerCase()}` : `🏆 Partido cerrado — ${matchResultText(m).toLowerCase()}`;
     html += `<div style="background:rgba(240,192,64,.08);border:1px solid rgba(240,192,64,.35);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--gold);margin-bottom:12px;line-height:1.5">${txt}. ${isAdmin ? 'Como administrador, podés corregir la planilla y el resultado se actualizará solo.' : 'La planilla quedó bloqueada; un administrador puede corregirla.'}</div>`;
   }
 
@@ -528,10 +577,10 @@ function renderGoles() {
   html += `<button class="btn btn-ghost w-full" style="justify-content:center;margin-top:4px" onclick="shareMatchResult('${m.id}')">📲 Compartir marcador</button>`;
 
   if (isAdmin) {
-    if (matchHasGoals(m)) {
+    if (!isPlayed(m) || hasGoalsTracking(m)) {
       html += `<button class="btn btn-primary w-full" style="justify-content:center;margin-top:8px" onclick="closeMatchFromGoals('${m.id}')">🏁 ${isPlayed(m) ? 'Recalcular resultado con este marcador' : 'Cerrar partido con este marcador'}</button>`;
+      html += `<button class="btn btn-danger w-full" style="justify-content:center;margin-top:8px" onclick="resetGoals('${m.id}')">♻️ ${isPlayed(m) ? 'Reiniciar planilla (queda 0–0)' : 'Reiniciar goles'}</button>`;
     }
-    html += `<button class="btn btn-danger w-full" style="justify-content:center;margin-top:8px" onclick="resetGoals('${m.id}')">♻️ Reiniciar goles</button>`;
   }
 
   html += `<div class="goal-hint">${canEditScore ? 'Al tocar <b>+</b>, elegí quién dio la asistencia, si fue una jugada individual o un rebote.<br>Cualquiera puede cargar mientras el partido está abierto y la planilla se sincroniza con el resto.' : '🔒 El administrador ya cerró este partido. La planilla queda disponible en modo lectura.'}</div>`;
@@ -555,35 +604,33 @@ async function closeMatchFromGoals(mid) {
   await reconcilePendingGoalWrites();
   const m = matches.find(x => x.id === mid);
   if (!m) return;
-  const sc = matchScore(m);
-  const max = Math.max(...sc);
-  const ganadores = sc.filter(s => s === max).length;
-  const ordenados = [...sc].sort((a, b) => b - a);
-
-  let winner, margin = null;
-  if (ganadores > 1) { winner = 'draw'; }
-  else {
-    winner = sc.indexOf(max);
-    margin = Math.min(3, Math.max(1, max - ordenados[1]));
-  }
+  const derived = deriveScoreResult(m);
+  if (!derived) return;
+  const { score: sc, winners, winner, margin } = derived;
 
   // MVP sugerido: máximo goleador del equipo ganador (o del partido si fue empate)
   const scorers = matchScorers(m);
-  const delGanador = winner === 'draw'
-    ? scorers
-    : scorers.filter(s => ((m.teams||[])[winner].players||[]).some(p => p.id === s.id));
+  const delGanador = scorers.filter(s => winners.some(teamIndex =>
+    (((m.teams || [])[teamIndex] || {}).players || []).some(player => player.id === s.id)
+  ));
   const mvpSugerido = (m.result && m.result.mvp) || (delGanador[0] ? delGanador[0].id : null);
 
-  const resumen = winner === 'draw'
-    ? `Empate ${sc.join('–')}`
-    : `Gana Equipo ${TEAM_NAMES[winner]} ${sc.join('–')} (${marginLabel(margin)})`;
+  const winnerText = winners.length > 1
+    ? (winners.length === (m.teams || []).length
+      ? 'Empate'
+      : `Empatan Equipos ${winners.map(index => TEAM_NAMES[index] || index + 1).join(' y ')}`)
+    : `Gana Equipo ${TEAM_NAMES[winner]}`;
+  const resumen = `${winnerText} ${sc.join('–')}${margin ? ` (${marginLabel(margin)})` : ''}`;
   const mvpTxt = mvpSugerido ? `\n\nMVP: ${playerNameById(mvpSugerido)}` : '';
   if (!await confirmAppAction({ title: 'CERRAR PARTIDO', message: `${resumen}${mvpTxt}`, confirmText: 'Cerrar partido' })) return;
 
   const previousResult = JSON.parse(JSON.stringify(m.result || null));
+  const previousWinner = m.result?.winner;
+  const previousMargin = m.result?.margin;
   m.result = {
     ...(m.result || {}),
     winner,
+    winners,
     margin,
     mvp: mvpSugerido,
     goals: getGoals(m),
@@ -592,7 +639,7 @@ async function closeMatchFromGoals(mid) {
   const saved = await upsertMatch(m);
   if (!saved) {
     const freshMatches = await loadMatches();
-    if (freshMatches.length) matches = freshMatches;
+    if (freshMatches !== null) matches = freshMatches;
     else m.result = previousResult;
     renderGoles();
     return;
@@ -600,21 +647,85 @@ async function closeMatchFromGoals(mid) {
   renderHub();
   renderGoles();
   renderPlayers();
-  const outcomeChanged = m.result?.winner !== winner || m.result?.margin !== margin;
+  const outcomeChanged = previousWinner !== m.result?.winner || previousMargin !== m.result?.margin;
   showToast(outcomeChanged ? '🏁 Partido cerrado con el marcador más reciente' : '🏁 Partido cerrado');
+}
+
+async function startGoalSheetForClosedMatch(mid) {
+  await reconcilePendingGoalWrites();
+  const m = matches.find(match => match.id === mid);
+  if (!m || !state.currentUser?.isAdmin) return;
+  if (!isPlayed(m) || hasGoalsTracking(m)) {
+    showToast('ℹ️ Este partido ya tiene una planilla disponible.');
+    renderGoles();
+    return;
+  }
+  const confirmed = await confirmAppAction({
+    title: 'CREAR PLANILLA DE GOLES',
+    message: 'Se creará una planilla vacía y el partido volverá a quedar abierto. El ganador actual se quitará temporalmente hasta que un administrador cierre el nuevo marcador.',
+    confirmText: 'Crear y reabrir'
+  });
+  if (!confirmed) return;
+
+  const previousResult = JSON.parse(JSON.stringify(m.result || null));
+  m.result = {
+    ...(m.result || {}),
+    winner: null,
+    winners: [],
+    margin: null,
+    goals: {},
+    goalEvents: [],
+    goalEventMutationIds: Array.isArray(previousResult?.goalEventMutationIds) ? previousResult.goalEventMutationIds : [],
+    goalsTracked: true,
+    assistsTracked: true,
+    goalDataReplace: true
+  };
+  const saved = await upsertMatch(m);
+  delete m.result.goalDataReplace;
+  if (!saved) {
+    const freshMatches = await loadMatches();
+    if (freshMatches !== null) matches = freshMatches;
+    else m.result = previousResult;
+    renderGoles();
+    return;
+  }
+  for (const retryKey of _goalRemovalRetryIds.keys()) {
+    if (retryKey.startsWith(`${mid}:`)) _goalRemovalRetryIds.delete(retryKey);
+  }
+  renderHub();
+  renderGoles();
+  renderPlayers();
+  showToast('⚽ Planilla creada: el partido quedó abierto para cargar el marcador');
 }
 
 async function resetGoals(mid) {
   await reconcilePendingGoalWrites();
   const m = matches.find(x => x.id === mid);
   if (!m) return;
-  if (!await confirmAppAction({ title: 'BORRAR GOLES Y ASISTENCIAS', message: 'Se borrarán todos los goles y todas las asistencias registradas en este partido. Esta acción no se puede deshacer.', confirmText: 'Sí, borrar', danger: true })) return;
+  const played = isPlayed(m);
+  if (played && !hasGoalsTracking(m)) {
+    showToast('ℹ️ Este partido se cerró sin marcador y no tiene una planilla para reiniciar.');
+    return;
+  }
+  const zeroScore = (m.teams || []).map(() => '0').join('–') || '0–0';
+  const confirmed = await confirmAppAction({
+    title: played ? 'REINICIAR PLANILLA Y RESULTADO' : 'BORRAR GOLES Y ASISTENCIAS',
+    message: played
+      ? `Se borrarán todos los goles y asistencias. El partido quedará como empate ${zeroScore}. Esta acción no se puede deshacer.`
+      : 'Se borrarán todos los goles y todas las asistencias registradas en este partido. Esta acción no se puede deshacer.',
+    confirmText: played ? `Dejar ${zeroScore}` : 'Sí, borrar',
+    danger: true
+  });
+  if (!confirmed) return;
   const previousResult = JSON.parse(JSON.stringify(m.result || null));
-  if (isPlayed(m)) {
+  if (played) {
     m.result.goals = {};
     m.result.goalEvents = [];
     m.result.goalsTracked = true;
     m.result.assistsTracked = true;
+    m.result.winner = 'draw';
+    m.result.winners = (m.teams || []).map((_, index) => index);
+    m.result.margin = null;
   } else {
     m.result = {
       winner: null,
@@ -632,7 +743,7 @@ async function resetGoals(mid) {
   delete m.result.goalDataReplace;
   if (!saved) {
     const freshMatches = await loadMatches();
-    if (freshMatches.length) matches = freshMatches;
+    if (freshMatches !== null) matches = freshMatches;
     else m.result = previousResult;
     renderGoles();
     return;
@@ -643,7 +754,9 @@ async function resetGoals(mid) {
   renderHub();
   renderGoles();
   renderPlayers();
-  showToast('♻️ Goles y asistencias reiniciados');
+  showToast(played
+    ? `♻️ Planilla reiniciada: empate ${zeroScore}`
+    : '♻️ Goles y asistencias reiniciados');
 }
 
 // ============================================================
