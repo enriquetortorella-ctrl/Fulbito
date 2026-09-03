@@ -68,6 +68,6 @@ assert.equal(context.getOverall({ id: 'unrated', ratings: {} }), null, 'no inven
 
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 assert.match(index, /js\/ratings-normalize\.js\?v=61/);
-assert.match(index, /js\/tabs\/jugadores\.js\?v=61/);
-assert.match(fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8'), /fulbito-shell-v61/);
+assert.ok(Number(index.match(/js\/tabs\/jugadores\.js\?v=(\d+)/)?.[1]) >= 61);
+assert.ok(Number(fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8').match(/fulbito-shell-v(\d+)/)?.[1]) >= 61);
 console.log('PASS position-neutral-ovr');

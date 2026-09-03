@@ -67,7 +67,7 @@ function renderPlayers() {
     return;
   }
   const highlights = getCardHighlights(entries);
-  grid.innerHTML = visible.map(x => renderFifaCard(x.p, highlights)).join('');
+  grid.innerHTML = visible.map(x => renderRosterPlayerCard(x.p, highlights, x.rec)).join('');
   // La autocalificación ("versión propia") ya no se muestra en el plantel:
   // se ve dentro del perfil de cada jugador, comparada contra el voto del grupo.
 }
@@ -132,6 +132,39 @@ function cardSpotlightsHTML(p, highlights) {
   return badges.length ? `<div class="card-spotlights">${badges.join('')}</div>` : '';
 }
 
+function renderRosterPlayerCard(p, highlights, rec) {
+  const icons = {
+    mvp: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/>',
+    goals: '<circle cx="12" cy="12" r="9"/><path d="m12 7 4.8 3.5-1.8 5.6H9l-1.8-5.6ZM12 3v4m-9 5 4.2-1.5M6.5 19.2 9 16.1m8.5 3.1L15 16.1m6-4.1-4.2-1.5"/>',
+    assists: '<path d="M4 18v-3a7 7 0 0 1 7-7h9m-5-5 5 5-5 5"/>'
+  };
+  const metric = (key, label, value, detail, title) => `<div class="player-career-metric is-${key}${value === null ? ' is-unrecorded' : ''}" data-career-metric="${key}" title="${escapeHtml(title)}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[key]}</svg>
+    <strong>${value === null ? '—' : value}</strong><span>${label}</span><small>${detail}</small>
+  </div>`;
+  const honor = highlights.latestMvpId === p.id ? 'ÚLTIMO MVP'
+    : highlights.topScorerIds.has(p.id) ? 'MÁXIMO GOLEADOR'
+    : highlights.forms.get(p.id)?.type === 'V' && highlights.forms.get(p.id).streak >= 2 ? `${highlights.forms.get(p.id).streak} VICTORIAS SEGUIDAS` : '';
+  return `<article class="player-card-tile${honor ? ' is-highlighted' : ''}">
+    <div class="player-card-stage">${renderFifaCard(p, highlights, 'roster', rec)}</div>
+    <div class="player-career" aria-label="Historial de ${escapeHtml(p.name)}">
+      <div class="player-career-heading"><span>${honor || 'HISTORIAL DEL CLUB'}</span><b title="Partidos jugados">${rec.pj} <small>PJ</small></b></div>
+      <h3 class="player-career-name">${escapeHtml(p.name)}</h3>
+      <div class="player-career-metrics">
+        ${metric('mvp', 'MVP', rec.mvps, 'premios', `${rec.mvps} veces MVP en partidos cerrados`)}
+        ${metric('goals', 'GOLES', rec.goalPj > 0 ? rec.goals : null, rec.goalPj > 0 ? `${rec.goalPj} PJ` : 'Sin registro', rec.goalPj > 0 ? `${rec.goals} goles en ${rec.goalPj} partidos con planilla` : 'No hay partidos con goles registrados')}
+        ${metric('assists', 'ASIST.', rec.assistPj > 0 ? rec.assists : null, rec.assistPj > 0 ? `${rec.assistPj} PJ` : 'Sin registro', rec.assistPj > 0 ? `${rec.assists} asistencias en ${rec.assistPj} partidos con registro completo` : 'No hay partidos con asistencias registradas')}
+      </div>
+      <div class="player-career-record" aria-label="${rec.w} victorias, ${rec.d} empates, ${rec.l} derrotas">
+        <span class="is-win" title="Victorias"><b>${rec.w}</b> V<span class="record-word">ictorias</span></span>
+        <span class="is-draw" title="Empates"><b>${rec.d}</b> E<span class="record-word">mpates</span></span>
+        <span class="is-loss" title="Derrotas"><b>${rec.l}</b> D<span class="record-word">errotas</span></span>
+      </div>
+      <button type="button" class="player-career-link" aria-label="Ver estadísticas de ${escapeHtml(p.name)}" onclick="openPlayerProfile('${p.id}')">Ver ficha completa <span aria-hidden="true">↗</span></button>
+    </div>
+  </article>`;
+}
+
 function renderFifaCard(p, highlights, variant, recordOverride, interactive = true) {
   highlights = highlights || { topScorerIds:new Set(), latestMvpId:null, forms:new Map() };
   const ovr = typeof rankingPlayerOverall === 'function' ? rankingPlayerOverall(p) : getOverall(p);
@@ -162,7 +195,7 @@ function renderFifaCard(p, highlights, variant, recordOverride, interactive = tr
   const isTopScorer = highlights.topScorerIds.has(p.id);
   const isLatestMvp = highlights.latestMvpId === p.id;
   const spotlights = cardSpotlightsHTML(p, highlights);
-  const densityClass = variant === 'thumbnail' ? 'card-thumbnail' : variant === 'podium' ? 'card-podium' : 'card-full';
+  const densityClass = variant === 'thumbnail' ? 'card-thumbnail' : variant === 'podium' ? 'card-podium' : variant === 'roster' ? 'card-full card-roster' : 'card-full';
   const cardClasses = [tier.cls, densityClass, ovr === null ? 'is-unrated' : '', isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
   // La etiqueta bajo la posición explica el marco. Mismo orden de prioridad
   // que los fondos en cards.css: racha < goleador < MVP.
@@ -192,7 +225,7 @@ function renderFifaCard(p, highlights, variant, recordOverride, interactive = tr
     <div class="fifa-divider"></div>
     <div class="fifa-card-name${nameClass}" title="${escapeHtml(cardName)}">${escapeHtml(cardName)}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats, p)}</div>
-    <div class="fifa-meta">${recHTML}${medalsHTML}</div>
+    ${variant === 'roster' ? '' : `<div class="fifa-meta">${recHTML}${medalsHTML}</div>`}
     ${spotlights}
   </div>`;
 }
