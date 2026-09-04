@@ -4,9 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Assist flow harness</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/jugadores.css">
+  <link rel="stylesheet" href="../css/equipos.css">
   <link rel="stylesheet" href="../css/goles.css">
+  <link rel="stylesheet" href="../css/utils.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <link rel="stylesheet" href="../css/theme-aurora.css">
   <style>
     body{padding:20px;background:#07101a;color:#eef5ff}
     #harness-result{position:fixed;top:8px;right:8px;z-index:500;padding:8px 12px;border-radius:8px;background:#102238;font:12px sans-serif}
@@ -91,6 +96,7 @@
   <script src="../js/stats-core.js"></script>
   <script src="../js/tabs/goles.js"></script>
   <script src="../js/sync.js"></script>
+  <script src="goal-scoreboard-layout.js"></script>
   <script>
     if(new URLSearchParams(location.search).has('admin'))state.currentUser.isAdmin=true;
     if(new URLSearchParams(location.search).has('closed'))matches[0].result.winner=0;

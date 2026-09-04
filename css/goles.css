@@ -1,7 +1,8 @@
 /* ===== GOLES — planilla en vivo ===== */
 .goles-select{width:100%;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-family:'Barlow',sans-serif;font-size:14px;outline:none;margin-bottom:12px;color-scheme:dark}
 .goles-select:focus{border-color:var(--gold)}
-.score-board{display:flex;align-items:stretch;gap:6px;background:linear-gradient(180deg,var(--bg2),var(--bg3) 200%);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 10px;box-shadow:var(--shadow-card);margin-bottom:6px;position:sticky;top:112px;z-index:80;backdrop-filter:blur(8px)}
+/* Keep the scoreboard in document flow: theme panels use relative positioning. */
+.score-board{display:flex;align-items:stretch;gap:6px;background:linear-gradient(180deg,var(--bg2),var(--bg3) 200%);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 10px;box-shadow:var(--shadow-card);margin-bottom:6px;position:relative;top:auto;z-index:auto;backdrop-filter:blur(8px)}
 .score-side{flex:1;text-align:center;min-width:0}
 .score-side .sname{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .score-side .snum{font-family:'Bebas Neue',sans-serif;font-size:54px;line-height:.95}
