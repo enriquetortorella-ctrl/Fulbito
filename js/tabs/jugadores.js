@@ -133,36 +133,7 @@ function cardSpotlightsHTML(p, highlights) {
 }
 
 function renderRosterPlayerCard(p, highlights, rec) {
-  const icons = {
-    mvp: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/>',
-    goals: '<circle cx="12" cy="12" r="9"/><path d="m12 7 4.8 3.5-1.8 5.6H9l-1.8-5.6ZM12 3v4m-9 5 4.2-1.5M6.5 19.2 9 16.1m8.5 3.1L15 16.1m6-4.1-4.2-1.5"/>',
-    assists: '<path d="M4 18v-3a7 7 0 0 1 7-7h9m-5-5 5 5-5 5"/>'
-  };
-  const metric = (key, label, value, detail, title) => `<div class="player-career-metric is-${key}${value === null ? ' is-unrecorded' : ''}" data-career-metric="${key}" title="${escapeHtml(title)}">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[key]}</svg>
-    <strong>${value === null ? '—' : value}</strong><span>${label}</span><small>${detail}</small>
-  </div>`;
-  const honor = highlights.latestMvpId === p.id ? 'ÚLTIMO MVP'
-    : highlights.topScorerIds.has(p.id) ? 'MÁXIMO GOLEADOR'
-    : highlights.forms.get(p.id)?.type === 'V' && highlights.forms.get(p.id).streak >= 2 ? `${highlights.forms.get(p.id).streak} VICTORIAS SEGUIDAS` : '';
-  return `<article class="player-card-tile${honor ? ' is-highlighted' : ''}">
-    <div class="player-card-stage">${renderFifaCard(p, highlights, 'roster', rec)}</div>
-    <div class="player-career" aria-label="Historial de ${escapeHtml(p.name)}">
-      <div class="player-career-heading"><span>${honor || 'HISTORIAL DEL CLUB'}</span><b title="Partidos jugados">${rec.pj} <small>PJ</small></b></div>
-      <h3 class="player-career-name">${escapeHtml(p.name)}</h3>
-      <div class="player-career-metrics">
-        ${metric('mvp', 'MVP', rec.mvps, 'premios', `${rec.mvps} veces MVP en partidos cerrados`)}
-        ${metric('goals', 'GOLES', rec.goalPj > 0 ? rec.goals : null, rec.goalPj > 0 ? `${rec.goalPj} PJ` : 'Sin registro', rec.goalPj > 0 ? `${rec.goals} goles en ${rec.goalPj} partidos con planilla` : 'No hay partidos con goles registrados')}
-        ${metric('assists', 'ASIST.', rec.assistPj > 0 ? rec.assists : null, rec.assistPj > 0 ? `${rec.assistPj} PJ` : 'Sin registro', rec.assistPj > 0 ? `${rec.assists} asistencias en ${rec.assistPj} partidos con registro completo` : 'No hay partidos con asistencias registradas')}
-      </div>
-      <div class="player-career-record" aria-label="${rec.w} victorias, ${rec.d} empates, ${rec.l} derrotas">
-        <span class="is-win" title="Victorias"><b>${rec.w}</b> V<span class="record-word">ictorias</span></span>
-        <span class="is-draw" title="Empates"><b>${rec.d}</b> E<span class="record-word">mpates</span></span>
-        <span class="is-loss" title="Derrotas"><b>${rec.l}</b> D<span class="record-word">errotas</span></span>
-      </div>
-      <button type="button" class="player-career-link" aria-label="Ver estadísticas de ${escapeHtml(p.name)}" onclick="openPlayerProfile('${p.id}')">Ver ficha completa <span aria-hidden="true">↗</span></button>
-    </div>
-  </article>`;
+  return renderFifaCard(p, highlights, 'roster', rec);
 }
 
 function renderFifaCard(p, highlights, variant, recordOverride, interactive = true) {
@@ -172,24 +143,23 @@ function renderFifaCard(p, highlights, variant, recordOverride, interactive = tr
   const pos = getEffectivePosition(p);
   const stats = getAvgStats(p) || {};
   const photoUrl = safePhotoUrl(p.photo);
+  const initials = String(p.name || p.username || 'EF').trim().split(/\s+/).slice(0,2).map(part => part[0]).join('').toUpperCase();
   const portrait = photoUrl
     ? `<div class="fifa-card-portrait"><img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(p.name)}"></div>`
-    : `<div class="fifa-card-portrait is-placeholder" aria-hidden="true">⚽</div>`;
+    : `<div class="fifa-card-portrait is-placeholder" aria-hidden="true"><svg viewBox="0 0 120 130" fill="none"><path d="M40 18 15 33l11 23 13-6v62h42V50l13 6 11-23-25-15c-5 16-35 16-40 0Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.5"/><path d="M50 20c2 9 18 9 20 0M39 101h42" stroke="currentColor" stroke-opacity=".5"/></svg><span>${escapeHtml(initials)}</span></div>`;
 
   const rec = recordOverride || getPlayerRecord(p.id);
   const cardName = String(p.username || p.name || 'Jugador').toUpperCase();
   const nameClass = cardName.length > 17 ? ' is-very-long' : cardName.length > 11 ? ' is-long' : '';
-  // La banda inferior es de ancho completo: récord, MVP, goles y asistencias
-  // nunca compiten por espacio con la foto ni con el OVR.
+  // Historial integrado junto al OVR. El registro se comparte entre variantes.
+  const medal = (key, icon, label, value, description) => `<span class="fifa-medal is-${key}${value === null ? ' is-unrecorded' : ''}" data-career-metric="${key}" title="${escapeHtml(description)}" aria-label="${escapeHtml(description)}"><i aria-hidden="true">${icon}</i><b>${value === null ? '—' : value}</b><em>${label}</em></span>`;
   const medals = [
-    rec.mvps > 0 ? `<span class="fifa-medal is-mvp" title="${rec.mvps} MVP" aria-label="${rec.mvps} MVP"><i>★</i><b>${rec.mvps}</b></span>` : '',
-    rec.goals > 0 ? `<span class="fifa-medal is-goal" title="${rec.goals} gol${rec.goals===1?'':'es'}" aria-label="${rec.goals} gol${rec.goals===1?'':'es'}"><i>⚽</i><b>${rec.goals}</b></span>` : '',
-    rec.assists > 0 ? `<span class="fifa-medal is-assist" title="${rec.assists} asistencia${rec.assists===1?'':'s'}" aria-label="${rec.assists} asistencia${rec.assists===1?'':'s'}"><i>🎯</i><b>${rec.assists}</b></span>` : '',
-  ].filter(Boolean).join('');
-  const medalsHTML = medals ? `<div class="fifa-card-medals">${medals}</div>` : '';
-  const recHTML = rec.pj > 0
-    ? `<div class="fifa-card-record">${rec.w}V · ${rec.d}E · ${rec.l}D</div>`
-    : '';
+    medal('mvp', '★', 'MVP', rec.mvps, `${rec.mvps} veces MVP en partidos cerrados`),
+    medal('goal', '⚽', 'GOLES', rec.goalPj > 0 ? rec.goals : null, rec.goalPj > 0 ? `${rec.goals} goles en ${rec.goalPj} partidos con planilla` : 'Goles: sin registro'),
+    medal('assist', '↗', 'ASIST.', rec.assistPj > 0 ? rec.assists : null, rec.assistPj > 0 ? `${rec.assists} asistencias en ${rec.assistPj} partidos con registro completo` : 'Asistencias: sin registro')
+  ].join('');
+  const medalsHTML = `<div class="fifa-card-medals">${medals}</div>`;
+  const recHTML = `<div class="fifa-card-record" aria-label="${rec.w} victorias, ${rec.d} empates, ${rec.l} derrotas">${rec.w}V · ${rec.d}E · ${rec.l}D</div>`;
   const form = highlights.forms.get(p.id);
   const isHot = form?.type === 'V' && form.streak >= 2;
   const isTopScorer = highlights.topScorerIds.has(p.id);
@@ -197,9 +167,9 @@ function renderFifaCard(p, highlights, variant, recordOverride, interactive = tr
   const spotlights = cardSpotlightsHTML(p, highlights);
   const densityClass = variant === 'thumbnail' ? 'card-thumbnail' : variant === 'podium' ? 'card-podium' : variant === 'roster' ? 'card-full card-roster' : 'card-full';
   const cardClasses = [tier.cls, densityClass, ovr === null ? 'is-unrated' : '', isHot ? 'card-hot' : '', isTopScorer ? 'card-top-scorer' : '', isLatestMvp ? 'card-mvp' : '', spotlights ? 'has-card-spotlight' : ''].filter(Boolean).join(' ');
-  // La etiqueta bajo la posición explica el marco. Mismo orden de prioridad
-  // que los fondos en cards.css: racha < goleador < MVP.
-  const frameLabel = isLatestMvp ? 'MVP'
+  // La cinta superior explica la edición. Misma prioridad de acentos
+  // que en cards.css: racha < goleador < MVP.
+  const frameLabel = isLatestMvp ? 'ÚLTIMO MVP'
     : isTopScorer ? 'GOLEADOR'
     : isHot ? `RACHA ${form.streak}V`
     : tier.label;
@@ -213,19 +183,19 @@ function renderFifaCard(p, highlights, variant, recordOverride, interactive = tr
       ? `aria-label="${escapeHtml(p.name)} · jugador histórico"`
       : 'aria-hidden="true"';
   return `<div class="fifa-card ${cardClasses}${canOpenProfile ? '' : ' is-historical'}" ${profileAttrs}>
-    <span class="fifa-shine"></span>
+    <div class="fifa-card-ribbon"><span class="fifa-edition">EL FULBITO</span><div class="fifa-card-tier">${frameLabel}</div></div>
     ${portrait}
     <div class="fifa-top">
       <div class="fifa-left">
         <div class="fifa-card-overall">${ovr ?? '—'}</div>
         <div class="fifa-card-pos">${pos}</div>
-        <div class="fifa-card-tier">${frameLabel}</div>
       </div>
+      ${medalsHTML}
     </div>
     <div class="fifa-divider"></div>
-    <div class="fifa-card-name${nameClass}" title="${escapeHtml(cardName)}">${escapeHtml(cardName)}</div>
+    <div class="fifa-card-name${nameClass}" title="${escapeHtml(p.name)}"><strong>${escapeHtml(cardName)}</strong>${p.username && String(p.name).toUpperCase() !== cardName ? `<small>${escapeHtml(p.name)}</small>` : ''}</div>
     <div class="fifa-card-stats">${cardStatsHTML(stats, p)}</div>
-    ${variant === 'roster' ? '' : `<div class="fifa-meta">${recHTML}${medalsHTML}</div>`}
+    <div class="fifa-meta"><span class="fifa-card-appearances" title="Partidos jugados"><b>${rec.pj}</b> PJ</span>${recHTML}</div>
     ${spotlights}
   </div>`;
 }
