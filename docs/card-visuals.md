@@ -1,5 +1,18 @@
 # Colección metálica · v64
 
+## Corrección visual v65
+
+Se retiraron los bloques negros del nombre, indicadores, edición y retrato sin
+foto. Las superficies ahora usan la textura y tinta propias del marco; no se
+modifican las fotos cargadas por los usuarios. El OVR se desplazó hacia abajo y
+hacia adentro, con altura de línea completa, también en las miniaturas.
+
+`tests/card-frame-safety.js` comprueba el canal alfa del recurso real bajo toda
+la caja del OVR y un margen de 2 px. El harness incluye un control negativo
+deliberadamente fuera de la silueta y rechaza superficies negras opacas.
+
+## Base conservada
+
 Se conservan la grilla integrada y los registros de `renderFifaCard`. Los marcos
 WebP ya existentes vuelven como capas decorativas, sin texto incrustado añadido.
 `--frame-size` compensa sus distintos márgenes transparentes para que el podio

@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/leaderboards.css?v=59">
   <link rel="stylesheet" href="../css/inicio-matchcentre.css?v=59">
   <link rel="stylesheet" href="../css/inicio-podium.css?v=59">
-  <link rel="stylesheet" href="../css/cards.css?v=64">
+  <link rel="stylesheet" href="../css/cards.css?v=65">
   <style>
     body{padding:0;background:#06101b;color:#eef5ff}
     #screen-app{display:block;max-width:1180px;margin:auto}
@@ -143,6 +143,7 @@
   <script src="../js/stats-core.js?v=59"></script>
   <script src="../js/tabs/jugadores.js?v=64"></script>
   <script src="../js/card-effects.js?v=64"></script>
+  <script src="card-frame-safety.js"></script>
   <script src="../js/tabs/stats.js?v=59"></script>
   <script src="../js/tabs/goleadores.js?v=59"></script>
   <script src="../js/tabs/partidos.js?v=59"></script>
@@ -382,6 +383,24 @@
         }
       } catch(error) { issues.push(`career-profile-crash-${error.message}`); }
       finally { closeModal('modal-profile'); }
+      // Se valida la silueta alfa real: estar dentro del rectángulo no alcanza.
+      issues.push(...await checkCardFrameSafety(document.querySelectorAll('.fifa-card')));
+      const unsafeCard=fullCards[0].cloneNode(true);
+      unsafeCard.style.cssText='position:absolute;left:-10000px;top:0;width:270px;transform:none;';
+      unsafeCard.querySelector('.fifa-card-overall').style.cssText='position:relative;left:-12cqw;top:-12cqw;';
+      document.body.appendChild(unsafeCard);
+      const unsafeIssues=await checkCardFrameSafety([unsafeCard]);
+      unsafeCard.remove();
+      if(!unsafeIssues.some(issue=>issue.includes('ovr-outside-silhouette')))issues.push('alpha-regression-negative-control-failed');
+      document.querySelectorAll('.fifa-card .fifa-card-name,.fifa-card .fifa-card-medals,.fifa-card .fifa-card-ribbon,.fifa-card .fifa-card-portrait.is-placeholder').forEach(element=>{
+        const surface=getComputedStyle(element);
+        const colors=(surface.backgroundColor+' '+surface.backgroundImage).match(/rgba?\([^)]*\)/g)||[];
+        const opaqueBlack=colors.some(color=>{
+          const values=color.match(/[\d.]+/g).map(Number);
+          return Math.max(...values.slice(0,3))<65 && (values[3]??1)>.65;
+        });
+        if(opaqueBlack)issues.push('opaque-black-card-surface');
+      });
       // El foil vive debajo de los datos, termina solo y respeta accesibilidad.
       try {
         const card=cardFor('p1');

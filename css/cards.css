@@ -3,11 +3,11 @@
 .fifa-card{--card-frame:url('../assets/cards/gold.webp');--card-accent:#ffe7a3;--card-glow:rgba(227,189,95,.35);--card-ink:#241905;--card-muted:#493615;--card-line:rgba(66,44,5,.24);--card-wash:rgba(255,236,167,.76)}
 :is(.fifa-card,#tab-jugadores .fifa-card,.podium-slot .fifa-card){
   position:relative;isolation:isolate;container-type:inline-size;box-sizing:border-box;
-  display:grid;grid-template-columns:39% 61%;grid-template-rows:9% 38% 12% 22% 9% 10%;align-items:stretch;align-content:stretch;
+  display:grid;grid-template-columns:39% 61%;grid-template-rows:13% 36% 11% 21% 9% 10%;align-items:stretch;align-content:stretch;
   width:100%;max-width:270px;aspect-ratio:.667;min-width:0;min-height:0;padding:0;margin:0;
   clip-path:none;
   border:0;border-radius:0;overflow:visible;box-shadow:none;
-  background:none;
+  background:none;transform:none;
   filter:drop-shadow(0 12px 16px rgba(0,0,0,.35));cursor:pointer;justify-self:center;
   transition:transform .24s ease-out,filter .24s;animation:none;animation-fill-mode:none;
 }
@@ -43,34 +43,37 @@
 :is(.fifa-card,#tab-jugadores .fifa-card).is-historical{cursor:default}
 :is(.fifa-card,#tab-jugadores .fifa-card).is-historical:hover{transform:none}
 /* El selector compartido neutraliza la geometría de los temas anteriores. */
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-ribbon{grid-row:1;grid-column:1/-1;display:flex;align-self:end;align-items:center;justify-content:center;gap:2cqw;margin:0 25% .6cqw;min-height:4.6cqw;border:1px solid var(--card-accent);border-radius:2cqw;background:linear-gradient(110deg,#111a25,#2f3438,#111a25);box-shadow:0 2px 4px rgba(0,0,0,.3)}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-ribbon{grid-row:1;grid-column:1/-1;display:flex;align-self:end;align-items:center;justify-content:center;gap:2cqw;margin:0 25% 1cqw;min-height:4.6cqw;border:0;border-bottom:1px solid var(--card-line);border-radius:0;background:none;box-shadow:none}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-edition{display:none}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-tier{font:800 3.5cqw/1 'Barlow',sans-serif;letter-spacing:.08em;color:var(--card-accent);opacity:1;text-shadow:none;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-top{position:relative;inset:auto;grid-column:1;grid-row:2;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:0;width:auto;max-width:none;margin:0;padding:4cqw 2cqw 2cqw 9cqw}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-left{position:relative;inset:auto;display:flex;flex-direction:column;align-items:flex-start;width:100%;max-width:none;margin:0;overflow:visible;line-height:1}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-overall{font:19cqw/.86 'Bebas Neue',sans-serif;letter-spacing:-.02em;text-align:left;color:var(--card-ink);text-shadow:0 1px 1px rgba(255,255,255,.35);margin:0}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-tier{font:800 3.5cqw/1 'Barlow',sans-serif;letter-spacing:.08em;color:var(--card-ink);opacity:1;text-shadow:none;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* El OVR comienza debajo del hombro curvo del marco, no en su área alfa.
+   El line-height completo también contiene el ascenso real de los números. */
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-top{position:relative;inset:auto;grid-column:1;grid-row:2;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:0;width:auto;max-width:none;margin:0;padding:3.5cqw 2cqw 1cqw 9cqw}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-left{position:relative;inset:auto;display:flex;flex-direction:column;align-items:flex-start;width:auto;max-width:none;margin:0 0 0 4.5cqw;overflow:visible;line-height:1}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-overall{font:17.5cqw/1 'Bebas Neue',sans-serif;letter-spacing:-.02em;text-align:left;color:var(--card-ink);text-shadow:0 1px 1px rgba(255,255,255,.25);margin:0}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-pos{font:700 4.8cqw/1 'Barlow Condensed',sans-serif;letter-spacing:.13em;text-align:left;color:var(--card-ink);text-shadow:none;margin:2cqw 0 0;padding:0;border:0;min-width:0;width:auto}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait{grid-row:2;grid-column:2;position:relative;inset:auto;width:auto;height:auto;min-height:0;min-width:0;margin:3cqw 7cqw 1.5cqw 0;border:1px solid rgba(218,229,240,.21);border-radius:3cqw;overflow:hidden;clip-path:none;mask-image:none;-webkit-mask-image:none;opacity:1;filter:none;box-shadow:0 5px 13px rgba(0,0,0,.22);background:linear-gradient(145deg,var(--card-glow),rgba(0,0,0,.24));pointer-events:none}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait{grid-row:2;grid-column:2;position:relative;inset:auto;width:auto;height:auto;min-height:0;min-width:0;margin:3cqw 10cqw 2cqw 0;border:1px solid rgba(218,229,240,.21);border-radius:3cqw;overflow:hidden;clip-path:none;mask-image:none;-webkit-mask-image:none;opacity:1;filter:none;box-shadow:0 5px 13px rgba(0,0,0,.22);background:transparent;pointer-events:none}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait img{width:100%;height:100%;display:block;object-fit:cover;object-position:center 25%;transform:none;filter:none;animation:none}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait{border:1px solid var(--card-accent);box-shadow:0 0 0 .7cqw rgba(24,21,16,.25),inset 0 0 0 .5cqw rgba(255,240,187,.2),0 6px 10px rgba(0,0,0,.25)}
 :is(.fifa-card,#tab-jugadores .fifa-card).card-top-scorer .fifa-left{--card-ink:#2b1705}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 65%,rgba(3,10,18,.3));animation:none}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait.is-placeholder{display:grid;place-items:center;padding:0;color:var(--card-accent);background:radial-gradient(ellipse at 50% 25%,#344754,#0b1724 80%)}
+:is(.fifa-card,#tab-jugadores .fifa-card).card-top-scorer .fifa-card-tier{color:#2b1705}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait::after{content:none;animation:none}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait.is-placeholder{display:grid;place-items:center;padding:0;color:var(--card-ink);background:none;border:0;box-shadow:none}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait.is-placeholder svg{width:96%;height:96%;grid-area:1/1}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-portrait.is-placeholder>span{grid-area:1/1;align-self:center;font:10cqw/1 'Bebas Neue',sans-serif;letter-spacing:.08em;margin-top:5cqw}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-medals{position:relative;inset:auto;display:grid;grid-template-columns:minmax(0,1fr);gap:1cqw;width:auto;max-width:none;min-width:0;margin:2cqw 0 0;padding:1.5cqw 1cqw;white-space:normal;background:linear-gradient(140deg,rgba(12,18,28,.88),rgba(12,18,28,.78));border:1px solid rgba(255,233,175,.5);border-radius:1.5cqw;box-shadow:0 2px 5px rgba(0,0,0,.12)}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal{display:grid;grid-template-columns:5.5cqw auto minmax(0,1fr);gap:.7cqw;align-items:center;justify-content:normal;min-width:0;height:auto;padding:.4cqw 0;border:0;border-bottom:1px solid rgba(211,225,240,.12);border-radius:0;background:none;box-shadow:none;color:#eaf1f8;line-height:1}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal i{font-style:normal;font-size:3.8cqw;line-height:1;text-align:center;color:var(--card-accent)}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal b{font:7.2cqw/.9 'Bebas Neue',sans-serif;color:#fff;text-shadow:none;font-variant-numeric:tabular-nums}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal em{font:800 3.6cqw/1 'Barlow Condensed',sans-serif;letter-spacing:.04em;color:#dce8f3;font-style:normal;white-space:nowrap}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-medals{position:relative;inset:auto;display:grid;grid-template-columns:minmax(0,1fr);gap:1cqw;width:auto;max-width:none;min-width:0;margin:2cqw 0 0;padding:1cqw .8cqw;white-space:normal;background:linear-gradient(90deg,transparent,var(--card-wash) 14% 86%,transparent);border:0;border-radius:0;box-shadow:none}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal{display:grid;grid-template-columns:5.5cqw auto minmax(0,1fr);gap:.7cqw;align-items:center;justify-content:normal;min-width:0;height:auto;padding:.4cqw 0;border:0;border-bottom:1px solid var(--card-line);border-radius:0;background:none;box-shadow:none;color:var(--card-ink);line-height:1}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal i{font-style:normal;font-size:3.8cqw;line-height:1;text-align:center;color:var(--card-ink)}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal b{font:7.2cqw/.9 'Bebas Neue',sans-serif;color:var(--card-ink);text-shadow:none;font-variant-numeric:tabular-nums}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal em{font:800 3.6cqw/1 'Barlow Condensed',sans-serif;letter-spacing:.04em;color:var(--card-ink);font-style:normal;white-space:nowrap}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal.is-long-value b{font-size:5.5cqw}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal.is-unrecorded b{color:#9aacbd}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-medal.is-unrecorded b{color:var(--card-muted)}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-divider{display:none}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-name{grid-row:3;grid-column:1/-1;position:relative;inset:auto;align-self:stretch;justify-self:stretch;display:flex;flex-direction:column;justify-content:center;gap:1cqw;max-width:none;max-height:none;width:auto;margin:0 8%;padding:1cqw 0;text-align:center;line-height:1;text-shadow:0 1px 2px #000;letter-spacing:0;color:#fff2ce;white-space:normal;overflow:visible;border-block:1px solid rgba(255,233,175,.65);background:linear-gradient(105deg,rgba(16,20,28,.85),#17212d 52%,rgba(16,20,28,.86));box-shadow:0 3px 8px rgba(0,0,0,.18);-webkit-line-clamp:unset}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-name{grid-row:3;grid-column:1/-1;position:relative;inset:auto;align-self:stretch;justify-self:stretch;display:flex;flex-direction:column;justify-content:center;gap:1cqw;max-width:none;max-height:none;width:auto;margin:0 10%;padding:1cqw 0;text-align:center;line-height:1;text-shadow:none;letter-spacing:0;color:var(--card-ink);white-space:normal;overflow:visible;border-block:1px solid var(--card-line);background:linear-gradient(90deg,transparent,var(--card-wash) 18% 82%,transparent);box-shadow:none;-webkit-line-clamp:unset}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-name strong{font:8cqw/.92 'Bebas Neue',sans-serif;letter-spacing:.02em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-name.is-long strong{font-size:6.8cqw}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-name.is-very-long strong{font-size:5.7cqw}
-:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-name small{font:500 3.6cqw/1.15 'Barlow',sans-serif;color:#d9e1e9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-name small{font:500 3.6cqw/1.15 'Barlow',sans-serif;color:var(--card-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-stats{grid-row:4;grid-column:1/-1;position:relative;inset:auto;display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:1cqw 5cqw;width:auto;max-width:none;margin:0 10%;padding:2cqw 0;background:linear-gradient(90deg,transparent,var(--card-wash) 12% 88%,transparent)}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-stats::before{content:'';position:absolute;left:50%;top:12%;bottom:12%;width:1px;background:var(--card-line)}
 :is(.fifa-card,#tab-jugadores .fifa-card) .fifa-card-stat{display:flex;justify-content:center;align-items:baseline;gap:2cqw;line-height:1;min-width:0;background:none;border-radius:0;font:700 4.1cqw/1 'Barlow Condensed',sans-serif;color:var(--card-muted);text-shadow:none}
@@ -90,10 +93,10 @@
 :is(.fifa-card,#tab-jugadores .fifa-card).card-podium .fifa-card-tier{font-size:4.5cqw}
 :is(.fifa-card,#tab-jugadores .fifa-card).card-podium .fifa-card-stat{font-size:4.8cqw}
 :is(.fifa-card,#tab-jugadores .fifa-card).card-podium .fifa-card-name small{display:none}
-:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail{grid-template-columns:1fr;grid-template-rows:9% 27% 54% 10%}
+:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail{grid-template-columns:1fr;grid-template-rows:17% 25% 48% 10%}
 :is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-card-ribbon,:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-card-medals,:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-card-name,:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-card-stats,:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-meta{display:none}
-:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-top{grid-column:1;grid-row:2;padding:0 11%;justify-content:center}
-:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-left{flex-direction:row;align-items:baseline;justify-content:space-between;gap:3cqw}
+:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-top{grid-column:1;grid-row:2;padding:0 16%;justify-content:center}
+:is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-left{flex-direction:row;align-items:baseline;justify-content:space-between;gap:3cqw;margin:0}
 :is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-card-overall{font-size:29cqw}
 :is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-card-pos{font-size:12cqw;margin:0}
 :is(.fifa-card,#tab-jugadores .fifa-card).card-thumbnail .fifa-card-portrait{grid-column:1;grid-row:3;margin:2cqw 12% 4cqw;border-radius:5cqw}
