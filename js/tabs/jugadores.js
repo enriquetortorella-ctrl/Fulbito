@@ -152,7 +152,7 @@ function renderFifaCard(p, highlights, variant, recordOverride, interactive = tr
   const cardName = String(p.username || p.name || 'Jugador').toUpperCase();
   const nameClass = cardName.length > 17 ? ' is-very-long' : cardName.length > 11 ? ' is-long' : '';
   // Historial integrado junto al OVR. El registro se comparte entre variantes.
-  const medal = (key, icon, label, value, description) => `<span class="fifa-medal is-${key}${value === null ? ' is-unrecorded' : ''}" data-career-metric="${key}" title="${escapeHtml(description)}" aria-label="${escapeHtml(description)}"><i aria-hidden="true">${icon}</i><b>${value === null ? '—' : value}</b><em>${label}</em></span>`;
+  const medal = (key, icon, label, value, description) => `<span class="fifa-medal is-${key}${value === null ? ' is-unrecorded' : ''}${value !== null && String(value).length > 3 ? ' is-long-value' : ''}" data-career-metric="${key}" title="${escapeHtml(description)}" aria-label="${escapeHtml(description)}"><i aria-hidden="true">${icon}</i><b>${value === null ? '—' : value}</b><em>${label}</em></span>`;
   const medals = [
     medal('mvp', '★', 'MVP', rec.mvps, `${rec.mvps} veces MVP en partidos cerrados`),
     medal('goal', '⚽', 'GOLES', rec.goalPj > 0 ? rec.goals : null, rec.goalPj > 0 ? `${rec.goals} goles en ${rec.goalPj} partidos con planilla` : 'Goles: sin registro'),

@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/leaderboards.css?v=59">
   <link rel="stylesheet" href="../css/inicio-matchcentre.css?v=59">
   <link rel="stylesheet" href="../css/inicio-podium.css?v=59">
-  <link rel="stylesheet" href="../css/cards.css?v=63">
+  <link rel="stylesheet" href="../css/cards.css?v=64">
   <style>
     body{padding:0;background:#06101b;color:#eef5ff}
     #screen-app{display:block;max-width:1180px;margin:auto}
@@ -51,6 +51,8 @@
       <div class="players-grid" id="players-grid"></div>
       <h2 class="harness-title">Casos límite de historial</h2>
       <div class="players-grid" id="harness-career-stress"></div>
+      <h2 class="harness-title">Ediciones Oro e Icon</h2>
+      <div class="players-grid" id="harness-frame-gallery"></div>
     </section>
     <section id="tab-stats" class="tab-content active">
       <h1 class="harness-title">Estadísticas</h1>
@@ -121,7 +123,7 @@
     let rosterQuery='',rosterSort='rating';
     function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
     function safePhotoUrl(value){return value||''}
-    function getOverall(player){return player.ovr||60}
+    function getOverall(player){return Number.isFinite(player.ovr)?player.ovr:null}
     function getCardTier(ovr){return ovr>=80?{cls:'rare',label:'ICON'}:ovr>=72?{cls:'gold',label:'ORO'}:ovr>=65?{cls:'silver',label:'PLATA'}:{cls:'bronze',label:'BRONCE'}}
     function getEffectivePosition(player){return player.posPrimary||'MED'}
     function usesGoalkeeperStats(player){return player.posPrimary==='POR'&&player.ratingMode==='goalkeeper'}
@@ -139,7 +141,8 @@
     function showToast(){}
   </script>
   <script src="../js/stats-core.js?v=59"></script>
-  <script src="../js/tabs/jugadores.js?v=63"></script>
+  <script src="../js/tabs/jugadores.js?v=64"></script>
+  <script src="../js/card-effects.js?v=64"></script>
   <script src="../js/tabs/stats.js?v=59"></script>
   <script src="../js/tabs/goleadores.js?v=59"></script>
   <script src="../js/tabs/partidos.js?v=59"></script>
@@ -153,6 +156,12 @@
     const harnessRows=players.map(p=>({p,ovr:getOverall(p)||60,...getPlayerRecord(p.id)}));
     const harnessPlayed=matches.filter(isPlayed);
     const harnessHighlights=getCardHighlights(harnessRows,harnessPlayed);
+    document.getElementById('harness-frame-gallery').innerHTML=[players[0],players[2]].map(p=>renderRosterPlayerCard(p,undefined,getPlayerRecord(p.id))).join('');
+    const unratedPlayer={...players[0],ovr:null,stats:{},username:'Sin calificar'};
+    document.getElementById('harness-frame-gallery').innerHTML+=['mvp','scorer'].map(kind=>renderRosterPlayerCard(unratedPlayer,{
+      latestMvpId:kind==='mvp'?unratedPlayer.id:null,
+      topScorerIds:new Set(kind==='scorer'?[unratedPlayer.id]:[]),forms:new Map()
+    },getPlayerRecord(unratedPlayer.id))).join('');
     document.getElementById('harness-career-stress').innerHTML=[999,9999].map(total=>renderRosterPlayerCard(
       {...players[0],name:`Historial de ${total} partidos`},harnessHighlights,
       {pj:total,w:total,d:0,l:0,mvps:total,goals:total,goalPj:total,assists:total,assistPj:total}
@@ -213,7 +222,11 @@
       };
       const checkCard=(card,label,variant)=>{
         const cr=card.getBoundingClientRect();
-        if(getComputedStyle(card).backgroundImage.includes('url(')||getComputedStyle(card,'::before').backgroundImage.includes('url('))issues.push(`${label}-legacy-frame-background`);
+        const frameStyle=getComputedStyle(card,'::before');
+        if(!/assets\/cards\/(gold|silver|bronze|icon|hot|mvp|scorer)\.webp/.test(frameStyle.backgroundImage))issues.push(`${label}-metallic-frame-missing`);
+        if(frameStyle.backgroundSize!==getComputedStyle(card).getPropertyValue('--frame-size').trim())issues.push(`${label}-frame-sizing`);
+        if(getComputedStyle(card).clipPath!=='none')issues.push(`${label}-frame-clipped`);
+        if(getComputedStyle(card,'::after').pointerEvents!=='none')issues.push(`${label}-foil-blocks-interaction`);
         ['.fifa-card-ribbon','.fifa-top','.fifa-card-portrait','.fifa-card-name','.fifa-card-stats','.fifa-meta'].forEach(selector=>{
           const el=card.querySelector(selector);
           if(visible(el)&&!inside(el.getBoundingClientRect(),cr,1.5))issues.push(`${label}-${selector}-outside-card`);
@@ -258,6 +271,13 @@
       const thumbnailCards=[...document.querySelectorAll('#harness-thumbnail-grid .fifa-card')];
       fullCards.forEach((card,index)=>checkCard(card,`full-${index}`,'full'));
       document.querySelectorAll('#harness-career-stress .fifa-card').forEach((card,index)=>checkCard(card,`stress-${index}`,'full'));
+      document.querySelectorAll('#harness-frame-gallery .fifa-card').forEach((card,index)=>checkCard(card,`edition-${index}`,'full'));
+      const unratedCards=document.querySelectorAll('#harness-frame-gallery .is-unrated');
+      if(unratedCards.length!==2)issues.push('unrated-recognition-fixtures-missing');
+      unratedCards.forEach(card=>{
+        const expected=card.classList.contains('card-mvp')?'mvp.webp':'scorer.webp';
+        if(!getComputedStyle(card,'::before').backgroundImage.includes(expected))issues.push('unrated-recognition-frame-priority');
+      });
       document.querySelectorAll('#harness-career-stress .fifa-card-record').forEach((el,index)=>checkContentBox(el,`stress-record-${index}`));
       const cardFor=id=>fullCards.find(card=>card.getAttribute('aria-label')===`Ver ficha de ${players.find(p=>p.id===id).name}`);
       const metricFor=(id,key)=>cardFor(id)?.querySelector(`[data-career-metric="${key}"] b`)?.textContent;
@@ -362,6 +382,25 @@
         }
       } catch(error) { issues.push(`career-profile-crash-${error.message}`); }
       finally { closeModal('modal-profile'); }
+      // El foil vive debajo de los datos, termina solo y respeta accesibilidad.
+      try {
+        const card=cardFor('p1');
+        const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const foil=getComputedStyle(card,'::after');
+        if(reduced ? foil.animationName!=='none' : foil.animationName!=='fulbito-card-foil')issues.push('foil-motion-preference');
+        if(!reduced && foil.animationIterationCount!=='1')issues.push('foil-must-not-loop');
+        if(getComputedStyle(thumbnailCards[0],'::after').animationName!=='none')issues.push('thumbnail-must-not-animate');
+        const before=cardData(card);
+        const rect=card.getBoundingClientRect();
+        card.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:rect.left+rect.width*.8,clientY:rect.top+rect.height*.25}));
+        await nextPaint();
+        const shouldTilt=matchMedia('(hover: hover) and (pointer: fine)').matches && !reduced && !document.hidden;
+        if(card.classList.contains('is-card-tilting')!==shouldTilt)issues.push('interactive-tilt-policy');
+        if(shouldTilt && getComputedStyle(card).transform==='none')issues.push('interactive-tilt-css-missing');
+        if(JSON.stringify(before)!==JSON.stringify(cardData(card)))issues.push('motion-changed-player-data');
+        card.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,relatedTarget:document.body}));
+        if(card.classList.contains('is-card-tilting') || card.style.getPropertyValue('--card-rotate-x'))issues.push('interactive-tilt-not-cleaned');
+      } catch(error) { issues.push(`motion-crash-${error.message}`); }
       if(document.documentElement.scrollWidth>document.documentElement.clientWidth+1)issues.push(`page-horizontal-overflow-${document.documentElement.scrollWidth}`);
       const result={ok:!issues.length,issues,cards:fullCards.length,assists:document.querySelector('.assists-total b')?.textContent||'0',viewport:[innerWidth,innerHeight],variants:{home:homeCards.length,podium:podiumCards.length,thumbnail:thumbnailCards.length}};
       window.__HARNESS__=result;

@@ -3,7 +3,7 @@
   Nunca intercepta solicitudes a Supabase: resultados, usuarios y sesiones
   siguen obteniéndose en línea y no se conservan en la caché del dispositivo.
 */
-const SHELL_CACHE = 'fulbito-shell-v63';
+const SHELL_CACHE = 'fulbito-shell-v64';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -61,6 +61,7 @@ const SHELL_FILES = [
   './js/tabs/inicio.js',
   './js/tabs/inicio-podium.js',
   './js/tabs/jugadores.js',
+  './js/card-effects.js',
   './js/tabs/partidos.js',
   './js/tabs/stats.js'
 ];
